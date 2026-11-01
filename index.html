@@ -531,10 +531,10 @@
 
                             <!-- Upload Box with Drag & Drop styling -->
                             <div class="border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-2xl p-3 text-center bg-blue-50/50 hover:bg-blue-50 transition cursor-pointer" onclick="document.getElementById('mainPpctFileInput').click()">
-                                <input type="file" id="mainPpctFileInput" accept=".json,.xlsx,.xls,.csv" onchange="handleMainPpctUpload(event)" class="hidden">
+                                <input type="file" id="mainPpctFileInput" accept=".json,.xlsx,.xls,.csv" multiple onchange="handleMainPpctUpload(event)" class="hidden">
                                 <i class="fa-solid fa-cloud-arrow-up text-xl text-blue-600 mb-1"></i>
-                                <div class="text-xs font-black text-blue-950">Bấm hoặc kéo thả file PPCT vào đây</div>
-                                <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ file JSON sao lưu hoặc Excel (.xlsx, .csv)</div>
+                                <div class="text-xs font-black text-blue-950">Bấm hoặc kéo thả nhiều file PPCT vào đây (Toán, Tiếng Việt, Khoa học...)</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ chọn cùng lúc nhiều file JSON sao lưu hoặc Excel (.xlsx, .csv)</div>
                             </div>
                         </div>
 
@@ -581,10 +581,10 @@
 
                             <!-- Upload Box with Drag & Drop styling -->
                             <div class="border-2 border-dashed border-purple-300 hover:border-purple-500 rounded-2xl p-3 text-center bg-purple-50/50 hover:bg-purple-50 transition cursor-pointer" onclick="document.getElementById('mainMatrixFileInput').click()">
-                                <input type="file" id="mainMatrixFileInput" accept=".docx,.xlsx,.xls,.csv,.json" onchange="handleMainMatrixFileUpload(event)" class="hidden">
+                                <input type="file" id="mainMatrixFileInput" accept=".docx,.xlsx,.xls,.csv,.json" multiple onchange="handleMainMatrixFileUpload(event)" class="hidden">
                                 <i class="fa-solid fa-file-arrow-up text-xl text-purple-600 mb-1"></i>
                                 <div class="text-xs font-black text-purple-950">Nhập File Ma Trận Word (.docx) hoặc Excel (.xlsx)</div>
-                                <div class="text-[10px] text-slate-500 mt-0.5">Bóc tách tự động bảng ma trận chuẩn Thông tư 27</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ chọn cùng lúc nhiều file ma trận (.docx, .xlsx, .json)</div>
                             </div>
                         </div>
 
@@ -1221,7 +1221,7 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2">
-                                <input type="file" id="matrixFileInputBank" accept=".docx,.xlsx,.xls,.csv,.json" onchange="handleMatrixFileUpload(event)" class="hidden">
+                                <input type="file" id="matrixFileInputBank" accept=".docx,.xlsx,.xls,.csv,.json" multiple onchange="handleMainMatrixFileUpload(event)" class="hidden">
                                 <button type="button" onclick="document.getElementById('matrixFileInputBank').click()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
                                     <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
                                     <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>
@@ -1575,7 +1575,7 @@
                 </div>
 
                 <!-- HIDDEN FILE INPUT FOR IMPORTING PPCT JSON -->
-                <input type="file" id="inputPpctJsonFile" accept=".json" class="hidden" onchange="handleImportPpctJson(event)">
+                <input type="file" id="inputPpctJsonFile" accept=".json,.xlsx,.xls,.csv" multiple class="hidden" onchange="handleMainPpctUpload(event)">
 
                 <!-- SUB-VIEW 1: PPCT HUB (SCHEDULE BY WEEKS) -->
                 <div id="ppctHubContainer" class="space-y-4">
@@ -9859,74 +9859,107 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             return [];
         }
 
+        // =========================================================================
+        // NÂNG CẤP: BỘ NẠP & GỘP ĐA FILE PHÂN PHỐI CHƯƠNG TRÌNH & ĐA MA TRẬN CÙNG LÚC
+        // =========================================================================
+
         async function parsePpctExcelFile(file) {
             const arrayBuffer = await file.arrayBuffer();
             if (typeof XLSX === 'undefined') return null;
 
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            const sheetNames = workbook.SheetNames || [];
+            if (sheetNames.length === 0) return null;
 
-            let headerColMap = {};
-            let foundHeader = false;
+            const fileNameLow = file.name.toLowerCase();
             const lessons = [];
             const periods = [];
             const yccdIdeas = [];
 
-            data.forEach((cells, rIdx) => {
-                if (!Array.isArray(cells) || cells.length === 0) return;
-                const rowText = cells.map(c => String(c || '').trim()).join(' ').toLowerCase();
+            // Duyệt qua toàn bộ các sheets trong file Excel
+            sheetNames.forEach(sheetName => {
+                const worksheet = workbook.Sheets[sheetName];
+                if (!worksheet) return;
 
-                if (!foundHeader && (rowText.includes('tuần') || rowText.includes('tiết') || rowText.includes('bài') || rowText.includes('yccđ') || rowText.includes('nội dung'))) {
-                    foundHeader = true;
-                    cells.forEach((cText, cIdx) => {
-                        const low = String(cText || '').toLowerCase();
-                        if (low.includes('tuần') || low.includes('week')) headerColMap.week = cIdx;
-                        else if (low.includes('tiết') || low.includes('period')) headerColMap.period = cIdx;
-                        else if (low.includes('bài') || low.includes('tên bài') || low.includes('lesson')) headerColMap.lesson = cIdx;
-                        else if (low.includes('yccđ') || low.includes('yêu cầu') || low.includes('mục tiêu')) headerColMap.yccd = cIdx;
-                        else if (low.includes('môn') || low.includes('subject')) headerColMap.subject = cIdx;
-                    });
-                    return;
-                }
+                const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                if (!Array.isArray(data) || data.length === 0) return;
 
-                if (cells.length >= 2 && cells.some(c => String(c).trim().length > 0)) {
-                    const rawWeek = headerColMap.week != null ? parseInt(cells[headerColMap.week]) : null;
-                    const week = (!isNaN(rawWeek) && rawWeek > 0) ? rawWeek : (Math.floor(lessons.length / 2) + 1);
+                const sheetLow = sheetName.toLowerCase();
+                let sheetSubjId = 'subj-toan4';
+                if (sheetLow.includes('viet') || sheetLow.includes('tv') || sheetLow.includes('tiếng việt') || fileNameLow.includes('viet') || fileNameLow.includes('tv')) sheetSubjId = 'subj-tv4';
+                else if (sheetLow.includes('khoa') || sheetLow.includes('sci') || fileNameLow.includes('khoa') || fileNameLow.includes('sci')) sheetSubjId = 'subj-kh4';
+                else if (sheetLow.includes('su') || sheetLow.includes('dia') || sheetLow.includes('lsdl') || fileNameLow.includes('su') || fileNameLow.includes('dia') || fileNameLow.includes('lsdl')) sheetSubjId = 'subj-lsdl4';
+                else if (sheetLow.includes('dao duc') || sheetLow.includes('dd') || fileNameLow.includes('dao duc') || fileNameLow.includes('dd')) sheetSubjId = 'subj-dd4';
+                else if (sheetLow.includes('cong nghe') || sheetLow.includes('cn') || fileNameLow.includes('cong nghe') || fileNameLow.includes('cn')) sheetSubjId = 'subj-cn4';
+                else if (sheetLow.includes('hdtn') || fileNameLow.includes('hdtn')) sheetSubjId = 'subj-hdtn4';
+                else if (fileNameLow.includes('toan') || fileNameLow.includes('math')) sheetSubjId = 'subj-toan4';
 
-                    const rawPeriod = headerColMap.period != null ? parseInt(cells[headerColMap.period]) : (periods.length + 1);
-                    const rawLesson = headerColMap.lesson != null ? String(cells[headerColMap.lesson] || '').trim() : String(cells[1] || '').trim();
-                    const rawYccd = headerColMap.yccd != null ? String(cells[headerColMap.yccd] || '').trim() : '';
-                    const rawSubject = headerColMap.subject != null ? String(cells[headerColMap.subject] || '').trim().toLowerCase() : '';
+                let headerColMap = {};
+                let foundHeader = false;
 
-                    if (rawLesson) {
-                        const lesId = `les-excel-${lessons.length + 1}`;
-                        lessons.push({
-                            id: lesId,
-                            code: `Bài ${lessons.length + 1}`,
-                            title: rawLesson,
-                            plannedPeriods: 2,
-                            subjectId: rawSubject.includes('tv') ? 'subj-tv4' : 'subj-toan4'
+                data.forEach((cells, rIdx) => {
+                    if (!Array.isArray(cells) || cells.length === 0) return;
+                    const rowText = cells.map(c => String(c || '').trim()).join(' ').toLowerCase();
+
+                    // Nhận diện dòng tiêu đề
+                    if (!foundHeader && (rowText.includes('tuần') || rowText.includes('tiết') || rowText.includes('bài') || rowText.includes('yccđ') || rowText.includes('nội dung') || rowText.includes('tên bài') || rowText.includes('chủ đề'))) {
+                        foundHeader = true;
+                        cells.forEach((cText, cIdx) => {
+                            const low = String(cText || '').toLowerCase();
+                            if (low.includes('tuần') || low.includes('week')) headerColMap.week = cIdx;
+                            else if (low.includes('tiết') || low.includes('period') || low.includes('stt')) headerColMap.period = cIdx;
+                            else if (low.includes('bài') || low.includes('tên bài') || low.includes('lesson') || low.includes('nội dung')) headerColMap.lesson = cIdx;
+                            else if (low.includes('yccđ') || low.includes('yêu cầu') || low.includes('mục tiêu')) headerColMap.yccd = cIdx;
+                            else if (low.includes('môn') || low.includes('subject')) headerColMap.subject = cIdx;
                         });
+                        return;
+                    }
 
-                        periods.push({
-                            id: `per-excel-${periods.length + 1}`,
-                            lessonId: lesId,
-                            week: week,
-                            periodNumber: rawPeriod || (periods.length + 1)
-                        });
+                    if (cells.length >= 2 && cells.some(c => String(c).trim().length > 0)) {
+                        const rawWeek = headerColMap.week != null ? parseInt(cells[headerColMap.week]) : null;
+                        const week = (!isNaN(rawWeek) && rawWeek > 0) ? rawWeek : (Math.floor(lessons.length / 2) + 1);
 
-                        if (rawYccd) {
-                            yccdIdeas.push({
-                                id: `idea-excel-${yccdIdeas.length + 1}`,
-                                code: `YCCD-EXCEL-${yccdIdeas.length + 1}`,
-                                itemText: rawYccd,
-                                linkedLessonIds: [lesId],
-                                linkedPeriodIds: [`per-excel-${periods.length}`]
+                        const rawPeriod = headerColMap.period != null ? parseInt(cells[headerColMap.period]) : (periods.length + 1);
+                        const rawLesson = headerColMap.lesson != null ? String(cells[headerColMap.lesson] || '').trim() : String(cells[1] || '').trim();
+                        const rawYccd = headerColMap.yccd != null ? String(cells[headerColMap.yccd] || '').trim() : '';
+                        const rawSubjText = headerColMap.subject != null ? String(cells[headerColMap.subject] || '').trim().toLowerCase() : '';
+
+                        let cellSubjId = sheetSubjId;
+                        if (rawSubjText.includes('tv') || rawSubjText.includes('viet')) cellSubjId = 'subj-tv4';
+                        else if (rawSubjText.includes('khoa') || rawSubjText.includes('sci')) cellSubjId = 'subj-kh4';
+                        else if (rawSubjText.includes('su') || rawSubjText.includes('dia')) cellSubjId = 'subj-lsdl4';
+                        else if (rawSubjText.includes('toan') || rawSubjText.includes('math')) cellSubjId = 'subj-toan4';
+
+                        if (rawLesson && rawLesson.length > 2 && isNaN(Number(rawLesson))) {
+                            const lesId = `les-${cellSubjId}-${lessons.length + 1}-${Date.now().toString().slice(-4)}`;
+                            lessons.push({
+                                id: lesId,
+                                code: `Bài ${lessons.length + 1}`,
+                                title: rawLesson,
+                                plannedPeriods: 2,
+                                subjectId: cellSubjId
                             });
+
+                            periods.push({
+                                id: `per-${cellSubjId}-${periods.length + 1}`,
+                                lessonId: lesId,
+                                week: week,
+                                periodNumber: rawPeriod || (periods.length + 1)
+                            });
+
+                            if (rawYccd) {
+                                yccdIdeas.push({
+                                    id: `idea-${cellSubjId}-${yccdIdeas.length + 1}`,
+                                    code: `YCCD-${cellSubjId.toUpperCase()}-${yccdIdeas.length + 1}`,
+                                    subjectId: cellSubjId,
+                                    itemText: rawYccd,
+                                    linkedLessonIds: [lesId],
+                                    linkedPeriodIds: [`per-${cellSubjId}-${periods.length}`]
+                                });
+                            }
                         }
                     }
-                }
+                });
             });
 
             if (lessons.length > 0) {
@@ -9940,6 +9973,213 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                 };
             }
             return null;
+        }
+
+        async function handleMainPpctUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (files.length === 0) return;
+
+            if (files.length > 1) {
+                showToast(`Đang phân tích và gộp dữ liệu ${files.length} file Phân phối chương trình...`, 'info');
+            }
+
+            if (!appDB.ppctData || typeof appDB.ppctData !== 'object') {
+                appDB.ppctData = {
+                    app: 'THAYKHAIEDU PPCT HUB',
+                    version: '2.0.0',
+                    lessons: [],
+                    periods: [],
+                    yccdIdeas: [],
+                    strands: [],
+                    groups: [],
+                    topics: []
+                };
+            }
+            if (!Array.isArray(appDB.ppctData.lessons)) appDB.ppctData.lessons = [];
+            if (!Array.isArray(appDB.ppctData.periods)) appDB.ppctData.periods = [];
+            if (!Array.isArray(appDB.ppctData.yccdIdeas)) appDB.ppctData.yccdIdeas = [];
+
+            const seenLessonKeys = new Set(appDB.ppctData.lessons.map(l => `${l.subjectId || ''}::${(l.code || '').toLowerCase()}::${(l.title || '').trim().toLowerCase()}`));
+            const seenPeriodIds = new Set(appDB.ppctData.periods.map(p => p.id));
+            const seenYccdKeys = new Set(appDB.ppctData.yccdIdeas.map(y => `${y.subjectId || ''}::${(y.code || '').toLowerCase()}::${(y.itemText || y.originalText || '').trim().toLowerCase()}`));
+
+            let newLessonsAdded = 0;
+            let newPeriodsAdded = 0;
+            let newYccdsAdded = 0;
+            const processedFileNames = [];
+
+            for (const file of files) {
+                const fileName = file.name.toLowerCase();
+                try {
+                    let fileDataset = null;
+
+                    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+                        fileDataset = await parsePpctExcelFile(file);
+                    } else if (fileName.endsWith('.json')) {
+                        const text = await file.text();
+                        const parsed = JSON.parse(text);
+                        if (Array.isArray(parsed)) {
+                            fileDataset = { lessons: parsed, periods: [], yccdIdeas: [] };
+                        } else if (parsed && typeof parsed === 'object') {
+                            fileDataset = parsed;
+                        }
+                    }
+
+                    if (fileDataset) {
+                        processedFileNames.push(file.name);
+
+                        // Suy luận môn học từ tên file nếu bài học chưa có subjectId
+                        let fileSubjId = 'subj-toan4';
+                        if (fileName.includes('viet') || fileName.includes('tv') || fileName.includes('tieng viet')) fileSubjId = 'subj-tv4';
+                        else if (fileName.includes('khoa') || fileName.includes('sci')) fileSubjId = 'subj-kh4';
+                        else if (fileName.includes('su') || fileName.includes('dia') || fileName.includes('lsdl')) fileSubjId = 'subj-lsdl4';
+                        else if (fileName.includes('dd') || fileName.includes('dao duc')) fileSubjId = 'subj-dd4';
+                        else if (fileName.includes('cn') || fileName.includes('cong nghe')) fileSubjId = 'subj-cn4';
+                        else if (fileName.includes('hdtn')) fileSubjId = 'subj-hdtn4';
+
+                        // Gộp bài học
+                        (fileDataset.lessons || []).forEach(l => {
+                            if (!l.subjectId) l.subjectId = fileSubjId;
+                            const key = `${l.subjectId}::${(l.code || '').toLowerCase()}::${(l.title || '').trim().toLowerCase()}`;
+                            if (!seenLessonKeys.has(key)) {
+                                seenLessonKeys.add(key);
+                                if (!l.id) l.id = `les-custom-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+                                appDB.ppctData.lessons.push(l);
+                                newLessonsAdded++;
+                            }
+                        });
+
+                        // Gộp tiết học
+                        (fileDataset.periods || []).forEach(p => {
+                            if (!p.id) p.id = `per-custom-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+                            if (!seenPeriodIds.has(p.id)) {
+                                seenPeriodIds.add(p.id);
+                                appDB.ppctData.periods.push(p);
+                                newPeriodsAdded++;
+                            }
+                        });
+
+                        // Gộp YCCĐ
+                        (fileDataset.yccdIdeas || []).forEach(y => {
+                            if (!y.subjectId) y.subjectId = fileSubjId;
+                            const key = `${y.subjectId}::${(y.code || '').toLowerCase()}::${(y.itemText || y.originalText || '').trim().toLowerCase()}`;
+                            if (!seenYccdKeys.has(key)) {
+                                seenYccdKeys.add(key);
+                                if (!y.id) y.id = `idea-custom-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+                                appDB.ppctData.yccdIdeas.push(y);
+                                newYccdsAdded++;
+                            }
+                        });
+
+                        // Gộp Strands và Groups nếu có
+                        if (Array.isArray(fileDataset.strands)) {
+                            if (!Array.isArray(appDB.ppctData.strands)) appDB.ppctData.strands = [];
+                            const strandIds = new Set(appDB.ppctData.strands.map(s => s.id));
+                            fileDataset.strands.forEach(s => {
+                                if (!strandIds.has(s.id)) {
+                                    strandIds.add(s.id);
+                                    appDB.ppctData.strands.push(s);
+                                }
+                            });
+                        }
+
+                        if (Array.isArray(fileDataset.groups)) {
+                            if (!Array.isArray(appDB.ppctData.groups)) appDB.ppctData.groups = [];
+                            const groupIds = new Set(appDB.ppctData.groups.map(g => g.id));
+                            fileDataset.groups.forEach(g => {
+                                if (!groupIds.has(g.id)) {
+                                    groupIds.add(g.id);
+                                    appDB.ppctData.groups.push(g);
+                                }
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Lỗi phân tích file ${file.name}:`, err);
+                }
+            }
+
+            // Cập nhật thông tin nguồn file
+            if (!appDB.ppctSource) appDB.ppctSource = { files: [], isCustom: true };
+            if (!Array.isArray(appDB.ppctSource.files)) {
+                appDB.ppctSource.files = appDB.ppctSource.fileName ? [appDB.ppctSource.fileName] : [];
+            }
+            processedFileNames.forEach(fn => {
+                if (!appDB.ppctSource.files.includes(fn)) appDB.ppctSource.files.push(fn);
+            });
+            appDB.ppctSource.fileName = appDB.ppctSource.files.length === 1 ? appDB.ppctSource.files[0] : `${appDB.ppctSource.files.length} file PPCT (${appDB.ppctSource.files.map(f => f.replace(/\.[^/.]+$/, '')).join(', ')})`;
+            appDB.ppctSource.uploadedAt = new Date().toISOString();
+            appDB.ppctSource.isCustom = true;
+
+            syncPpctYccdToObjectives();
+            saveDB();
+
+            updateMainHubStatusDisplay();
+            updateWizardPpctStatusDisplay();
+            onWizardSubjectOrPeriodChange();
+
+            if (activeMatrixSubView === 'fullyear') {
+                renderFullYearYccdMatrix();
+            }
+
+            if (processedFileNames.length > 1) {
+                showToast(`🎉 Đã nạp và kết nối thành công ${processedFileNames.length} file PPCT cùng lúc (+${newLessonsAdded} bài, +${newPeriodsAdded} tiết)!`, 'success');
+            } else if (processedFileNames.length === 1) {
+                showToast(`🎉 Đã nạp thành công file PPCT "${processedFileNames[0]}" (+${newLessonsAdded} bài)!`, 'success');
+            } else {
+                showToast('Không đọc được dữ liệu phân phối chương trình từ các file đã chọn!', 'warning');
+            }
+
+            event.target.value = '';
+        }
+
+        function handleWizardPpctUpload(event) {
+            handleMainPpctUpload(event);
+        }
+
+        async function handleMainMatrixFileUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (files.length === 0) return;
+
+            if (files.length > 1) {
+                showToast(`Đang phân tích ${files.length} file ma trận...`, 'info');
+            }
+
+            let totalNewMatrices = 0;
+            const bank = getMatrixBank();
+
+            for (const file of files) {
+                try {
+                    const parsedList = await parseMatrixFile(file);
+                    if (parsedList && parsedList.length > 0) {
+                        parsedList.forEach(m => {
+                            if (!m.id) m.id = `MTX_UPLOAD_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+                            m.isCustom = true;
+                            bank.push(m);
+                            totalNewMatrices++;
+                        });
+                    }
+                } catch (err) {
+                    console.error(`Lỗi bóc tách file ma trận ${file.name}:`, err);
+                }
+            }
+
+            if (totalNewMatrices > 0) {
+                saveDB();
+                updateMainHubStatusDisplay();
+                renderWizardMatrixList();
+                renderMatrixBankTab();
+
+                if (files.length > 1) {
+                    showToast(`🎉 Đã bóc tách thành công ${totalNewMatrices} ma trận từ ${files.length} file vào Kho Ma Trận!`, 'success');
+                } else {
+                    showToast(`🎉 Đã bóc tách thành công ma trận từ file "${files[0].name}" vào Kho Ma Trận!`, 'success');
+                }
+            } else {
+                showToast('Không trích xuất được bảng ma trận từ các file đã chọn!', 'warning');
+            }
+
+            event.target.value = '';
         }
 
         function updateMainHubStatusDisplay() {
@@ -9959,8 +10199,13 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
 
             if (badge) {
                 if (appDB.ppctSource && appDB.ppctSource.isCustom) {
+                    const filesCount = (appDB.ppctSource.files && appDB.ppctSource.files.length) ? appDB.ppctSource.files.length : 1;
                     badge.className = 'text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1';
-                    badge.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-700"></i> File: ${appDB.ppctSource.fileName}`;
+                    if (filesCount > 1) {
+                        badge.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-700"></i> ${filesCount} File PPCT đã kết nối (${lessons.length} bài)`;
+                    } else {
+                        badge.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-700"></i> File: ${appDB.ppctSource.fileName}`;
+                    }
                 } else {
                     badge.className = 'text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1';
                     badge.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> Chuẩn KNTT 35 Tuần';
@@ -9974,84 +10219,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             }
         }
 
-        async function handleMainPpctUpload(event) {
-            const file = event.target.files && event.target.files[0];
-            if (!file) return;
-
-            const fileName = file.name.toLowerCase();
-
-            try {
-                if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-                    const parsed = await parsePpctExcelFile(file);
-                    if (parsed) {
-                        appDB.ppctData = parsed;
-                        appDB.ppctSource = { fileName: file.name, uploadedAt: new Date().toISOString(), isCustom: true };
-                        syncPpctYccdToObjectives();
-                        saveDB();
-                        updateMainHubStatusDisplay();
-                        updateWizardPpctStatusDisplay();
-                        onWizardSubjectOrPeriodChange();
-                        showToast(`🎉 Đã nạp thành công file PPCT Excel: "${file.name}" (${parsed.lessons.length} bài) và liên kết vào Trình Tạo Đề!`, 'success');
-                    } else {
-                        showToast('Không thể đọc dữ liệu bài học từ file Excel PPCT!', 'warning');
-                    }
-                } else {
-                    // JSON or CSV
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        try {
-                            const raw = e.target.result;
-                            const parsed = JSON.parse(raw);
-                            appDB.ppctData = Array.isArray(parsed) ? { lessons: parsed, periods: [], yccdIdeas: [] } : parsed;
-                            appDB.ppctSource = { fileName: file.name, uploadedAt: new Date().toISOString(), isCustom: true };
-                            syncPpctYccdToObjectives();
-                            saveDB();
-                            updateMainHubStatusDisplay();
-                            updateWizardPpctStatusDisplay();
-                            onWizardSubjectOrPeriodChange();
-                            showToast(`🎉 Đã nạp thành công file PPCT "${file.name}" và liên kết vào Trình Tạo Đề!`, 'success');
-                        } catch (err) {
-                            showToast('Lỗi phân tích file JSON PPCT: ' + err.message, 'error');
-                        }
-                    };
-                    reader.readAsText(file, 'utf-8');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Lỗi đọc file: ' + err.message, 'error');
-            }
-            event.target.value = '';
-        }
-
-        async function handleMainMatrixFileUpload(event) {
-            const file = event.target.files && event.target.files[0];
-            if (!file) return;
-
-            try {
-                const parsedList = await parseMatrixFile(file);
-                if (parsedList && parsedList.length > 0) {
-                    const bank = getMatrixBank();
-                    parsedList.forEach(m => {
-                        if (!m.id) m.id = `MTX_UPLOAD_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-                        m.isCustom = true;
-                        bank.push(m);
-                    });
-                    saveDB();
-                    updateMainHubStatusDisplay();
-                    renderWizardMatrixList();
-                    renderMatrixBankTab();
-
-                    const firstMtx = parsedList[0];
-                    showToast(`🎉 Đã bóc tách thành công ${(firstMtx.slots || []).length} câu từ file "${file.name}" vào Kho Ma Trận!`, 'success');
-                } else {
-                    showToast('Không trích xuất được bảng ma trận từ file!', 'warning');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Lỗi bóc tách file ma trận: ' + err.message, 'error');
-            }
-            event.target.value = '';
-        }
+        
 
         function exportMatrixTemplateExcel() {
             if (typeof XLSX === 'undefined') {
@@ -10329,7 +10497,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                             
                             <!-- Action Upload & Export Buttons -->
                             <div class="flex flex-wrap items-center gap-1.5">
-                                <input type="file" id="wzPpctFileInput" accept=".json" onchange="handleWizardPpctUpload(event)" class="hidden">
+                                <input type="file" id="wzPpctFileInput" accept=".json,.xlsx,.xls,.csv" multiple onchange="handleMainPpctUpload(event)" class="hidden">
                                 <button type="button" onclick="document.getElementById('wzPpctFileInput').click()" class="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] shadow-xs cursor-pointer flex items-center gap-1.5 transition">
                                     <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
                                     <span>Tải File PPCT Khác (.json)</span>
@@ -10442,7 +10610,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                             </div>
 
                             <div class="flex flex-wrap items-center gap-1.5">
-                                <input type="file" id="matrixFileInputWizard" accept=".docx,.xlsx,.xls,.csv,.json" onchange="handleMatrixFileUpload(event)" class="hidden">
+                                <input type="file" id="matrixFileInputWizard" accept=".docx,.xlsx,.xls,.csv,.json" multiple onchange="handleMainMatrixFileUpload(event)" class="hidden">
                                 <button type="button" onclick="document.getElementById('matrixFileInputWizard').click()" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] shadow-xs cursor-pointer flex items-center gap-1.5 transition">
                                     <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
                                     <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>

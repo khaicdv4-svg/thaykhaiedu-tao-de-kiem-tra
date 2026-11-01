@@ -8,7 +8,7 @@
 
 ### 1. ➕ Trung Tâm Khởi Tạo Đề Kiểm Tra Mới (Wizard Đa Nguồn)
 - **Tạo từ Phân phối chương trình (PPCT Hub)**: Tự động lọc bài học theo giai đoạn (Giữa HK1, Cuối HK1, Giữa HK2, Cuối Năm hoặc tùy chọn khoảng tuần), gán bài học PPCT và YCCĐ trực tiếp vào từng câu hỏi trắc nghiệm/tự luận.
-- **Nhập file PPCT JSON cá nhân**: Cho phép giáo viên tải file Phân phối chương trình của trường lên, hệ thống lập tức đồng bộ bài học, tuần học vào Trình tạo đề theo thời gian thực.
+- **Nhập nhiều file PPCT cùng lúc (Multi-file & Multi-sheet Merge)**: Cho phép giáo viên chọn cùng lúc nhiều file Phân phối chương trình (.xlsx, .json) cho các môn học khác nhau (Toán, Tiếng Việt, Khoa học, Lịch sử & Địa lí...). Bộ gộp thông minh (Smart Merge Engine) tự động phân loại môn học, gộp bài học, tuần dạy và YCCĐ vào Trình tạo đề theo thời gian thực.
 - **Tạo từ Kho Ma trận chuẩn**: Lựa chọn nhanh từ 8 ma trận chuẩn GDPT 2018 (Toán, Tiếng Việt, Khoa học, Lịch sử & Địa lí) để sinh đề 1-chạm.
 
 ### 2. 🗃️ Kho Ma Trận Đề Kiểm Tra (Matrix Bank) & Tải Lên Word (.docx), Excel (.xlsx), CSV, JSON
