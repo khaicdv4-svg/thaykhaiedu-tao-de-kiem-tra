@@ -342,6 +342,9 @@
 
             <!-- SYSTEM BACKUP / RESTORE -->
             <div class="flex items-center space-x-1.5">
+                <button onclick="openCreateExamWizard()" class="text-xs bg-amber-400 hover:bg-amber-300 text-blue-950 px-3 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold shadow-md cursor-pointer" title="Khởi tạo đề kiểm tra mới">
+                    <i class="fa-solid fa-plus-circle text-sm"></i> <span>Tạo Đề Mới</span>
+                </button>
                 <button onclick="promptResetSeedData()" class="text-xs bg-blue-800 hover:bg-blue-700 px-2.5 py-2 rounded-xl transition flex items-center gap-1 border border-blue-600 cursor-pointer" title="Khôi phục dữ liệu mẫu chuẩn 6 môn Sách Kết nối tri thức">
                     <i class="fa-solid fa-rotate"></i> <span class="hidden sm:inline">Mẫu KNTT</span>
                 </button>
@@ -360,6 +363,25 @@
         
         <!-- LEFT SIDEBAR -->
         <aside class="lg:col-span-3 space-y-4">
+            
+            <!-- PRIMARY ACTION: TẠO ĐỀ & KHO ĐỀ (THAYKHAIEDU ENGINE) -->
+            <div class="bg-gradient-to-br from-blue-950 via-indigo-950 to-slate-900 rounded-2xl p-3.5 shadow-md border border-blue-800 space-y-2.5 text-white">
+                <div class="flex items-center justify-between border-b border-blue-800/80 pb-2">
+                    <span class="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                        <i class="fa-solid fa-sparkles"></i> Khởi Tạo Đề Kiểm Tra
+                    </span>
+                    <span class="text-[9px] bg-blue-800 text-blue-200 px-1.5 py-0.5 rounded font-bold">KNTT</span>
+                </div>
+                <button type="button" onclick="openCreateExamWizard()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 group">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300 group-hover:rotate-12 transition-transform"></i>
+                    <span>➕ TẠO ĐỀ MỚI</span>
+                </button>
+                <button type="button" onclick="openExamBankModal()" class="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-blue-100 hover:text-white border border-blue-700/60 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked text-amber-400"></i>
+                    <span>📂 Kho Đề & Đề Mẫu Có Sẵn</span>
+                </button>
+            </div>
+
             <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-3 space-y-1">
                 <div class="text-[11px] font-bold text-blue-800 uppercase px-3 py-1 flex items-center justify-between">
                     <span>Quy trình Tạo Đề AI</span>
@@ -439,6 +461,29 @@
             <!-- ======================================================================= -->
             <section id="tab-reviewer" class="space-y-4">
                 
+                <!-- HERO CREATION BANNER (THAYKHAIEDU ENGINE) -->
+                <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-4 shadow-sm border border-blue-800 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-black uppercase tracking-wider text-amber-400 bg-amber-400/20 px-2.5 py-0.5 rounded-full border border-amber-400/40">
+                                Trung Tâm Khởi Tạo Đề Kiểm Tra
+                            </span>
+                            <span class="text-xs text-blue-200">Chuẩn GDPT 2018 • Sách Kết nối tri thức</span>
+                        </div>
+                        <h3 class="text-sm sm:text-base font-extrabold mt-1">Khởi tạo đề kiểm tra mới hoặc chọn từ kho đề mẫu chuẩn</h3>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="openCreateExamWizard()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-black text-xs shadow-md cursor-pointer flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-plus-circle text-amber-300"></i>
+                            <span>➕ Tạo Đề Mới (PPCT / Ma Trận)</span>
+                        </button>
+                        <button type="button" onclick="openExamBankModal()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/30 font-bold text-xs cursor-pointer flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-folder-open text-amber-300"></i>
+                            <span>📂 Kho Đề & Đề Mẫu</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- ZERO-PROMPT 1-TOUCH CONTEXT BAR (6 MÔN SÁCH KẾT NỐI TRI THỨC) -->
                 <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
                     <div class="flex flex-wrap justify-between items-start gap-3 border-b border-slate-100 pb-3">
@@ -7139,6 +7184,1308 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
         }
 
         window.addEventListener('DOMContentLoaded', initApp);
-    </script>
+    
+
+        // =========================================================================
+        // TRUNG TÂM TẠO ĐỀ KIỂM TRA MỚI & KHO ĐỀ MẪU CÓ SẴN (THAYKHAIEDU ENGINE)
+
+        function getSubjectName(subj) {
+            return SUBJECT_META[subj]?.name || subj || 'Toán';
+        }
+        // =========================================================================
+
+        let wizardState = {
+            subject: 'MATH',
+            subjectName: 'Toán',
+            grade: 4,
+            period: 'mid_term_1',
+            periodLabel: 'Giữa Học kì I',
+            weekStart: 1,
+            weekEnd: 9,
+            durationMinutes: 40,
+            examTitle: 'Đề kiểm tra định kì Giữa học kì I — Môn Toán Lớp 4',
+            creationMode: 'ppct', // 'ppct' | 'matrix'
+            selectedMatrixId: 'mtx_mid1',
+            slots: []
+        };
+
+        let activeBankFilterSubject = 'ALL';
+
+        const BUILTIN_EXAM_BANK_TEMPLATES = [
+            {
+                id: 'BANK_MATH_MID1',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'mid_term_1',
+                periodLabel: 'Giữa Học kì I',
+                title: 'Đề kiểm tra định kì Giữa học kì I — Môn Toán Lớp 4 (Chuẩn KNTT)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 10,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                description: 'Bao quát kiến thức 9 tuần đầu: Số có nhiều chữ số, phép cộng trừ, góc nhọn/tù/bẹt, yến/tạ/tấn, bài toán 3 bước tính. Cấu trúc 7 Trắc nghiệm (7đ) + 3 Tự luận (3đ).'
+            },
+            {
+                id: 'BANK_MATH_FINAL1',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'end_term_1',
+                periodLabel: 'Cuối Học kì I',
+                title: 'Đề kiểm tra định kì Cuối học kì I — Môn Toán Lớp 4 (Chuẩn KNTT)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 10,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                description: 'Bao quát toàn bộ HK1 (Tuần 1 - 18): Phép nhân chia số có nhiều chữ số, tính chất giao hoán/kết hợp, hình bình hành, giải toán tìm 2 số khi biết tổng và hiệu.'
+            },
+            {
+                id: 'BANK_MATH_MID2',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'mid_term_2',
+                periodLabel: 'Giữa Học kì II',
+                title: 'Đề kiểm tra định kì Giữa học kì II — Môn Toán Lớp 4 (Chuẩn KNTT)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 10,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                description: 'Trọng tâm Tuần 19 - 27: Khái niệm phân số, phân số bằng nhau, rút gọn & quy đồng mẫu số, so sánh phân số, cộng trừ phân số cùng/khác mẫu.'
+            },
+            {
+                id: 'BANK_MATH_FINAL2',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'end_year',
+                periodLabel: 'Cuối Năm Học',
+                title: 'Đề kiểm tra định kì Cuối năm học — Môn Toán Lớp 4 (Chuẩn KNTT)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 10,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                description: 'Đánh giá tổng hợp cả năm (Tuần 1 - 35): 4 phép tính phân số, tỉ số & tỉ lệ bản đồ, tìm hai số khi biết tổng/hiệu và tỉ số, hình thoi & diện tích hình thoi.'
+            },
+            {
+                id: 'BANK_TV_MID1_PASS1',
+                subject: 'VIETNAMESE',
+                subjectName: 'Tiếng Việt',
+                grade: 4,
+                period: 'mid_term_1',
+                periodLabel: 'Giữa Học kì I',
+                title: 'Đề kiểm tra định kì Giữa HK1 — Tiếng Việt 4 (Văn bản "Đồng tiền vàng")',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 8,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                passageId: 'PASS_TV4_01',
+                description: 'Đọc hiểu neo chặt văn bản "Đồng tiền vàng" (4 câu trắc nghiệm + 4 câu tự luận/LTVC) + Bài viết Tập làm văn kèm Rubric chấm Thông tư 27.'
+            },
+            {
+                id: 'BANK_TV_MID1_PASS2',
+                subject: 'VIETNAMESE',
+                subjectName: 'Tiếng Việt',
+                grade: 4,
+                period: 'mid_term_1',
+                periodLabel: 'Giữa Học kì I',
+                title: 'Đề kiểm tra Tiếng Việt 4 — Văn bản "Cái ổ gà" (Trách nhiệm & Tình làng nghĩa xóm)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 8,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                passageId: 'PASS_TV4_02',
+                description: 'Đọc hiểu neo chặt câu chuyện "Cái ổ gà" (Luyện từ và câu: Danh từ, động từ, từ chỉ cảm xúc) + Viết đoạn văn nêu ý kiến.'
+            },
+            {
+                id: 'BANK_TV_MID1_PASS3',
+                subject: 'VIETNAMESE',
+                subjectName: 'Tiếng Việt',
+                grade: 4,
+                period: 'mid_term_1',
+                periodLabel: 'Giữa Học kì I',
+                title: 'Đề kiểm tra Tiếng Việt 4 — Văn bản "Thuật lại trải nghiệm làm bánh quy cùng mẹ"',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 8,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                passageId: 'PASS_TV4_03',
+                description: 'Đọc hiểu bài văn thuật trải nghiệm bổ ích, câu hỏi mở rộng tình cảm gia đình + Rubric Thông tư 27.'
+            },
+            {
+                id: 'BANK_SCIENCE_MID1',
+                subject: 'SCIENCE',
+                subjectName: 'Khoa học',
+                grade: 4,
+                period: 'mid_term_1',
+                periodLabel: 'Giữa Học kì I',
+                title: 'Đề kiểm tra định kì Giữa học kì I — Môn Khoa học Lớp 4',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 10,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                description: 'Chủ đề Chất: Nước và vai trò của nước, sự chuyển thể của nước, không khí quanh ta và bảo vệ nguồn nước.'
+            },
+            {
+                id: 'BANK_HISTGEO_MID1',
+                subject: 'HIST_GEO',
+                subjectName: 'Lịch sử và Địa lí',
+                grade: 4,
+                period: 'mid_term_1',
+                periodLabel: 'Giữa Học kì I',
+                title: 'Đề kiểm tra định kì Giữa HK1 — Lịch sử và Địa lí Lớp 4',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                durationMinutes: 40,
+                questionCount: 10,
+                totalPoints: 10.0,
+                source: 'Đề mẫu chuẩn ThayKhaiEdu',
+                description: 'Vùng Trung du và Miền núi Bắc Bộ: Địa hình, khí hậu, các dân tộc anh em và lễ hội Đền Hùng.'
+            }
+        ];
+
+        function getFilteredPpctLessonsForWizard(subjectCode, weekStart, weekEnd) {
+            const ppct = appDB.ppctData || DEFAULT_PPCT_DATA;
+            const lessons = ppct.lessons || [];
+            const periods = ppct.periods || [];
+
+            const subjIdPrefix = subjectCode === 'VIETNAMESE' ? 'tv' : 'toan';
+
+            const lessonWeeksMap = {};
+            periods.forEach(p => {
+                if (!p.lessonId || p.week == null) return;
+                if (!lessonWeeksMap[p.lessonId]) lessonWeeksMap[p.lessonId] = new Set();
+                lessonWeeksMap[p.lessonId].add(p.week);
+            });
+
+            const result = [];
+            const seenTitles = new Set();
+
+            lessons.forEach(l => {
+                const weeks = lessonWeeksMap[l.id] ? Array.from(lessonWeeksMap[l.id]) : [];
+                const isMatchSubject = l.subjectId?.includes(subjIdPrefix) || (subjectCode === 'MATH' && l.id.includes('math')) || (subjectCode === 'VIETNAMESE' && l.id.includes('tv'));
+                if (!isMatchSubject) return;
+
+                const inRange = weeks.some(w => w >= weekStart && w <= weekEnd);
+                if (inRange || (weeks.length === 0 && weekStart === 1)) {
+                    const minW = weeks.length > 0 ? Math.min(...weeks) : 1;
+                    const fullTitle = `${l.code || 'Bài'}: ${l.title}`;
+                    if (!seenTitles.has(fullTitle)) {
+                        seenTitles.add(fullTitle);
+                        result.push({
+                            id: l.id,
+                            code: l.code || '',
+                            title: l.title,
+                            fullTitle: fullTitle,
+                            week: minW,
+                            weeks: weeks,
+                            plannedPeriods: l.plannedPeriods || 2
+                        });
+                    }
+                }
+            });
+
+            if (typeof SCAFFOLD_35_WEEKS_LESSONS !== 'undefined') {
+                SCAFFOLD_35_WEEKS_LESSONS.forEach((sc, idx) => {
+                    if (sc.week >= weekStart && sc.week <= weekEnd) {
+                        const isMatchSubject = sc.subjectId?.includes(subjIdPrefix) || (subjectCode === 'MATH' && sc.subjectId?.includes('toan')) || (subjectCode === 'VIETNAMESE' && sc.subjectId?.includes('tv'));
+                        if (isMatchSubject && !seenTitles.has(sc.title)) {
+                            seenTitles.add(sc.title);
+                            result.push({
+                                id: `scaffold-les-${sc.week}-${idx}`,
+                                code: `Tuần ${sc.week}`,
+                                title: sc.title,
+                                fullTitle: sc.title,
+                                week: sc.week,
+                                weeks: [sc.week],
+                                plannedPeriods: 2
+                            });
+                        }
+                    }
+                });
+            }
+
+            result.sort((a, b) => (a.week || 0) - (b.week || 0));
+            return result;
+        }
+
+        function initDefaultWizardSlots(subjectCode, weekStart, weekEnd) {
+            const lessons = getFilteredPpctLessonsForWizard(subjectCode, weekStart, weekEnd);
+            const lCount = Math.max(1, lessons.length);
+
+            return [
+                { qNum: 1, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[0 % lCount]?.fullTitle || 'Ôn tập số học' },
+                { qNum: 2, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[1 % lCount]?.fullTitle || 'Phép tính cơ bản' },
+                { qNum: 3, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle || 'Hình học & Góc' },
+                { qNum: 4, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[3 % lCount]?.fullTitle || 'Đại lượng & Đo lường' },
+                { qNum: 5, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle || 'Tính chất phép tính' },
+                { qNum: 6, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[5 % lCount]?.fullTitle || 'Biểu thức có chứa chữ' },
+                { qNum: 7, qType: 'mcq_single', level: 'M3', points: 1.0, lessonTitle: lessons[6 % lCount]?.fullTitle || 'Vận dụng số học thực tế' },
+                { qNum: 8, qType: 'essay', level: 'M2', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle || 'Giải toán có lời văn' },
+                { qNum: 9, qType: 'essay', level: 'M2', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle || 'Tính toán bằng cách thuận tiện' },
+                { qNum: 10, qType: 'essay', level: 'M3', points: 1.0, lessonTitle: lessons[1 % lCount]?.fullTitle || 'Bài toán vận dụng nâng cao' }
+            ];
+        }
+
+        function openCreateExamWizard(initialMode = 'ppct') {
+            wizardState.creationMode = initialMode;
+            wizardState.subject = appDB.activeSubject || 'MATH';
+            wizardState.subjectName = getSubjectName(wizardState.subject);
+
+            // Populate form values
+            const subSelect = document.getElementById('wzSubjectSelect');
+            if (subSelect) subSelect.value = wizardState.subject;
+
+            const perSelect = document.getElementById('wzPeriodSelect');
+            if (perSelect) perSelect.value = wizardState.period;
+
+            onWizardSubjectOrPeriodChange();
+
+            const modal = document.getElementById('modalCreateExam');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeCreateExamWizard() {
+            const modal = document.getElementById('modalCreateExam');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function setWizardCreationMode(mode) {
+            wizardState.creationMode = mode;
+            const btnPpct = document.getElementById('wzModeBtnPpct');
+            const btnMtx = document.getElementById('wzModeBtnMatrix');
+            const panelPpct = document.getElementById('wzPpctPanel');
+            const panelMtx = document.getElementById('wzMatrixPanel');
+
+            if (mode === 'ppct') {
+                if (btnPpct) {
+                    btnPpct.className = 'p-3.5 rounded-2xl border-2 transition cursor-pointer bg-blue-50/70 border-blue-600 text-blue-950 shadow-xs flex items-start gap-3';
+                }
+                if (btnMtx) {
+                    btnMtx.className = 'p-3.5 rounded-2xl border-2 transition cursor-pointer bg-white border-slate-200 text-slate-700 hover:border-slate-300 flex items-start gap-3';
+                }
+                if (panelPpct) panelPpct.classList.remove('hidden');
+                if (panelMtx) panelMtx.classList.add('hidden');
+            } else {
+                if (btnMtx) {
+                    btnMtx.className = 'p-3.5 rounded-2xl border-2 transition cursor-pointer bg-blue-50/70 border-blue-600 text-blue-950 shadow-xs flex items-start gap-3';
+                }
+                if (btnPpct) {
+                    btnPpct.className = 'p-3.5 rounded-2xl border-2 transition cursor-pointer bg-white border-slate-200 text-slate-700 hover:border-slate-300 flex items-start gap-3';
+                }
+                if (panelPpct) panelPpct.classList.add('hidden');
+                if (panelMtx) panelMtx.classList.remove('hidden');
+                renderWizardMatrixOptions();
+            }
+        }
+
+        function onWizardSubjectOrPeriodChange() {
+            const subEl = document.getElementById('wzSubjectSelect');
+            if (subEl) {
+                wizardState.subject = subEl.value;
+                wizardState.subjectName = getSubjectName(wizardState.subject);
+            }
+
+            const perEl = document.getElementById('wzPeriodSelect');
+            const customBox = document.getElementById('wzCustomWeeksBox');
+            if (perEl) {
+                const perVal = perEl.value;
+                wizardState.period = perVal;
+
+                if (perVal === 'mid_term_1') {
+                    wizardState.periodLabel = 'Giữa Học kì I';
+                    wizardState.weekStart = 1;
+                    wizardState.weekEnd = 9;
+                    if (customBox) customBox.classList.add('hidden');
+                } else if (perVal === 'end_term_1') {
+                    wizardState.periodLabel = 'Cuối Học kì I';
+                    wizardState.weekStart = 1;
+                    wizardState.weekEnd = 18;
+                    if (customBox) customBox.classList.add('hidden');
+                } else if (perVal === 'mid_term_2') {
+                    wizardState.periodLabel = 'Giữa Học kì II';
+                    wizardState.weekStart = 19;
+                    wizardState.weekEnd = 27;
+                    if (customBox) customBox.classList.add('hidden');
+                } else if (perVal === 'end_year') {
+                    wizardState.periodLabel = 'Cuối Năm Học';
+                    wizardState.weekStart = 1;
+                    wizardState.weekEnd = 35;
+                    if (customBox) customBox.classList.add('hidden');
+                } else {
+                    wizardState.periodLabel = 'Tùy chọn khoảng tuần';
+                    if (customBox) customBox.classList.remove('hidden');
+                    const wsEl = document.getElementById('wzWeekStartInput');
+                    const weEl = document.getElementById('wzWeekEndInput');
+                    wizardState.weekStart = parseInt(wsEl?.value || 1);
+                    wizardState.weekEnd = parseInt(weEl?.value || 9);
+                }
+            }
+
+            // Auto-update exam title input
+            const titleInput = document.getElementById('wzExamTitleInput');
+            wizardState.examTitle = `Đề kiểm tra định kì ${wizardState.periodLabel} — Môn ${wizardState.subjectName} Lớp 4`;
+            if (titleInput) titleInput.value = wizardState.examTitle;
+
+            // Update stage weeks label in PPCT panel
+            const stageLabel = document.getElementById('wzStageWeeksLabel');
+            if (stageLabel) stageLabel.textContent = `Tuần ${wizardState.weekStart} - ${wizardState.weekEnd}`;
+
+            // Re-render PPCT lessons chips
+            renderWizardLessonsChips();
+
+            // Reset slots with new PPCT lessons
+            wizardState.slots = initDefaultWizardSlots(wizardState.subject, wizardState.weekStart, wizardState.weekEnd);
+            renderWizardSlotsTable();
+            updateWizardMetrics();
+        }
+
+        function renderWizardLessonsChips() {
+            const lessons = getFilteredPpctLessonsForWizard(wizardState.subject, wizardState.weekStart, wizardState.weekEnd);
+            const container = document.getElementById('wzLessonsChipsContainer');
+            const badge = document.getElementById('wzLessonsCountBadge');
+
+            if (badge) badge.textContent = `${lessons.length} bài học`;
+            if (!container) return;
+
+            if (lessons.length === 0) {
+                container.innerHTML = '<div class="text-xs text-slate-500 italic p-2">Chưa có bài học nào trong khoảng tuần này. Hãy mở rộng khung PPCT hoặc nạp file JSON.</div>';
+                return;
+            }
+
+            container.innerHTML = lessons.map(l => `
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white border border-blue-200 text-blue-900 shadow-2xs">
+                    <span class="w-4 h-4 rounded-full bg-blue-100 text-blue-800 text-[9px] font-bold flex items-center justify-center">${l.week}</span>
+                    <span>${l.fullTitle}</span>
+                </span>
+            `).join('');
+        }
+
+        function renderWizardSlotsTable() {
+            const tbody = document.getElementById('wzSlotsTableBody');
+            if (!tbody) return;
+
+            const lessons = getFilteredPpctLessonsForWizard(wizardState.subject, wizardState.weekStart, wizardState.weekEnd);
+
+            tbody.innerHTML = wizardState.slots.map((s, idx) => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-2.5 text-center font-bold text-slate-700">#${idx + 1}</td>
+                    <td class="p-2.5">
+                        <select onchange="updateWizardSlot(${idx}, 'qType', this.value)" class="w-full border border-slate-300 rounded-lg p-1.5 font-bold text-slate-800 bg-white">
+                            <option value="mcq_single" ${s.qType === 'mcq_single' ? 'selected' : ''}>Trắc nghiệm (4 PA)</option>
+                            <option value="essay" ${s.qType === 'essay' ? 'selected' : ''}>Tự luận</option>
+                        </select>
+                    </td>
+                    <td class="p-2.5">
+                        <select onchange="updateWizardSlot(${idx}, 'level', this.value)" class="w-full border border-slate-300 rounded-lg p-1.5 font-bold ${s.level === 'M1' ? 'text-blue-700' : s.level === 'M2' ? 'text-amber-700' : 'text-purple-700'} bg-white">
+                            <option value="M1" ${s.level === 'M1' ? 'selected' : ''}>Mức 1 (Nhận biết)</option>
+                            <option value="M2" ${s.level === 'M2' ? 'selected' : ''}>Mức 2 (Thông hiểu)</option>
+                            <option value="M3" ${s.level === 'M3' ? 'selected' : ''}>Mức 3 (Vận dụng)</option>
+                        </select>
+                    </td>
+                    <td class="p-2.5 text-center">
+                        <input type="number" step="0.25" min="0.25" max="10" value="${s.points}" onchange="updateWizardSlot(${idx}, 'points', this.value)" class="w-16 border border-slate-300 rounded-lg p-1.5 text-center font-bold text-blue-900 bg-white">
+                    </td>
+                    <td class="p-2.5">
+                        <select onchange="updateWizardSlot(${idx}, 'lessonTitle', this.value)" class="w-full border border-slate-300 rounded-lg p-1.5 font-medium text-slate-800 bg-white truncate">
+                            ${lessons.map(l => `
+                                <option value="${l.fullTitle}" ${s.lessonTitle === l.fullTitle ? 'selected' : ''}>
+                                    [T.${l.week}] ${l.fullTitle}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </td>
+                    <td class="p-2.5 text-center">
+                        <button type="button" onclick="removeWizardSlot(${idx})" class="w-7 h-7 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 flex items-center justify-center cursor-pointer transition" title="Xóa câu này">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addWizardSlot() {
+            const lessons = getFilteredPpctLessonsForWizard(wizardState.subject, wizardState.weekStart, wizardState.weekEnd);
+            const nextNum = wizardState.slots.length + 1;
+            const lIdx = (nextNum - 1) % Math.max(1, lessons.length);
+
+            wizardState.slots.push({
+                qNum: nextNum,
+                qType: nextNum <= 7 ? 'mcq_single' : 'essay',
+                level: nextNum <= 3 ? 'M1' : nextNum <= 7 ? 'M2' : 'M3',
+                points: 1.0,
+                lessonTitle: lessons[lIdx]?.fullTitle || 'Bài học phân phối chương trình'
+            });
+
+            renderWizardSlotsTable();
+            updateWizardMetrics();
+        }
+
+        function removeWizardSlot(idx) {
+            if (wizardState.slots.length <= 1) {
+                showToast('Đề kiểm tra cần có ít nhất 1 câu hỏi!', 'warning');
+                return;
+            }
+            wizardState.slots.splice(idx, 1);
+            wizardState.slots.forEach((s, i) => { s.qNum = i + 1; });
+            renderWizardSlotsTable();
+            updateWizardMetrics();
+        }
+
+        function updateWizardSlot(idx, field, value) {
+            if (!wizardState.slots[idx]) return;
+            if (field === 'points') {
+                wizardState.slots[idx].points = parseFloat(value) || 1.0;
+            } else {
+                wizardState.slots[idx][field] = value;
+            }
+            updateWizardMetrics();
+        }
+
+        function updateWizardMetrics() {
+            const totalCount = wizardState.slots.length;
+            const totalPoints = wizardState.slots.reduce((sum, s) => sum + (Number(s.points) || 0), 0);
+
+            const mcqSlots = wizardState.slots.filter(s => isMCQType(s.qType));
+            const essaySlots = wizardState.slots.filter(s => !isMCQType(s.qType));
+            const mcqPts = mcqSlots.reduce((sum, s) => sum + (Number(s.points) || 0), 0);
+            const essayPts = essaySlots.reduce((sum, s) => sum + (Number(s.points) || 0), 0);
+
+            const m1Count = wizardState.slots.filter(s => s.level === 'M1').length;
+            const m2Count = wizardState.slots.filter(s => s.level === 'M2').length;
+            const m3Count = wizardState.slots.filter(s => s.level === 'M3').length;
+
+            const elTotalCount = document.getElementById('wzMetricsTotalCount');
+            if (elTotalCount) elTotalCount.textContent = `${totalCount} câu`;
+
+            const elTotalPoints = document.getElementById('wzMetricsTotalPoints');
+            if (elTotalPoints) {
+                elTotalPoints.textContent = `${totalPoints.toFixed(1)} / 10.0 điểm`;
+                if (Math.abs(totalPoints - 10.0) < 0.05) {
+                    elTotalPoints.className = 'font-extrabold text-emerald-700 ml-1';
+                } else {
+                    elTotalPoints.className = 'font-extrabold text-amber-600 ml-1';
+                }
+            }
+
+            const elBox = document.getElementById('wzMetricsBox');
+            if (elBox) {
+                if (Math.abs(totalPoints - 10.0) < 0.05) {
+                    elBox.className = 'p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 flex flex-wrap items-center justify-between gap-3';
+                } else {
+                    elBox.className = 'p-3.5 rounded-xl border border-amber-200 bg-amber-50/50 flex flex-wrap items-center justify-between gap-3';
+                }
+            }
+
+            const elBreakdown = document.getElementById('wzMetricsBreakdown');
+            if (elBreakdown) {
+                elBreakdown.innerHTML = `
+                    <span class="bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-bold">TN: ${mcqSlots.length} câu (${mcqPts.toFixed(1)}đ)</span>
+                    <span class="bg-purple-100 text-purple-900 px-2 py-0.5 rounded font-bold">TL: ${essaySlots.length} câu (${essayPts.toFixed(1)}đ)</span>
+                    <span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-semibold">M1: ${m1Count} • M2: ${m2Count} • M3: ${m3Count}</span>
+                `;
+            }
+        }
+
+        function renderWizardMatrixOptions() {
+            const list = document.getElementById('wzMatrixOptionsList');
+            if (!list) return;
+
+            const matrices = [
+                { id: 'mtx_mid1', title: 'Ma trận Giữa Học kì I (Chuẩn Bộ GD&ĐT)', desc: '10 câu (7 TN - 3 TL), 10 điểm, bao quát 9 tuần đầu.', period: 'Giữa HK1' },
+                { id: 'mtx_final1', title: 'Ma trận Cuối Học kì I (Chuẩn Bộ GD&ĐT)', desc: '10 câu (7 TN - 3 TL), 10 điểm, bao quát 18 tuần HK1.', period: 'Cuối HK1' },
+                { id: 'mtx_mid2', title: 'Ma trận Giữa Học kì II (Chuẩn Bộ GD&ĐT)', desc: '10 câu (7 TN - 3 TL), 10 điểm, trọng tâm phân số.', period: 'Giữa HK2' },
+                { id: 'mtx_final2', title: 'Ma trận Cuối Năm Học (Chuẩn Bộ GD&ĐT)', desc: '10 câu (7 TN - 3 TL), 10 điểm, tổng hợp cả năm 35 tuần.', period: 'Cuối Năm' }
+            ];
+
+            list.innerHTML = matrices.map(m => `
+                <div onclick="selectWizardMatrix('${m.id}')" class="p-3.5 rounded-2xl border-2 transition cursor-pointer ${wizardState.selectedMatrixId === m.id ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'}">
+                    <div class="flex items-center justify-between">
+                        <span class="font-extrabold text-xs text-indigo-900">${m.title}</span>
+                        <span class="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">${m.period}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1">${m.desc}</p>
+                </div>
+            `).join('');
+
+            const preview = document.getElementById('wzMatrixPreviewBox');
+            if (preview) {
+                preview.innerHTML = `
+                    <div class="font-bold text-slate-800">Ma trận đang chọn: ${matrices.find(m => m.id === wizardState.selectedMatrixId)?.title}</div>
+                    <div class="text-slate-600">Khi bấm "Tiến hành tạo đề", hệ thống sẽ nạp cấu trúc ma trận này và tự động sinh 10 câu hỏi theo các YCCĐ tương ứng.</div>
+                `;
+            }
+        }
+
+        function selectWizardMatrix(mtxId) {
+            wizardState.selectedMatrixId = mtxId;
+            renderWizardMatrixOptions();
+        }
+
+            function applyQuickPresetToWizard(presetKey) {
+        const lessons = getFilteredPpctLessonsForWizard(wizardState.subject, wizardState.weekStart, wizardState.weekEnd);
+        const lCount = Math.max(1, lessons.length);
+
+        if (presetKey === '7_3') {
+            // 7 TN (7đ) + 3 TL (3đ)
+            wizardState.slots = [
+                { qNum: 1, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[0 % lCount]?.fullTitle },
+                { qNum: 2, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[1 % lCount]?.fullTitle },
+                { qNum: 3, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle },
+                { qNum: 4, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[3 % lCount]?.fullTitle },
+                { qNum: 5, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle },
+                { qNum: 6, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[5 % lCount]?.fullTitle },
+                { qNum: 7, qType: 'mcq_single', level: 'M3', points: 1.0, lessonTitle: lessons[6 % lCount]?.fullTitle },
+                { qNum: 8, qType: 'essay', level: 'M2', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle },
+                { qNum: 9, qType: 'essay', level: 'M2', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle },
+                { qNum: 10, qType: 'essay', level: 'M3', points: 1.0, lessonTitle: lessons[1 % lCount]?.fullTitle }
+            ];
+        } else if (presetKey === '8_2') {
+            // 8 TN (8đ) + 2 TL (2đ)
+            wizardState.slots = [
+                { qNum: 1, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[0 % lCount]?.fullTitle },
+                { qNum: 2, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[1 % lCount]?.fullTitle },
+                { qNum: 3, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle },
+                { qNum: 4, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[3 % lCount]?.fullTitle },
+                { qNum: 5, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle },
+                { qNum: 6, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[5 % lCount]?.fullTitle },
+                { qNum: 7, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[6 % lCount]?.fullTitle },
+                { qNum: 8, qType: 'mcq_single', level: 'M3', points: 1.0, lessonTitle: lessons[7 % lCount]?.fullTitle },
+                { qNum: 9, qType: 'essay', level: 'M2', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle },
+                { qNum: 10, qType: 'essay', level: 'M3', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle }
+            ];
+        } else if (presetKey === '6_4') {
+            // 6 TN (6đ) + 4 TL (4đ)
+            wizardState.slots = [
+                { qNum: 1, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[0 % lCount]?.fullTitle },
+                { qNum: 2, qType: 'mcq_single', level: 'M1', points: 1.0, lessonTitle: lessons[1 % lCount]?.fullTitle },
+                { qNum: 3, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle },
+                { qNum: 4, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[3 % lCount]?.fullTitle },
+                { qNum: 5, qType: 'mcq_single', level: 'M2', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle },
+                { qNum: 6, qType: 'mcq_single', level: 'M3', points: 1.0, lessonTitle: lessons[5 % lCount]?.fullTitle },
+                { qNum: 7, qType: 'essay', level: 'M1', points: 1.0, lessonTitle: lessons[0 % lCount]?.fullTitle },
+                { qNum: 8, qType: 'essay', level: 'M2', points: 1.0, lessonTitle: lessons[2 % lCount]?.fullTitle },
+                { qNum: 9, qType: 'essay', level: 'M2', points: 1.0, lessonTitle: lessons[4 % lCount]?.fullTitle },
+                { qNum: 10, qType: 'essay', level: 'M3', points: 1.0, lessonTitle: lessons[6 % lCount]?.fullTitle }
+            ];
+        }
+    }
+
+    function executeCreateExamFromWizard() {
+        if (wizardState.creationMode === 'matrix') {
+            // Load from matrix
+            let targetMtx = appDB.currentMatrix;
+            if (wizardState.subject !== targetMtx?.subject) {
+                oneTouchSwitchSubject(wizardState.subject);
+            } else {
+                generateExamQuestionsFromMatrix(false);
+            }
+            saveDB();
+            renderAll();
+            switchTab('tab-reviewer');
+            showToast(`Đã tạo đề kiểm tra môn ${wizardState.subjectName} từ ma trận chuẩn!`, 'success');
+            return;
+        }
+
+        // Creation Mode: PPCT
+        const slots = wizardState.slots || [];
+        if (slots.length === 0) {
+            showToast('Vui lòng thiết lập ít nhất 1 câu hỏi cho đề kiểm tra!', 'warning');
+            return;
+        }
+
+        // Build questions based on PPCT slots
+        const questions = slots.map((s, idx) => {
+            const isMCQ = isMCQType(s.qType);
+            const pts = Number(s.points) || 1.0;
+            const lesson = s.lessonTitle || 'Nội dung kiến thức theo phân phối chương trình';
+
+            // Generate clean question object
+            let stem = '';
+            let opts = [];
+            let correctAns = '';
+            let guide = '';
+
+            if (wizardState.subject === 'MATH') {
+                if (isMCQ) {
+                    if (s.level === 'M1') {
+                        stem = `[Nhận biết] Theo bài học "${lesson}", kết quả của phép tính nào sau đây là đúng?`;
+                        opts = [
+                            { id: 'A', text: '45 000 + 5 000 = 50 000', isCorrect: true },
+                            { id: 'B', text: '45 000 + 5 000 = 40 000', isCorrect: false },
+                            { id: 'C', text: '45 000 + 5 000 = 55 000', isCorrect: false },
+                            { id: 'D', text: '45 000 + 5 000 = 500 000', isCorrect: false }
+                        ];
+                        correctAns = 'A';
+                    } else if (s.level === 'M2') {
+                        stem = `[Thông hiểu] Dựa vào kiến thức bài "${lesson}", một hình chữ nhật có chu vi 48cm. Nửa chu vi hình chữ nhật đó là:`;
+                        opts = [
+                            { id: 'A', text: '24 cm', isCorrect: true },
+                            { id: 'B', text: '12 cm', isCorrect: false },
+                            { id: 'C', text: '96 cm', isCorrect: false },
+                            { id: 'D', text: '48 cm', isCorrect: false }
+                        ];
+                        correctAns = 'A';
+                    } else {
+                        stem = `[Vận dụng] Bác Khôi thu hoạch được 3 tạ 50 kg thóc. Số kilôgam thóc bác Khôi thu hoạch được là:`;
+                        opts = [
+                            { id: 'A', text: '350 kg', isCorrect: true },
+                            { id: 'B', text: '305 kg', isCorrect: false },
+                            { id: 'C', text: '3 500 kg', isCorrect: false },
+                            { id: 'D', text: '35 kg', isCorrect: false }
+                        ];
+                        correctAns = 'A';
+                    }
+                } else {
+                    // Essay
+                    stem = `[Tự luận - ${s.level}] Dựa trên nội dung bài học "${lesson}":\\nMột đội công nhân tuần đầu sửa được 1 250 m đường, tuần thứ hai sửa được gấp đôi tuần đầu. Hỏi cả hai tuần đội công nhân đó sửa được bao nhiêu mét đường?`;
+                    guide = 'Tuần thứ hai sửa được: 1 250 x 2 = 2 500 (m) (0.5đ). Cả hai tuần sửa được: 1 250 + 2 500 = 3 750 (m) (0.5đ).';
+                    opts = [];
+                }
+            } else if (wizardState.subject === 'VIETNAMESE') {
+                if (isMCQ) {
+                    stem = `[Tiếng Việt - ${s.level}] Dựa vào nội dung bài "${lesson}", câu nào dưới đây chứa danh từ chỉ hiện tượng tự nhiên?`;
+                    opts = [
+                        { id: 'A', text: 'Cơn mưa rào mùa hạ vừa tưới mát cho cánh đồng.', isCorrect: true },
+                        { id: 'B', text: 'Em chăm chỉ học bài vào mỗi buổi tối.', isCorrect: false },
+                        { id: 'C', text: 'Bác nông dân đang dắt trâu ra đồng.', isCorrect: false },
+                        { id: 'D', text: 'Quyển sách Tiếng Việt lớp 4 rất đẹp.', isCorrect: false }
+                    ];
+                    correctAns = 'A';
+                } else {
+                    stem = `[Tự luận - ${s.level}] Dựa vào kiến thức bài học "${lesson}": Viết một câu có sử dụng từ ngữ chỉ cảm xúc khi em được giúp đỡ một người gặp khó khăn.`;
+                    guide = 'Học sinh viết câu đúng ngữ pháp, có dùng từ chỉ cảm xúc phù hợp (vui sướng, hạnh phúc, ấm áp...): 1.0 điểm.';
+                    opts = [];
+                }
+            } else {
+                // Other subjects
+                if (isMCQ) {
+                    stem = `[Câu hỏi ${idx + 1} - ${s.level}] Nội dung bài học "${lesson}": Chọn đáp án đúng nhất trong các khẳng định sau:`;
+                    opts = [
+                        { id: 'A', text: 'Khẳng định chính xác theo chuẩn SGK Kết nối tri thức.', isCorrect: true },
+                        { id: 'B', text: 'Ý kiến chưa đầy đủ.', isCorrect: false },
+                        { id: 'C', text: 'Khẳng định không chính xác.', isCorrect: false },
+                        { id: 'D', text: 'Tất cả các ý trên đều sai.', isCorrect: false }
+                    ];
+                    correctAns = 'A';
+                } else {
+                    stem = `[Tự luận - ${s.level}] Em hãy giải thích hoặc nêu hiểu biết của mình về bài học "${lesson}".`;
+                    guide = 'Trả lời đúng trọng tâm bài học, diễn đạt rõ ràng mạch lạc: ' + pts + ' điểm.';
+                    opts = [];
+                }
+            }
+
+            return {
+                id: `Q_PPCT_${idx + 1}_${Date.now().toString().slice(-4)}`,
+                questionNumber: idx + 1,
+                qType: s.qType,
+                level: s.level,
+                points: pts,
+                objectiveId: `YCCD_${wizardState.subject}_${s.level}_${idx + 1}`,
+                objectiveText: s.lessonTitle,
+                topic: s.lessonTitle,
+                stem: stem,
+                options: opts,
+                correctAnswer: correctAns,
+                gradingGuide: guide,
+                customEssayLines: !isMCQ ? 6 : 0,
+                isLockedByTeacher: false
+            };
+        });
+
+        const totalPoints = questions.reduce((acc, q) => acc + Number(q.points || 0), 0);
+
+        // Update Matrix
+        appDB.currentMatrix = {
+            matrixId: `MTX_${wizardState.subject}_${Date.now().toString().slice(-4)}`,
+            subject: wizardState.subject,
+            subjectName: wizardState.subjectName,
+            period: wizardState.period,
+            periodLabel: wizardState.periodLabel,
+            grade: wizardState.grade,
+            durationMinutes: wizardState.durationMinutes,
+            bookSeries: 'Kết nối tri thức với cuộc sống',
+            slots: slots.map((s, i) => ({
+                slotId: `SLOT_${i + 1}`,
+                section: isMCQType(s.qType) ? 'Phần 1: Trắc nghiệm' : 'Phần 2: Tự luận',
+                topic: s.lessonTitle,
+                objectiveId: `YCCD_${wizardState.subject}_${s.level}_${i + 1}`,
+                objectiveText: s.lessonTitle,
+                level: s.level,
+                qType: s.qType,
+                points: Number(s.points)
+            }))
+        };
+
+        // Update Exam Draft
+        appDB.currentExamDraft = {
+            examId: `EXAM_${wizardState.subject}_${Date.now().toString().slice(-4)}`,
+            title: wizardState.examTitle || `Đề kiểm tra định kì ${wizardState.periodLabel} — Môn ${wizardState.subjectName} Lớp ${wizardState.grade}`,
+            bookSeries: 'Kết nối tri thức với cuộc sống',
+            subject: wizardState.subject,
+            subjectName: wizardState.subjectName,
+            grade: wizardState.grade,
+            period: wizardState.period,
+            periodLabel: wizardState.periodLabel,
+            durationMinutes: wizardState.durationMinutes,
+            totalPoints: totalPoints,
+            questions: questions,
+            readingPassage: wizardState.subject === 'VIETNAMESE' ? (DEFAULT_SEED_DATA.readingPassage || null) : null
+        };
+
+        saveDB();
+        renderAll();
+        switchTab('tab-reviewer');
+        showToast(`🎉 Đã tạo thành công đề kiểm tra ${wizardState.subjectName} gồm ${questions.length} câu (${totalPoints.toFixed(1)}đ) bám sát PPCT giai đoạn ${wizardState.periodLabel}!`, 'success');
+    }
+
+    function loadExamFromBank(examId) {
+        // Look up in BUILTIN_EXAM_BANK_TEMPLATES
+        const template = BUILTIN_EXAM_BANK_TEMPLATES.find(t => t.id === examId);
+        if (template) {
+            // Apply subject and period
+            wizardState.subject = template.subject;
+            wizardState.subjectName = template.subjectName;
+            wizardState.period = template.period;
+            wizardState.periodLabel = template.periodLabel;
+            wizardState.examTitle = template.title;
+
+            if (template.subject === 'VIETNAMESE' && template.passageId) {
+                oneTouchSwitchSubject('VIETNAMESE');
+                if (typeof switchReadingPassageAndSyncQuestions === 'function') {
+                    switchReadingPassageAndSyncQuestions(template.passageId);
+                }
+            } else {
+                oneTouchSwitchSubject(template.subject);
+            }
+
+            if (appDB.currentExamDraft) {
+                appDB.currentExamDraft.title = template.title;
+                appDB.currentExamDraft.periodLabel = template.periodLabel;
+            }
+
+            saveDB();
+            renderAll();
+            switchTab('tab-reviewer');
+            showToast(`Đã nạp đề mẫu "${template.title}" vào Bàn làm việc để tinh chỉnh!`, 'success');
+            return true;
+        }
+
+        // Look up in revisions
+        const rev = (appDB.revisions || []).find(r => r.version === examId || r.snapshot?.examId === examId);
+        if (rev && rev.snapshot) {
+            appDB.currentExamDraft = JSON.parse(JSON.stringify(rev.snapshot));
+            saveDB();
+            renderAll();
+            switchTab('tab-reviewer');
+            showToast(`Đã khôi phục bản đề "${rev.version}" vào Bàn làm việc để tiếp tục sử dụng!`, 'success');
+            return true;
+        }
+
+        showToast('Không tìm thấy bản đề yêu cầu trong kho!', 'warning');
+        return false;
+    }
+
+    function openExamBankModal() {
+            activeBankFilterSubject = 'ALL';
+            renderExamBankList();
+            const modal = document.getElementById('modalExamBank');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeExamBankModal() {
+            const modal = document.getElementById('modalExamBank');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function filterExamBankBySubject(subj) {
+            activeBankFilterSubject = subj;
+
+            const allBtns = ['ALL', 'MATH', 'VIETNAMESE', 'SCIENCE', 'HIST_GEO'];
+            allBtns.forEach(b => {
+                const el = document.getElementById(`bankFilter_${b}`);
+                if (el) {
+                    if (b === subj) {
+                        el.className = 'px-3 py-1.5 rounded-xl font-bold bg-purple-700 text-white shadow-2xs cursor-pointer';
+                    } else {
+                        el.className = 'px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer';
+                    }
+                }
+            });
+
+            renderExamBankList();
+        }
+
+        function renderExamBankList() {
+            const container = document.getElementById('bankCardsContainer');
+            const badge = document.getElementById('bankCountBadge');
+            if (!container) return;
+
+            // Combine Built-in templates + Saved user revisions
+            const items = [];
+
+            BUILTIN_EXAM_BANK_TEMPLATES.forEach(t => {
+                if (activeBankFilterSubject === 'ALL' || t.subject === activeBankFilterSubject) {
+                    items.push({
+                        id: t.id,
+                        title: t.title,
+                        subject: t.subject,
+                        subjectName: t.subjectName,
+                        periodLabel: t.periodLabel,
+                        questionCount: t.questionCount,
+                        totalPoints: t.totalPoints,
+                        source: t.source,
+                        description: t.description,
+                        isRevision: false
+                    });
+                }
+            });
+
+            (appDB.revisions || []).forEach(r => {
+                const snap = r.snapshot;
+                if (!snap) return;
+                const subj = snap.subject || 'MATH';
+                if (activeBankFilterSubject === 'ALL' || subj === activeBankFilterSubject) {
+                    items.push({
+                        id: r.version,
+                        title: snap.title || r.version,
+                        subject: subj,
+                        subjectName: r.subjectName || getSubjectName(subj),
+                        periodLabel: snap.periodLabel || 'Bản lưu cá nhân',
+                        questionCount: (snap.questions || []).length || 10,
+                        totalPoints: snap.totalPoints || 10.0,
+                        source: `Lưu lúc ${r.createdAt}`,
+                        description: r.note || 'Bản đề do giáo viên lưu trữ trong hệ thống.',
+                        isRevision: true,
+                        rawRevision: r
+                    });
+                }
+            });
+
+            if (badge) badge.textContent = `${items.length} đề kiểm tra`;
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="col-span-2 text-center p-8 text-slate-400">Không tìm thấy đề nào phù hợp với bộ lọc môn học này.</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <div class="bg-white rounded-2xl p-4 border border-slate-200 hover:border-purple-300 hover:shadow-md transition space-y-3 flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full ${item.subject === 'MATH' ? 'bg-blue-100 text-blue-800' : item.subject === 'VIETNAMESE' ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-purple-800'}">
+                                ${item.subjectName} • ${item.periodLabel}
+                            </span>
+                            <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                ${item.questionCount} câu • ${Number(item.totalPoints).toFixed(1)}đ
+                            </span>
+                        </div>
+                        <h4 class="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug">${item.title}</h4>
+                        <p class="text-[11.5px] text-slate-500 leading-relaxed line-clamp-2">${item.description}</p>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                        <span class="text-[10.5px] text-slate-400 italic">${item.source}</span>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="previewExamFromBank('${item.id}')" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold cursor-pointer transition">
+                                <i class="fa-solid fa-eye mr-1"></i>Xem Nhanh
+                            </button>
+                            <button type="button" onclick="loadExamFromBank('${item.id}')" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold cursor-pointer transition shadow-2xs">
+                                <i class="fa-solid fa-file-pen mr-1"></i>Chọn & Dùng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function previewExamFromBank(examId) {
+            const tpl = BUILTIN_EXAM_BANK_TEMPLATES.find(t => t.id === examId);
+            const titleEl = document.getElementById('prevExamModalTitle');
+            const metaEl = document.getElementById('prevExamModalMeta');
+            const contentEl = document.getElementById('prevExamModalContent');
+            const useBtn = document.getElementById('prevExamModalUseBtn');
+
+            if (!contentEl) return;
+
+            let title = '';
+            let meta = '';
+            let htmlQuestions = '';
+
+            if (tpl) {
+                title = tpl.title;
+                meta = `${tpl.subjectName} • ${tpl.periodLabel} • ${tpl.questionCount} câu (${tpl.totalPoints}đ) • ${tpl.bookSeries}`;
+                htmlQuestions = `
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-900 mb-3">
+                        <div class="font-bold">Mô tả đề kiểm tra:</div>
+                        <div class="mt-0.5">${tpl.description}</div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="font-bold text-slate-800">Cấu trúc câu hỏi mẫu:</div>
+                        <div class="p-3 bg-slate-50 rounded-xl border text-slate-700 space-y-1.5">
+                            <div>• Câu 1 - 7: Trắc nghiệm 4 lựa chọn (1.0đ/câu), kiểm tra kiến thức nhận biết và thông hiểu bám sát PPCT.</div>
+                            <div>• Câu 8 - 10: Tự luận trình bày (1.0đ/câu), kiểm tra kỹ năng giải toán / Luyện từ và câu.</div>
+                        </div>
+                    </div>
+                `;
+                if (useBtn) { useBtn.onclick = function() { loadExamFromBank(tpl.id); closeExamQuickPreview(); }; if (useBtn.setAttribute) useBtn.setAttribute('onclick', `loadExamFromBank('${tpl.id}'); closeExamQuickPreview();`); }
+            } else {
+                const rev = (appDB.revisions || []).find(r => r.version === examId || r.snapshot?.examId === examId);
+                if (rev && rev.snapshot) {
+                    const snap = rev.snapshot;
+                    title = snap.title || rev.version;
+                    meta = `${rev.subjectName || snap.subjectName} • ${snap.periodLabel} • ${(snap.questions || []).length} câu (${snap.totalPoints}đ)`;
+                    htmlQuestions = (snap.questions || []).map((q, idx) => `
+                        <div class="border border-slate-200 rounded-xl p-3 bg-white space-y-1">
+                            <div class="font-bold text-blue-950">Câu ${idx + 1} (${q.points}đ): ${q.stem}</div>
+                            ${q.options && q.options.length > 0 ? `<div class="grid grid-cols-2 gap-1 text-[11px] text-slate-600 mt-1">${q.options.map(o => `<div class="${o.isCorrect ? 'font-bold text-emerald-700' : ''}">${o.id}. ${o.text}</div>`).join('')}</div>` : ''}
+                        </div>
+                    `).join('');
+                    if (useBtn) { useBtn.onclick = function() { loadExamFromBank(rev.version); closeExamQuickPreview(); }; if (useBtn.setAttribute) useBtn.setAttribute('onclick', `loadExamFromBank('${rev.version}'); closeExamQuickPreview();`); }
+                }
+            }
+
+            if (titleEl) titleEl.textContent = title;
+            if (metaEl) metaEl.textContent = meta;
+            contentEl.innerHTML = htmlQuestions;
+
+            const modal = document.getElementById('modalExamQuickPreview');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeExamQuickPreview() {
+            const modal = document.getElementById('modalExamQuickPreview');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+</script>
+
+    <!-- ======================================================================= -->
+    <!-- MODAL 1: TRUNG TÂM TẠO ĐỀ KIỂM TRA MỚI (WIZARD TÍCH HỢP PPCT & MA TRẬN) -->
+    <!-- ======================================================================= -->
+    <div id="modalCreateExam" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-4xl w-full my-6 p-5 sm:p-6 shadow-2xl space-y-5 border border-slate-200 max-h-[92vh] flex flex-col">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md">
+                        <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-extrabold text-base sm:text-lg text-slate-900">Trung Tâm Khởi Tạo Đề Kiểm Tra Mới</h3>
+                            <span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">KNTT 2018</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Tạo đề bám sát Phân phối chương trình (PPCT Hub) hoặc Ma trận chuẩn Bộ GD&ĐT</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCreateExamWizard()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="overflow-y-auto custom-scroll space-y-5 pr-1 flex-1 text-xs">
+                
+                <!-- BƯỚC 1: THIẾT LẬP THÔNG TIN CƠ BẢN -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div class="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px]">1</span>
+                        <span>Thông Tin Cơ Bản Về Đề Kiểm Tra</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Môn học</label>
+                            <select id="wzSubjectSelect" onchange="onWizardSubjectOrPeriodChange()" class="w-full border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-blue-950 focus:border-blue-600 focus:outline-none">
+                                <option value="MATH">📐 Toán 4</option>
+                                <option value="VIETNAMESE">📖 Tiếng Việt 4</option>
+                                <option value="SCIENCE">🔬 Khoa học 4</option>
+                                <option value="HIST_GEO">🌏 Lịch sử và Địa lí 4</option>
+                                <option value="ETHICS">💡 Đạo đức 4</option>
+                                <option value="TECH">⚙️ Công nghệ 4</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Giai đoạn kiểm tra</label>
+                            <select id="wzPeriodSelect" onchange="onWizardSubjectOrPeriodChange()" class="w-full border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-emerald-800 focus:border-blue-600 focus:outline-none">
+                                <option value="mid_term_1">Giữa Học kì I (Tuần 1 - 9)</option>
+                                <option value="end_term_1">Cuối Học kì I (Tuần 1 - 18)</option>
+                                <option value="mid_term_2">Giữa Học kì II (Tuần 19 - 27)</option>
+                                <option value="end_year">Cuối Năm Học (Tuần 1 - 35)</option>
+                                <option value="custom_weeks">Tùy chọn khoảng tuần...</option>
+                            </select>
+                        </div>
+                        <div id="wzCustomWeeksBox" class="hidden">
+                            <label class="block font-bold text-slate-700 mb-1">Khoảng tuần</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" id="wzWeekStartInput" min="1" max="35" value="1" onchange="onWizardSubjectOrPeriodChange()" class="w-16 border border-slate-300 rounded-xl p-2 text-center font-bold bg-white">
+                                <span class="text-slate-400 font-bold">đến</span>
+                                <input type="number" id="wzWeekEndInput" min="1" max="35" value="9" onchange="onWizardSubjectOrPeriodChange()" class="w-16 border border-slate-300 rounded-xl p-2 text-center font-bold bg-white">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Thời gian làm bài</label>
+                            <select id="wzDurationSelect" onchange="wizardState.durationMinutes = parseInt(this.value)" class="w-full border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-700 focus:border-blue-600 focus:outline-none">
+                                <option value="40">40 phút (Chuẩn)</option>
+                                <option value="35">35 phút</option>
+                                <option value="45">45 phút</option>
+                                <option value="60">60 phút</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Tiêu đề đề kiểm tra</label>
+                        <input type="text" id="wzExamTitleInput" oninput="wizardState.examTitle = this.value" class="w-full border border-slate-300 rounded-xl p-2.5 bg-white font-bold text-slate-800 focus:border-blue-600 focus:outline-none" placeholder="Đề kiểm tra định kì...">
+                    </div>
+                </div>
+
+                <!-- BƯỚC 2: CHỌN PHƯƠNG THỨC KHỞI TẠO -->
+                <div class="space-y-3">
+                    <div class="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-full bg-blue-700 text-white flex items-center justify-center text-[10px]">2</span>
+                        <span>Chọn Phương Thức Khởi Tạo Đề</span>
+                    </div>
+
+                    <!-- Mode Toggle Tabs -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div id="wzModeBtnPpct" onclick="setWizardCreationMode('ppct')" class="p-3.5 rounded-2xl border-2 transition cursor-pointer bg-blue-50/70 border-blue-600 text-blue-950 shadow-xs flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 font-bold">
+                                <i class="fa-solid fa-calendar-days"></i>
+                            </div>
+                            <div>
+                                <div class="font-black text-xs text-blue-900">Tạo Từ Phân Phối Chương Trình (PPCT Hub)</div>
+                                <div class="text-[11px] text-slate-600 mt-0.5">Lọc bài học theo giai đoạn, tự do chọn câu số, dạng TN/TL, mức độ M1-M3 & gán bài học PPCT.</div>
+                            </div>
+                        </div>
+
+                        <div id="wzModeBtnMatrix" onclick="setWizardCreationMode('matrix')" class="p-3.5 rounded-2xl border-2 transition cursor-pointer bg-white border-slate-200 text-slate-700 hover:border-slate-300 flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 font-bold">
+                                <i class="fa-solid fa-table-cells-large"></i>
+                            </div>
+                            <div>
+                                <div class="font-black text-xs text-slate-800">Tạo Từ Kho Ma Trận Chuẩn Bộ GD&ĐT</div>
+                                <div class="text-[11px] text-slate-500 mt-0.5">Chọn ma trận có sẵn trong kho (Giữa HK1, Cuối HK1, Giữa HK2, Cuối Năm) để tự động sinh đề.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-PANEL A: TẠO TỪ PHÂN PHỐI CHƯƠNG TRÌNH (PPCT HUB) -->
+                <div id="wzPpctPanel" class="space-y-4">
+                    
+                    <!-- PPCT Lessons in stage banner -->
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-2.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                                <i class="fa-solid fa-book-bookmark text-blue-600"></i>
+                                <span>Các bài học trong giai đoạn này (<span id="wzStageWeeksLabel" class="text-blue-700 font-extrabold">Tuần 1 - 9</span>):</span>
+                            </span>
+                            <span id="wzLessonsCountBadge" class="bg-blue-200 text-blue-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                0 bài học
+                            </span>
+                        </div>
+                        <div id="wzLessonsChipsContainer" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scroll pr-1"></div>
+                    </div>
+
+                    <!-- Quick Preset Buttons & Table Toolbar -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[11px] font-bold text-slate-600 mr-1"><i class="fa-solid fa-bolt text-amber-500 mr-1"></i>Mẫu nhanh:</span>
+                            <button type="button" onclick="applyQuickPresetToWizard('7_3')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-blue-50 text-blue-800 border border-slate-200 hover:border-blue-300 transition cursor-pointer">
+                                7 TN (7đ) - 3 TL (3đ)
+                            </button>
+                            <button type="button" onclick="applyQuickPresetToWizard('8_2')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-blue-50 text-blue-800 border border-slate-200 hover:border-blue-300 transition cursor-pointer">
+                                8 TN (8đ) - 2 TL (2đ)
+                            </button>
+                            <button type="button" onclick="applyQuickPresetToWizard('6_4')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white hover:bg-blue-50 text-blue-800 border border-slate-200 hover:border-blue-300 transition cursor-pointer">
+                                6 TN (6đ) - 4 TL (4đ)
+                            </button>
+                        </div>
+
+                        <button type="button" onclick="addWizardSlot()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white cursor-pointer flex items-center gap-1 shadow-xs transition">
+                            <i class="fa-solid fa-plus"></i> Thêm Câu Hỏi
+                        </button>
+                    </div>
+
+                    <!-- Question Slots Builder Table -->
+                    <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-200">
+                                        <th class="p-2.5 w-14 text-center">Câu</th>
+                                        <th class="p-2.5 w-36">Hình thức</th>
+                                        <th class="p-2.5 w-32">Mức độ</th>
+                                        <th class="p-2.5 w-24 text-center">Điểm số</th>
+                                        <th class="p-2.5">Nội dung / Bài học PPCT</th>
+                                        <th class="p-2.5 w-12 text-center">Xóa</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wzSlotsTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Metrics / Summary Status Bar -->
+                    <div class="p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3" id="wzMetricsBox">
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <span class="text-slate-500 font-medium">Tổng số câu:</span>
+                                <span id="wzMetricsTotalCount" class="font-extrabold text-slate-800 ml-1">10 câu</span>
+                            </div>
+                            <div class="h-4 w-px bg-slate-300"></div>
+                            <div>
+                                <span class="text-slate-500 font-medium">Tổng điểm:</span>
+                                <span id="wzMetricsTotalPoints" class="font-extrabold text-emerald-700 ml-1">10.0 / 10.0 điểm</span>
+                            </div>
+                        </div>
+                        <div id="wzMetricsBreakdown" class="text-[11px] text-slate-600 flex items-center gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- SUB-PANEL B: TẠO TỪ KHO MA TRẬN CHUẨN -->
+                <div id="wzMatrixPanel" class="space-y-4 hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="wzMatrixOptionsList"></div>
+                    <div id="wzMatrixPreviewBox" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2"></div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-slate-100 shrink-0">
+                <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-info text-blue-600"></i>
+                    <span>Đề sinh ra sẽ được tự động lưu vào IndexedDB và nạp vào Bàn làm việc để tinh chỉnh.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeCreateExamWizard()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+                        Hủy Bỏ
+                    </button>
+                    <button type="button" onclick="executeCreateExamFromWizard()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-700 hover:from-blue-800 hover:to-purple-800 text-white font-extrabold text-xs shadow-lg transition cursor-pointer flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                        <span>🚀 TIẾN HÀNH TẠO ĐỀ KIỂM TRA</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MODAL 2: KHO ĐỀ KIỂM TRA & MẪU ĐỀ CÓ SẴN (EXAM BANK)                    -->
+    <!-- ======================================================================= -->
+    <div id="modalExamBank" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-4xl w-full my-6 p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[92vh] flex flex-col">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-700 text-white flex items-center justify-center shadow-md">
+                        <i class="fa-solid fa-boxes-stacked text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-extrabold text-base sm:text-lg text-slate-900">Kho Đề Kiểm Tra & Mẫu Có Sẵn</h3>
+                            <span class="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full">KNTT 2018</span>
+                        </div>
+                        <p class="text-xs text-slate-500">Chọn đề mẫu chuẩn hoặc bản đề đã lưu trước đó để chỉnh sửa và sử dụng ngay</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeExamBankModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Filter Toolbar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 shrink-0 text-xs">
+                <div class="flex flex-wrap items-center gap-1.5" id="bankSubjectFilters">
+                    <button type="button" onclick="filterExamBankBySubject('ALL')" id="bankFilter_ALL" class="px-3 py-1.5 rounded-xl font-bold bg-purple-700 text-white shadow-2xs cursor-pointer">
+                        Tất Cả Môn
+                    </button>
+                    <button type="button" onclick="filterExamBankBySubject('MATH')" id="bankFilter_MATH" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+                        📐 Toán 4
+                    </button>
+                    <button type="button" onclick="filterExamBankBySubject('VIETNAMESE')" id="bankFilter_VIETNAMESE" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+                        📖 Tiếng Việt 4
+                    </button>
+                    <button type="button" onclick="filterExamBankBySubject('SCIENCE')" id="bankFilter_SCIENCE" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+                        🔬 Khoa học 4
+                    </button>
+                    <button type="button" onclick="filterExamBankBySubject('HIST_GEO')" id="bankFilter_HIST_GEO" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer">
+                        🌏 Lịch sử & Địa lí 4
+                    </button>
+                </div>
+                <span id="bankCountBadge" class="text-xs text-slate-500 font-bold">Đang tải...</span>
+            </div>
+
+            <!-- List of Exam Cards (Scrollable) -->
+            <div id="bankCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 overflow-y-auto custom-scroll pr-1 flex-1"></div>
+
+            <!-- Modal Footer -->
+            <div class="flex justify-end pt-3 border-t border-slate-100 shrink-0">
+                <button type="button" onclick="closeExamBankModal()" class="px-5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+                    Đóng
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MODAL 3: XEM NHANH ĐỀ TRONG KHO (QUICK PREVIEW)                         -->
+    <!-- ======================================================================= -->
+    <div id="modalExamQuickPreview" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-3xl w-full my-6 p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b pb-3">
+                <div>
+                    <h3 id="prevExamModalTitle" class="font-extrabold text-base text-slate-900">Chi Tiết Đề Kiểm Tra</h3>
+                    <p id="prevExamModalMeta" class="text-xs text-slate-500"></p>
+                </div>
+                <button type="button" onclick="closeExamQuickPreview()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="prevExamModalContent" class="overflow-y-auto custom-scroll space-y-3 pr-1 flex-1 text-xs text-slate-700"></div>
+
+            <div class="flex items-center justify-between pt-3 border-t">
+                <button type="button" onclick="closeExamQuickPreview()" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer">Đóng</button>
+                <button type="button" id="prevExamModalUseBtn" class="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-signature"></i>
+                    <span>Sử Dụng & Chỉnh Sửa Đề Này</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
