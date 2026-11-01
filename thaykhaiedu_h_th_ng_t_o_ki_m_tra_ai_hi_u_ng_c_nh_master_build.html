@@ -868,65 +868,264 @@
             <!-- TAB 3: GIAI ĐOẠN 3 - ENGINE SINH MA TRẬN, ĐẶC TẢ & BÓC TÁCH MA TRẬN      -->
             <!-- ======================================================================= -->
             <section id="tab-matrix" class="space-y-5 hidden">
-                <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                
+                <!-- TOP HEADER & SUB-NAVIGATION BAR (GIAI ĐOẠN 3) -->
+                <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-4 sm:p-5 space-y-4">
                     <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-3">
                         <div>
                             <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full">Giai đoạn 3: Matrix & Specification Engine</span>
-                            <h2 class="text-lg font-bold text-slate-800 mt-1" id="mtxTitleHeader">Bảng Ma trận & Đặc tả Đề kiểm tra Định kì Chuẩn Thông tư 27</h2>
+                            <h2 class="text-lg font-extrabold text-slate-800 mt-1" id="mtxTitleHeader">Trung Tâm Quản Lý Ma Trận Đề Kiểm Tra & YCCĐ Chuẩn GDPT 2018</h2>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button onclick="generateStandardMatrixForCurrentContext(true)" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs cursor-pointer">
-                                <i class="fa-solid fa-calculator mr-1"></i>Phân bổ Tự động 10.0đ
+                        <div class="flex flex-wrap items-center gap-2" id="mtxTopHeaderActions">
+                            <button onclick="openCreateExamWizard()" class="bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-extrabold px-4 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>Tạo Đề Mới
                             </button>
                             <button onclick="openModal('modalImportMatrix')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs cursor-pointer">
-                                <i class="fa-solid fa-file-import mr-1"></i>Bóc tách Ma trận Tổ Chuyên Môn
-                            </button>
-                            <button onclick="addNewSlotToMatrix()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold px-3 py-2 rounded-xl cursor-pointer">
-                                <i class="fa-solid fa-plus mr-1"></i>Thêm Ô Câu hỏi
+                                <i class="fa-solid fa-file-import mr-1"></i>Bóc tách Ma trận Chuyên Môn
                             </button>
                         </div>
                     </div>
 
-                    <!-- Bảng tổng hợp 2 chiều -->
-                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                        <table class="w-full text-xs text-center border-collapse">
-                            <thead>
-                                <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-200">
-                                    <th class="p-2.5 text-left border-r border-slate-200">Mạch kiến thức / Chủ đề (Sách Kết nối tri thức)</th>
-                                    <th class="p-2 border-r border-slate-200 bg-emerald-50 text-emerald-900">Mức 1 (Nhận biết)</th>
-                                    <th class="p-2 border-r border-slate-200 bg-amber-50 text-amber-900">Mức 2 (Kết nối)</th>
-                                    <th class="p-2 border-r border-slate-200 bg-rose-50 text-rose-900">Mức 3 (Vận dụng)</th>
-                                    <th class="p-2 bg-blue-50 text-blue-950">Tổng cộng</th>
-                                </tr>
-                            </thead>
-                            <tbody id="mtxSummary2DBody" class="divide-y divide-slate-200"></tbody>
-                            <tfoot id="mtxSummary2DFoot" class="bg-slate-100 font-bold border-t-2 border-slate-300"></tfoot>
-                        </table>
-                    </div>
+                    <!-- SUB-TAB SWITCHER BUTTONS (3 CHẾ ĐỘ XEM CHUYÊN NGHIỆP) -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200">
+                        <div class="flex flex-wrap items-center gap-1.5" id="matrixSubTabButtons">
+                            <button type="button" onclick="switchMatrixSubView('current')" id="btnMtxSubCurrent" class="px-3.5 py-2 rounded-xl text-xs font-black bg-white text-blue-900 shadow-xs cursor-pointer flex items-center gap-2 transition">
+                                <i class="fa-solid fa-table-cells text-blue-600"></i>
+                                <span>📋 Ma Trận Đề Hiện Tại</span>
+                            </button>
+                            <button type="button" onclick="switchMatrixSubView('fullyear')" id="btnMtxSubFullYear" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60 cursor-pointer flex items-center gap-2 transition">
+                                <i class="fa-solid fa-calendar-check text-emerald-600"></i>
+                                <span>📅 Ma Trận Chung Cả Năm Kèm YCCĐ (35 Tuần)</span>
+                                <span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">GDPT 2018</span>
+                            </button>
+                            <button type="button" onclick="switchMatrixSubView('bank')" id="btnMtxSubBank" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60 cursor-pointer flex items-center gap-2 transition">
+                                <i class="fa-solid fa-boxes-stacked text-purple-600"></i>
+                                <span>🗃️ Kho Ma Trận Đã Lưu & Tải Lên</span>
+                                <span id="mtxBankCountBadge" class="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2 py-0.5 rounded-full">8 Ma trận</span>
+                            </button>
+                        </div>
 
-                    <!-- Bảng chỉnh sửa từng dòng đặc tả -->
-                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                        <table class="w-full text-xs text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 font-bold text-slate-600 border-b border-slate-200 uppercase text-[11px]">
-                                    <th class="p-2.5 w-12 text-center">Câu</th>
-                                    <th class="p-2.5">Mạch kiến thức & YCCĐ (Kết nối tri thức)</th>
-                                    <th class="p-2.5 w-28 text-center">Mức độ</th>
-                                    <th class="p-2.5 w-44">Hình thức câu hỏi</th>
-                                    <th class="p-2.5 w-24 text-center">Điểm số</th>
-                                    <th class="p-2.5 w-14 text-center">Xóa</th>
-                                </tr>
-                            </thead>
-                            <tbody id="mtxEditableSlotsBody" class="divide-y divide-slate-200"></tbody>
-                        </table>
-                    </div>
-
-                    <div class="flex justify-end pt-2">
-                        <button onclick="lockMatrixAndGenerateQuestions()" class="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold py-2.5 px-6 rounded-xl shadow transition text-xs cursor-pointer">
-                            <i class="fa-solid fa-check-double mr-1.5"></i>Khóa Ma trận & Sinh Câu hỏi Sang GĐ 4&6
-                        </button>
+                        <!-- Dynamic Context Button for active view -->
+                        <div id="mtxSubViewDynamicControls" class="flex items-center gap-1.5 text-xs"></div>
                     </div>
                 </div>
+
+                <!-- =================================================================== -->
+                <!-- SUB-VIEW 1: MA TRẬN ĐỀ HIỆN TẠI (BẢNG 2 CHIỀU & BẢNG ĐẶC TẢ TỪNG CÂU) -->
+                <!-- =================================================================== -->
+                <div id="subviewMtxCurrent" class="space-y-4">
+                    <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-3">
+                            <h3 class="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-table-cells text-blue-600"></i>
+                                <span>Bảng Ma Trận 2 Chiều Phân Bổ Điểm Số & Mức Độ Đề Hiện Tại</span>
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="generateStandardMatrixForCurrentContext(true)" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs cursor-pointer">
+                                    <i class="fa-solid fa-calculator mr-1"></i>Phân bổ Tự động 10.0đ
+                                </button>
+                                <button onclick="addNewSlotToMatrix()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer">
+                                    <i class="fa-solid fa-plus mr-1"></i>Thêm Ô Câu hỏi
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Bảng tổng hợp 2 chiều -->
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                            <table class="w-full text-xs text-center border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-200">
+                                        <th class="p-2.5 text-left border-r border-slate-200">Mạch kiến thức / Chủ đề (Sách Kết nối tri thức)</th>
+                                        <th class="p-2 border-r border-slate-200 bg-emerald-50 text-emerald-900">Mức 1 (Nhận biết)</th>
+                                        <th class="p-2 border-r border-slate-200 bg-amber-50 text-amber-900">Mức 2 (Kết nối)</th>
+                                        <th class="p-2 border-r border-slate-200 bg-rose-50 text-rose-900">Mức 3 (Vận dụng)</th>
+                                        <th class="p-2 bg-blue-50 text-blue-950">Tổng cộng</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mtxSummary2DBody" class="divide-y divide-slate-200"></tbody>
+                                <tfoot id="mtxSummary2DFoot" class="bg-slate-100 font-bold border-t-2 border-slate-300"></tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Bảng chỉnh sửa từng dòng đặc tả -->
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                            <table class="w-full text-xs text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 font-bold text-slate-600 border-b border-slate-200 uppercase text-[11px]">
+                                        <th class="p-2.5 w-12 text-center">Câu</th>
+                                        <th class="p-2.5">Mạch kiến thức & YCCĐ (Kết nối tri thức)</th>
+                                        <th class="p-2.5 w-28 text-center">Mức độ</th>
+                                        <th class="p-2.5 w-44">Hình thức câu hỏi</th>
+                                        <th class="p-2.5 w-24 text-center">Điểm số</th>
+                                        <th class="p-2.5 w-14 text-center">Xóa</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mtxEditableSlotsBody" class="divide-y divide-slate-200"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button onclick="lockMatrixAndGenerateQuestions()" class="bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold py-2.5 px-6 rounded-xl shadow transition text-xs cursor-pointer">
+                                <i class="fa-solid fa-check-double mr-1.5"></i>Khóa Ma trận & Sinh Câu hỏi Sang GĐ 4&6
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =================================================================== -->
+                <!-- SUB-VIEW 2: MA TRẬN CHUNG CẢ NĂM KÈM YCCĐ (35 TUẦN - CHUẨN GDPT 2018)  -->
+                <!-- =================================================================== -->
+                <div id="subviewMtxFullYear" class="space-y-4 hidden">
+                    <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                        
+                        <!-- Filter & Action Controls for Full-Year Matrix -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Môn học</label>
+                                    <select id="fyMtxSubjectSelect" onchange="renderFullYearYccdMatrix()" class="border border-slate-300 rounded-xl p-2 bg-white font-bold text-xs text-blue-950 focus:border-blue-600 focus:outline-none">
+                                        <option value="MATH">📐 Toán 4</option>
+                                        <option value="VIETNAMESE">📖 Tiếng Việt 4</option>
+                                        <option value="SCIENCE">🔬 Khoa học 4</option>
+                                        <option value="HIST_GEO">🌏 Lịch sử và Địa lí 4</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Khung chương trình</label>
+                                    <span class="inline-flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 text-emerald-800 font-bold text-xs px-3 py-2 rounded-xl">
+                                        <i class="fa-solid fa-book-open"></i> Kết nối tri thức (35 Tuần)
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Export Full Year Actions -->
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button onclick="exportFullYearMatrixDoc()" class="bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-file-word text-amber-300"></i>
+                                    <span>Xuất Ra File Word (.doc)</span>
+                                </button>
+                                <button onclick="exportFullYearMatrixCsv()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                    <span>Xuất Excel (.csv)</span>
+                                </button>
+                                <button onclick="syncFullYearMatrixFromPpct()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 transition" title="Làm mới bảng từ dữ liệu PPCT Hub">
+                                    <i class="fa-solid fa-arrows-rotate text-indigo-600"></i>
+                                    <span>Đồng Bộ PPCT</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 4 Stat Metric Cards -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div class="p-3 bg-blue-50/70 border border-blue-200 rounded-xl">
+                                <div class="text-[11px] font-bold text-blue-900 uppercase">Tổng YCCĐ Cả Năm</div>
+                                <div id="fyStatTotalYccd" class="text-xl font-black text-blue-950 mt-1">28 YCCĐ</div>
+                                <div class="text-[10px] text-blue-700 mt-0.5">Xuyên suốt 35 tuần học</div>
+                            </div>
+                            <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl">
+                                <div class="text-[11px] font-bold text-emerald-900 uppercase">Mức 1 (Nhận biết)</div>
+                                <div id="fyStatM1" class="text-xl font-black text-emerald-950 mt-1">11 YCCĐ (40%)</div>
+                                <div class="text-[10px] text-emerald-700 mt-0.5">Nền tảng kiến thức cốt lõi</div>
+                            </div>
+                            <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-xl">
+                                <div class="text-[11px] font-bold text-amber-900 uppercase">Mức 2 (Kết nối)</div>
+                                <div id="fyStatM2" class="text-xl font-black text-amber-950 mt-1">11 YCCĐ (40%)</div>
+                                <div class="text-[10px] text-amber-700 mt-0.5">Thông hiểu & kết nối</div>
+                            </div>
+                            <div class="p-3 bg-rose-50/70 border border-rose-200 rounded-xl">
+                                <div class="text-[11px] font-bold text-rose-900 uppercase">Mức 3 (Vận dụng)</div>
+                                <div id="fyStatM3" class="text-xl font-black text-rose-950 mt-1">6 YCCĐ (20%)</div>
+                                <div class="text-[10px] text-rose-700 mt-0.5">Giải quyết vấn đề thực tiễn</div>
+                            </div>
+                        </div>
+
+                        <!-- The Master Full Year Table -->
+                        <div class="overflow-x-auto border border-slate-200 rounded-2xl shadow-xs">
+                            <table class="w-full text-xs text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-800 text-white font-bold border-b border-slate-700">
+                                        <th rowspan="2" class="p-3 w-12 text-center border-r border-slate-700">TT</th>
+                                        <th rowspan="2" class="p-3 w-48 border-r border-slate-700">Mạch Kiến Thức / Chủ Đề</th>
+                                        <th rowspan="2" class="p-3 border-r border-slate-700 min-w-[280px]">Yêu Cầu Cần Đạt (YCCĐ Chuẩn GDPT 2018)</th>
+                                        <th rowspan="2" class="p-3 w-16 text-center border-r border-slate-700">Tuần Dạy</th>
+                                        <th rowspan="2" class="p-3 w-16 text-center border-r border-slate-700">Mức Độ</th>
+                                        <th colspan="4" class="p-2.5 text-center bg-slate-900 border-b border-slate-700">
+                                            Phân Bổ Đánh Giá 4 Đợt Kiểm Tra Định Kì Trong Năm Học (Thông tư 27)
+                                        </th>
+                                    </tr>
+                                    <tr class="bg-slate-700 text-slate-100 font-semibold text-[11px]">
+                                        <th class="p-2 text-center border-r border-slate-600 bg-blue-900/70 w-32">
+                                            <div>Giữa HK I (T9)</div>
+                                            <button type="button" onclick="openWizardWithPreset(document.getElementById('fyMtxSubjectSelect').value, 'mid_term_1')" class="mt-1 text-[10px] font-bold bg-blue-500 hover:bg-blue-400 text-white px-2 py-0.5 rounded-lg cursor-pointer shadow-2xs transition">⚡ Tạo Đề</button>
+                                        </th>
+                                        <th class="p-2 text-center border-r border-slate-600 bg-emerald-900/70 w-32">
+                                            <div>Cuối HK I (T18)</div>
+                                            <button type="button" onclick="openWizardWithPreset(document.getElementById('fyMtxSubjectSelect').value, 'end_term_1')" class="mt-1 text-[10px] font-bold bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-0.5 rounded-lg cursor-pointer shadow-2xs transition">⚡ Tạo Đề</button>
+                                        </th>
+                                        <th class="p-2 text-center border-r border-slate-600 bg-amber-900/70 w-32">
+                                            <div>Giữa HK II (T27)</div>
+                                            <button type="button" onclick="openWizardWithPreset(document.getElementById('fyMtxSubjectSelect').value, 'mid_term_2')" class="mt-1 text-[10px] font-bold bg-amber-500 hover:bg-amber-400 text-white px-2 py-0.5 rounded-lg cursor-pointer shadow-2xs transition">⚡ Tạo Đề</button>
+                                        </th>
+                                        <th class="p-2 text-center bg-purple-900/70 w-32">
+                                            <div>Cuối Năm (T35)</div>
+                                            <button type="button" onclick="openWizardWithPreset(document.getElementById('fyMtxSubjectSelect').value, 'end_year')" class="mt-1 text-[10px] font-bold bg-purple-500 hover:bg-purple-400 text-white px-2 py-0.5 rounded-lg cursor-pointer shadow-2xs transition">⚡ Tạo Đề</button>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fullYearYccdTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- =================================================================== -->
+                <!-- SUB-VIEW 3: KHO MA TRẬN ĐÃ LƯU & TẢI FILE LÊN                         -->
+                <!-- =================================================================== -->
+                <div id="subviewMtxBank" class="space-y-4 hidden">
+                    <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+                        
+                        <!-- Toolbar in Matrix Bank Tab -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
+                                    <i class="fa-solid fa-boxes-stacked"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-extrabold text-sm text-slate-800">Kho Ma Trận Đề Kiểm Tra & Tải Lên</h3>
+                                    <p class="text-xs text-slate-500">Lưu trữ các ma trận chuẩn của Bộ GD&ĐT hoặc ma trận do tổ chuyên môn nhà trường xây dựng.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input type="file" id="matrixFileInputBank" accept=".json,.csv" onchange="handleMatrixFileUpload(event)" class="hidden">
+                                <button type="button" onclick="document.getElementById('matrixFileInputBank').click()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
+                                    <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>
+                                </button>
+                                <button type="button" onclick="exportMatrixTemplateJson()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-download text-purple-600"></i>
+                                    <span>Tải File Ma Trận Mẫu</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter Buttons for Matrix Bank -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div class="flex flex-wrap items-center gap-1.5" id="mtxBankFilterButtons">
+                                <button type="button" onclick="filterTabMatrixBank('ALL')" id="tabMtxFilter_ALL" class="px-3 py-1.5 rounded-xl font-bold bg-purple-700 text-white cursor-pointer shadow-2xs">Tất Cả Môn</button>
+                                <button type="button" onclick="filterTabMatrixBank('MATH')" id="tabMtxFilter_MATH" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">📐 Toán 4</button>
+                                <button type="button" onclick="filterTabMatrixBank('VIETNAMESE')" id="tabMtxFilter_VIETNAMESE" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">📖 Tiếng Việt 4</button>
+                                <button type="button" onclick="filterTabMatrixBank('SCIENCE')" id="tabMtxFilter_SCIENCE" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">🔬 Khoa học 4</button>
+                                <button type="button" onclick="filterTabMatrixBank('HIST_GEO')" id="tabMtxFilter_HIST_GEO" class="px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">🌏 Lịch sử & ĐL 4</button>
+                            </div>
+                            <span id="tabMatrixBankCountBadge" class="text-xs text-purple-800 font-bold">8 ma trận trong kho</span>
+                        </div>
+
+                        <!-- Grid of Matrix Cards in Stage 3 Bank Tab -->
+                        <div id="mtxBankGridContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    </div>
+                </div>
+
             </section>
 
             <!-- ======================================================================= -->
@@ -2728,6 +2927,12 @@ const DEFAULT_SEED_DATA = {
                 generateExamQuestionsFromMatrix(false);
             }
             ensureOriginalRevisionExists();
+            if (!Array.isArray(appDB.matrixBank) || appDB.matrixBank.length === 0) {
+                if (typeof DEFAULT_MATRIX_BANK !== 'undefined') {
+                    appDB.matrixBank = JSON.parse(JSON.stringify(DEFAULT_MATRIX_BANK));
+                }
+            }
+            if (typeof updateWizardPpctStatusDisplay === 'function') updateWizardPpctStatusDisplay();
             saveDB();
             renderAll();
             switchTab('tab-reviewer');
@@ -3492,6 +3697,16 @@ Trả về định dạng JSON:
             document.getElementById(tabId)?.classList.remove('hidden');
             document.getElementById('btn-' + tabId)?.classList.add('tab-active');
             document.getElementById('pill-' + tabId)?.classList.add('stage-pill-active');
+
+            if (tabId === 'tab-matrix') {
+                if (typeof switchMatrixSubView === 'function') {
+                    switchMatrixSubView(activeMatrixSubView || 'current');
+                }
+            } else if (tabId === 'tab-curriculum') {
+                if (typeof updateWizardPpctStatusDisplay === 'function') {
+                    updateWizardPpctStatusDisplay();
+                }
+            }
         }
 
         // =========================================================================
@@ -7357,7 +7572,13 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             const lessons = ppct.lessons || [];
             const periods = ppct.periods || [];
 
-            const subjIdPrefix = subjectCode === 'VIETNAMESE' ? 'tv' : 'toan';
+            let subjKeywords = ['toan', 'math'];
+            if (subjectCode === 'VIETNAMESE') subjKeywords = ['tv', 'viet'];
+            else if (subjectCode === 'SCIENCE') subjKeywords = ['kh', 'sci'];
+            else if (subjectCode === 'HIST_GEO') subjKeywords = ['lsdl', 'hist', 'geo'];
+            else if (subjectCode === 'ETHICS') subjKeywords = ['dd', 'ethics'];
+            else if (subjectCode === 'TECH') subjKeywords = ['cn', 'tech'];
+            const subjIdPrefix = subjKeywords[0];
 
             const lessonWeeksMap = {};
             periods.forEach(p => {
@@ -7371,7 +7592,8 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
 
             lessons.forEach(l => {
                 const weeks = lessonWeeksMap[l.id] ? Array.from(lessonWeeksMap[l.id]) : [];
-                const isMatchSubject = l.subjectId?.includes(subjIdPrefix) || (subjectCode === 'MATH' && l.id.includes('math')) || (subjectCode === 'VIETNAMESE' && l.id.includes('tv'));
+                const sid = (l.subjectId || '') + ' ' + (l.id || '');
+                const isMatchSubject = subjKeywords.some(kw => sid.toLowerCase().includes(kw));
                 if (!isMatchSubject) return;
 
                 const inRange = weeks.some(w => w >= weekStart && w <= weekEnd);
@@ -7448,6 +7670,8 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             if (perSelect) perSelect.value = wizardState.period;
 
             onWizardSubjectOrPeriodChange();
+            if (typeof updateWizardPpctStatusDisplay === 'function') updateWizardPpctStatusDisplay();
+            if (typeof renderWizardMatrixList === 'function') renderWizardMatrixList();
 
             const modal = document.getElementById('modalCreateExam');
             if (modal) {
@@ -8184,7 +8408,1217 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             }
         }
 
-</script>
+
+
+
+        // =========================================================================
+        // PHẦN BỔ SUNG: KHO MA TRẬN CHUẨN, LIÊN KẾT PPCT & MA TRẬN CẢ NĂM KÈM YCCĐ
+        // =========================================================================
+
+        const DEFAULT_MATRIX_BANK = [
+            {
+                id: 'MTX_MATH_MID1',
+                title: 'Toán 4 — Ma trận Đề Kiểm Tra Giữa Học kì I (Chuẩn TT 27)',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'mid_term_1',
+                periodLabel: 'Giữa Học kì I (Tuần 1 - 9)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 40,
+                description: 'Ma trận định kì Giữa HK1 gồm 10 câu (7 TN, 3 TL) - Tỉ lệ 7:3. Kiểm tra số có sáu chữ số, biểu thức chứa chữ, đặt tính cộng trừ, góc nhọn/tù & đơn vị yến, tạ, tấn.',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 10,
+                    totalPoints: 10.0,
+                    tnCount: 7, tnPoints: 7.0,
+                    tlCount: 3, tlPoints: 3.0,
+                    m1Points: 4.0, m2Points: 4.0, m3Points: 2.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Nhận biết số có sáu chữ số, giá trị của chữ số theo hàng và lớp.', lessonTitle: 'Bài 1: Ôn tập các số đến 100 000' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'So sánh và sắp xếp các số có nhiều chữ số theo thứ tự.', lessonTitle: 'Bài 2: Ôn tập các phép tính trong phạm vi 100 000' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Tính giá trị của biểu thức chứa một hoặc hai chữ.', lessonTitle: 'Bài 4: Biểu thức chứa chữ' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Nhận biết góc nhọn, góc vuông, góc tù, góc bẹt và số đo góc.', lessonTitle: 'Bài 8: Góc nhọn, góc tù, góc bẹt' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Đổi và so sánh các đơn vị đo khối lượng: yến, tạ, tấn.', lessonTitle: 'Bài 11: Yến, tạ, tấn' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Đổi đơn vị đo thời gian: giây, thế kỉ và xác định thế kỉ tương ứng.', lessonTitle: 'Bài 12: Giây, thế kỉ' },
+                    { questionNumber: 7, type: 'mcq_single', level: 'M3', points: 1.0, strand: 'Số & phép tính', yccd: 'Vận dụng tính chất kết hợp của phép cộng để tính nhanh, tính hợp lí.', lessonTitle: 'Bài 7: Tính chất giao hoán và kết hợp của phép cộng' },
+                    { questionNumber: 8, type: 'essay', level: 'M1', points: 1.5, strand: 'Số & phép tính', yccd: 'Thực hiện đặt tính rồi tính phép cộng, phép trừ các số có nhiều chữ số.', lessonTitle: 'Bài 6: Phép cộng, phép trừ các số có nhiều chữ số' },
+                    { questionNumber: 9, type: 'essay', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Tìm thành phần chưa biết của phép tính trong bài toán thực tế.', lessonTitle: 'Bài 14: Ôn tập chủ đề 1 và 2' },
+                    { questionNumber: 10, type: 'essay', level: 'M3', points: 0.5, strand: 'Số & phép tính', yccd: 'Giải bài toán có đến ba bước tính liên quan đến số tự nhiên và đo lường.', lessonTitle: 'Bài 15: Kiểm tra định kì Giữa học kì 1' }
+                ]
+            },
+            {
+                id: 'MTX_MATH_END1',
+                title: 'Toán 4 — Ma trận Đề Kiểm Tra Cuối Học kì I (Chuẩn TT 27)',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'end_term_1',
+                periodLabel: 'Cuối Học kì I (Tuần 1 - 18)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 40,
+                description: 'Ma trận định kì Cuối HK1 gồm 10 câu (7 TN, 3 TL). Kiểm tra toàn diện nhân chia số tự nhiên, tìm 2 số khi biết tổng & hiệu, hai đường thẳng vuông góc/song song, diện tích m² và dm².',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 10,
+                    totalPoints: 10.0,
+                    tnCount: 7, tnPoints: 7.0,
+                    tlCount: 3, tlPoints: 3.0,
+                    m1Points: 3.0, m2Points: 4.0, m3Points: 3.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Đọc viết và xác định giá trị hàng chữ số của số tự nhiên đến lớp triệu.', lessonTitle: 'Bài 1: Ôn tập các số đến 100 000' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Nhân số có nhiều chữ số với 10, 100, 1000 và tính nhẩm.', lessonTitle: 'Bài 18: Nhân với 10, 100, 1000' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Nhận biết hai đường thẳng vuông góc và hai đường thẳng song song.', lessonTitle: 'Bài 16: Hai đường thẳng vuông góc' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Đổi và thực hiện phép tính với đơn vị diện tích: đề-xi-mét vuông, mét vuông.', lessonTitle: 'Bài 23: Mét vuông, Đề-xi-mét vuông' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Nhận biết và vận dụng tính chất phân phối của phép nhân đối với phép cộng.', lessonTitle: 'Bài 21: Nhân một số với một tổng' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Chia cho số có hai chữ số và ước lượng thương.', lessonTitle: 'Bài 26: Chia cho số có hai chữ số' },
+                    { questionNumber: 7, type: 'mcq_single', level: 'M3', points: 1.0, strand: 'Thống kê & Xác suất', yccd: 'Đọc và phân tích thông tin từ dãy số liệu hoặc biểu đồ cột.', lessonTitle: 'Bài 13: Dãy số liệu thống kê' },
+                    { questionNumber: 8, type: 'essay', level: 'M1', points: 1.5, strand: 'Số & phép tính', yccd: 'Đặt tính rồi tính: Phép cộng, trừ, nhân, chia với số có hai chữ số.', lessonTitle: 'Bài 28: Luyện tập chung phép tính' },
+                    { questionNumber: 9, type: 'essay', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Giải bài toán tìm hai số khi biết tổng và hiệu của hai số đó.', lessonTitle: 'Bài 25: Tìm hai số khi biết tổng và hiệu' },
+                    { questionNumber: 10, type: 'essay', level: 'M3', points: 0.5, strand: 'Hình học & Đo lường', yccd: 'Tính chu vi, diện tích mảnh vườn hình chữ nhật và tính sản lượng thu hoạch.', lessonTitle: 'Bài 34: Ôn tập học kì 1' }
+                ]
+            },
+            {
+                id: 'MTX_MATH_MID2',
+                title: 'Toán 4 — Ma trận Đề Kiểm Tra Giữa Học kì II (Chuẩn TT 27)',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'mid_term_2',
+                periodLabel: 'Giữa Học kì II (Tuần 19 - 27)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 40,
+                description: 'Ma trận định kì Giữa HK2 gồm 10 câu (6 TN, 4 TL) - Tỉ lệ 6:4. Trọng tâm phân số, rút gọn, quy đồng, cộng trừ phân số và nhận biết hình bình hành.',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 10,
+                    totalPoints: 10.0,
+                    tnCount: 6, tnPoints: 6.0,
+                    tlCount: 4, tlPoints: 4.0,
+                    m1Points: 3.0, m2Points: 4.0, m3Points: 3.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Nhận biết phân số, tử số và mẫu số của phân số chỉ phần đã tô màu.', lessonTitle: 'Bài 36: Khái niệm phân số' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Rút gọn phân số về phân số tối giản và quy đồng mẫu số hai phân số.', lessonTitle: 'Bài 38: Rút gọn phân số' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Nhận biết hình bình hành, các cạnh đối diện song song và bằng nhau.', lessonTitle: 'Bài 43: Hình bình hành' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'So sánh hai phân số cùng mẫu số và khác mẫu số.', lessonTitle: 'Bài 40: So sánh hai phân số' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Cộng hai phân số có cùng mẫu số hoặc khác mẫu số.', lessonTitle: 'Bài 45: Phép cộng phân số' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M3', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Tính diện tích hình bình hành theo công thức độ dài đáy nhân chiều cao.', lessonTitle: 'Bài 44: Diện tích hình bình hành' },
+                    { questionNumber: 7, type: 'essay', level: 'M1', points: 1.5, strand: 'Số & phép tính', yccd: 'Thực hiện phép tính cộng và trừ các phân số.', lessonTitle: 'Bài 47: Phép trừ phân số' },
+                    { questionNumber: 8, type: 'essay', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Tìm thành phần chưa biết x trong phép tính cộng trừ phân số.', lessonTitle: 'Bài 48: Luyện tập phép cộng trừ phân số' },
+                    { questionNumber: 9, type: 'essay', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Giải bài toán thực tế có lời văn liên quan đến phân số.', lessonTitle: 'Bài 51: Bài toán liên quan đến phân số' },
+                    { questionNumber: 10, type: 'essay', level: 'M3', points: 0.5, strand: 'Số & phép tính', yccd: 'Tính bằng cách thuận tiện nhất với biểu thức gồm nhiều phân số.', lessonTitle: 'Bài 52: Ôn tập giữa kì 2' }
+                ]
+            },
+            {
+                id: 'MTX_MATH_END2',
+                title: 'Toán 4 — Ma trận Đề Kiểm Tra Cuối Năm Học (Chuẩn TT 27)',
+                subject: 'MATH',
+                subjectName: 'Toán',
+                grade: 4,
+                period: 'end_year',
+                periodLabel: 'Cuối Năm Học (Tuần 1 - 35)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 40,
+                description: 'Ma trận định kì Cuối Năm gồm 10 câu (6 TN, 4 TL). Tổng hợp toàn bộ 4 phép tính phân số, tìm phân số của một số, tỉ lệ bản đồ, hình thoi và ôn tập đo lường.',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 10,
+                    totalPoints: 10.0,
+                    tnCount: 6, tnPoints: 6.0,
+                    tlCount: 4, tlPoints: 4.0,
+                    m1Points: 3.0, m2Points: 4.0, m3Points: 3.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Nhận biết giá trị của chữ số trong số tự nhiên và phân số.', lessonTitle: 'Bài 55: Ôn tập số tự nhiên' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Số & phép tính', yccd: 'Thực hiện phép nhân và phép chia hai phân số.', lessonTitle: 'Bài 57: Phép nhân và phép chia phân số' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Nhận biết hình thoi và công thức tính diện tích hình thoi.', lessonTitle: 'Bài 60: Hình thoi và diện tích hình thoi' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Hình học & Đo lường', yccd: 'Tính khoảng cách thực tế dựa vào tỉ lệ bản đồ.', lessonTitle: 'Bài 63: Tỉ lệ bản đồ và ứng dụng' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Tìm phân số của một số trong các tình huống thực tế.', lessonTitle: 'Bài 59: Tìm phân số của một số' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M3', points: 1.0, strand: 'Thống kê & Xác suất', yccd: 'Xác định khả năng xảy ra của một sự kiện (chắc chắn, có thể, không thể).', lessonTitle: 'Bài 65: Xác suất thống kê cơ bản' },
+                    { questionNumber: 7, type: 'essay', level: 'M1', points: 1.5, strand: 'Số & phép tính', yccd: 'Thực hiện 4 phép tính cơ bản với phân số và số tự nhiên.', lessonTitle: 'Bài 68: Ôn tập phép tính phân số' },
+                    { questionNumber: 8, type: 'essay', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Tính giá trị biểu thức phân số theo đúng thứ tự phép tính.', lessonTitle: 'Bài 70: Biểu thức với phân số' },
+                    { questionNumber: 9, type: 'essay', level: 'M2', points: 1.0, strand: 'Số & phép tính', yccd: 'Giải bài toán có lời văn liên quan đến tìm hai số khi biết tổng/hiệu và tỉ số.', lessonTitle: 'Bài 72: Bài toán tổng tỉ, hiệu tỉ' },
+                    { questionNumber: 10, type: 'essay', level: 'M3', points: 0.5, strand: 'Hình học & Đo lường', yccd: 'Bài toán kết hợp tính diện tích hình học và tỉ số thực tế.', lessonTitle: 'Bài 75: Ôn tập cuối năm học' }
+                ]
+            },
+            {
+                id: 'MTX_VIET_END1',
+                title: 'Tiếng Việt 4 — Ma trận Đề Kiểm Tra Cuối Học kì I (Chuẩn TT 27)',
+                subject: 'VIETNAMESE',
+                subjectName: 'Tiếng Việt',
+                grade: 4,
+                period: 'end_term_1',
+                periodLabel: 'Cuối Học kì I (Tuần 1 - 18)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 40,
+                description: 'Ma trận kiểm tra Cuối HK1 môn Tiếng Việt gồm phần Đọc hiểu (8 câu: 6 TN, 2 TL - 7đ) và Luyện từ và câu (3đ), Viết bài văn miêu tả cây cối.',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 8,
+                    totalPoints: 10.0,
+                    tnCount: 6, tnPoints: 6.0,
+                    tlCount: 2, tlPoints: 4.0,
+                    m1Points: 3.0, m2Points: 4.0, m3Points: 3.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Kĩ năng Đọc', yccd: 'Nhận biết chi tiết, nhân vật hoặc sự việc trực tiếp trong văn bản.', lessonTitle: 'Bài đọc: Cánh én tuổi thơ' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Kĩ năng Đọc', yccd: 'Hiểu nghĩa của từ ngữ trong ngữ cảnh bài đọc.', lessonTitle: 'Bài đọc: Bầu trời mùa thu' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Kĩ năng Đọc', yccd: 'Hiểu nội dung chính, ý nghĩa hoặc thông điệp bài đọc.', lessonTitle: 'Bài đọc: Người ăn xin' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Luyện từ và câu', yccd: 'Nhận biết danh từ, động từ, tính từ trong câu văn.', lessonTitle: 'LTVC: Danh từ, Động từ, Tính từ' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Luyện từ và câu', yccd: 'Xác định biện pháp so sánh hoặc nhân hóa trong câu thơ/văn.', lessonTitle: 'LTVC: Biện pháp nhân hóa' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Luyện từ và câu', yccd: 'Nhận biết và sử dụng đúng dấu ngoặc kép, dấu gạch ngang.', lessonTitle: 'LTVC: Dấu ngoặc kép' },
+                    { questionNumber: 7, type: 'essay', level: 'M2', points: 2.0, strand: 'Kĩ năng Đọc', yccd: 'Rút ra bài học cho bản thân từ hành động của nhân vật trong bài đọc.', lessonTitle: 'Đọc hiểu mở rộng' },
+                    { questionNumber: 8, type: 'essay', level: 'M3', points: 2.0, strand: 'Luyện từ và câu', yccd: 'Đặt 1-2 câu có sử dụng biện pháp nhân hóa hoặc tính từ chỉ phẩm chất.', lessonTitle: 'Luyện câu sáng tạo' }
+                ]
+            },
+            {
+                id: 'MTX_VIET_END2',
+                title: 'Tiếng Việt 4 — Ma trận Đề Kiểm Tra Cuối Năm Học (Chuẩn TT 27)',
+                subject: 'VIETNAMESE',
+                subjectName: 'Tiếng Việt',
+                grade: 4,
+                period: 'end_year',
+                periodLabel: 'Cuối Năm Học (Tuần 1 - 35)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 40,
+                description: 'Ma trận Tiếng Việt cuối năm gồm Đọc hiểu (8 câu: 6 TN, 2 TL - 7đ) và Luyện từ và câu (Trạng ngữ, Dấu câu, Viết đoạn văn).',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 8,
+                    totalPoints: 10.0,
+                    tnCount: 6, tnPoints: 6.0,
+                    tlCount: 2, tlPoints: 4.0,
+                    m1Points: 3.0, m2Points: 4.0, m3Points: 3.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Kĩ năng Đọc', yccd: 'Nhận diện thông tin cụ thể nêu trong bài đọc.', lessonTitle: 'Bài đọc: Bè xuôi sông La' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Kĩ năng Đọc', yccd: 'Giải thích nghĩa của từ ngữ, thành ngữ trong bài.', lessonTitle: 'Bài đọc: Sông Hương' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Kĩ năng Đọc', yccd: 'Phân tích tình cảm, cảm xúc của tác giả thể hiện trong bài viết.', lessonTitle: 'Bài đọc: Tiếng chim buổi sáng' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Luyện từ và câu', yccd: 'Xác định thành phần trạng ngữ chỉ thời gian, nơi chốn trong câu.', lessonTitle: 'LTVC: Trạng ngữ' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Luyện từ và câu', yccd: 'Phân biệt trạng ngữ chỉ nguyên nhân, mục đích và phương tiện.', lessonTitle: 'LTVC: Thêm trạng ngữ cho câu' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Luyện từ và câu', yccd: 'Nhận biết câu kể, câu hỏi, câu khiến, câu cảm trong ngữ cảnh.', lessonTitle: 'LTVC: Các kiểu câu' },
+                    { questionNumber: 7, type: 'essay', level: 'M2', points: 2.0, strand: 'Kĩ năng Đọc', yccd: 'Nêu suy nghĩ hoặc cảm nhận về một hành động đẹp trong bài đọc.', lessonTitle: 'Đọc hiểu vận dụng' },
+                    { questionNumber: 8, type: 'essay', level: 'M3', points: 2.0, strand: 'Luyện từ và câu', yccd: 'Viết đoạn văn ngắn 3 - 4 câu có sử dụng trạng ngữ và biện pháp so sánh.', lessonTitle: 'Luyện viết đoạn văn' }
+                ]
+            },
+            {
+                id: 'MTX_SCI_END1',
+                title: 'Khoa học 4 — Ma trận Đề Kiểm Tra Cuối Học kì I (Chuẩn TT 27)',
+                subject: 'SCIENCE',
+                subjectName: 'Khoa học',
+                grade: 4,
+                period: 'end_term_1',
+                periodLabel: 'Cuối Học kì I (Tuần 1 - 18)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 35,
+                description: 'Ma trận kiểm tra Cuối HK1 môn Khoa học 4 gồm 10 câu (8 TN, 2 TL). Đánh giá tính chất của nước, không khí, ánh sáng và vai trò của nhiệt đối với sự sống.',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 10,
+                    totalPoints: 10.0,
+                    tnCount: 8, tnPoints: 8.0,
+                    tlCount: 2, tlPoints: 2.0,
+                    m1Points: 4.0, m2Points: 4.0, m3Points: 2.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Chất', yccd: 'Nêu được tính chất của nước: không màu, không mùi, không vị, chảy từ cao xuống thấp.', lessonTitle: 'Bài 1: Nước và tính chất của nước' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Chất', yccd: 'Mô tả được ba thể của nước: thể rắn, thể lỏng và thể khí trong tự nhiên.', lessonTitle: 'Bài 2: Sự chuyển thể của nước' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Chất', yccd: 'Nêu được các thành phần chính của không khí: khí ô-xi, khí ni-tơ, khí các-bô-níc.', lessonTitle: 'Bài 4: Không khí quanh ta' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Năng lượng', yccd: 'Giải thích được vai trò của ánh sáng đối với thực vật và con người.', lessonTitle: 'Bài 7: Ánh sáng và sự truyền ánh sáng' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Năng lượng', yccd: 'Phân biệt được vật dẫn nhiệt tốt và vật dẫn nhiệt kém trong sinh hoạt.', lessonTitle: 'Bài 10: Sự truyền nhiệt' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Năng lượng', yccd: 'Đề xuất biện pháp phòng tránh tai nạn liên quan đến vật nóng hoặc điện.', lessonTitle: 'Bài 11: An toàn nhiệt' },
+                    { questionNumber: 7, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Chất', yccd: 'Nhận biết các nguyên nhân gây ô nhiễm nguồn nước và cách bảo vệ nguồn nước.', lessonTitle: 'Bài 3: Bảo vệ nguồn nước' },
+                    { questionNumber: 8, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Năng lượng', yccd: 'Giải thích được nguyên nhân gây ra gió và hướng gió.', lessonTitle: 'Bài 5: Gió, bão' },
+                    { questionNumber: 9, type: 'essay', level: 'M2', points: 1.0, strand: 'Chất', yccd: 'Vẽ hoặc mô tả sơ đồ vòng tuần hoàn của nước trong tự nhiên.', lessonTitle: 'Bài 2: Vòng tuần hoàn của nước' },
+                    { questionNumber: 10, type: 'essay', level: 'M3', points: 1.0, strand: 'Năng lượng', yccd: 'Đề xuất 2 việc làm cụ thể để tiết kiệm điện và năng lượng nhiệt tại gia đình.', lessonTitle: 'Bài 12: Tiết kiệm năng lượng' }
+                ]
+            },
+            {
+                id: 'MTX_HIST_END1',
+                title: 'Lịch sử & Địa lí 4 — Ma trận Đề Kiểm Tra Cuối Học kì I (Chuẩn TT 27)',
+                subject: 'HIST_GEO',
+                subjectName: 'Lịch sử & Địa lí',
+                grade: 4,
+                period: 'end_term_1',
+                periodLabel: 'Cuối Học kì I (Tuần 1 - 18)',
+                bookSeries: 'Kết nối tri thức với cuộc sống',
+                timeMinutes: 35,
+                description: 'Ma trận Cuối HK1 môn Lịch sử và Địa lí gồm 10 câu (8 TN, 2 TL). Đánh giá địa phương em, vùng Trung du và miền núi Bắc Bộ, vùng Đồng bằng Bắc Bộ.',
+                isCustom: false,
+                summary: {
+                    totalQuestions: 10,
+                    totalPoints: 10.0,
+                    tnCount: 8, tnPoints: 8.0,
+                    tlCount: 2, tlPoints: 2.0,
+                    m1Points: 4.0, m2Points: 4.0, m3Points: 2.0
+                },
+                slots: [
+                    { questionNumber: 1, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Địa phương em', yccd: 'Xác định vị trí địa lí và nêu tên một số di tích lịch sử tại địa phương.', lessonTitle: 'Bài 1: Làm quen với phương tiện học tập Lịch sử và Địa lí' },
+                    { questionNumber: 2, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Trung du & Miền núi Bắc Bộ', yccd: 'Xác định được đỉnh Phan-xi-păng là đỉnh núi cao nhất Việt Nam trên lược đồ.', lessonTitle: 'Bài 3: Thiên nhiên vùng Trung du và miền núi Bắc Bộ' },
+                    { questionNumber: 3, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Trung du & Miền núi Bắc Bộ', yccd: 'Nêu tên một số dân tộc sinh sống chủ yếu ở vùng Trung du và miền núi Bắc Bộ.', lessonTitle: 'Bài 4: Dân cư và hoạt động sản xuất ở vùng Trung du và miền núi Bắc Bộ' },
+                    { questionNumber: 4, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Đồng bằng Bắc Bộ', yccd: 'Mô tả được địa hình và mạng lưới sông ngòi của vùng Đồng bằng Bắc Bộ.', lessonTitle: 'Bài 7: Thiên nhiên vùng Đồng bằng Bắc Bộ' },
+                    { questionNumber: 5, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Đồng bằng Bắc Bộ', yccd: 'Giải thích vì sao Đồng bằng Bắc Bộ là vựa lúa lớn thứ hai của cả nước.', lessonTitle: 'Bài 8: Dân cư và hoạt động sản xuất ở vùng Đồng bằng Bắc Bộ' },
+                    { questionNumber: 6, type: 'mcq_single', level: 'M1', points: 1.0, strand: 'Lịch sử dân tộc', yccd: 'Kể lại được chiến thắng Bạch Đằng năm 938 của Ngô Quyền.', lessonTitle: 'Bài 6: Một số nét văn hóa và truyền thống vùng Trung du và miền núi Bắc Bộ' },
+                    { questionNumber: 7, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Lịch sử dân tộc', yccd: 'Nêu ý nghĩa việc vua Lý Thái Tổ dời đô về Thăng Long năm 1010.', lessonTitle: 'Bài 10: Thăng Long — Hà Nội' },
+                    { questionNumber: 8, type: 'mcq_single', level: 'M2', points: 1.0, strand: 'Di sản văn hóa', yccd: 'Kể tên một số công trình kiến trúc cổ tiêu biểu của Thăng Long — Hà Nội.', lessonTitle: 'Bài 11: Văn Miếu — Quốc Tử Giám' },
+                    { questionNumber: 9, type: 'essay', level: 'M2', points: 1.0, strand: 'Địa lí kinh tế', yccd: 'Nêu vai trò của hệ thống đê điều ở vùng Đồng bằng Bắc Bộ đối với sản xuất và đời sống.', lessonTitle: 'Bài 8: Đê điều Đồng bằng Bắc Bộ' },
+                    { questionNumber: 10, type: 'essay', level: 'M3', points: 1.0, strand: 'Di sản văn hóa', yccd: 'Là học sinh tiểu học, em cần làm gì để giữ gìn và phát huy truyền thống hiếu học của cha ông?', lessonTitle: 'Bài 11: Tự hào truyền thống dân tộc' }
+                ]
+            }
+        ];
+
+        let activeWizardMatrixFilter = 'ALL';
+        let activeTabMatrixFilter = 'ALL';
+        let activeMatrixSubView = 'current';
+
+        // =========================================================================
+        // 1. PPCT UPLOAD & SYNCHRONIZATION WITH EXAM WIZARD
+        // =========================================================================
+
+        function updateWizardPpctStatusDisplay() {
+            const ppct = appDB.ppctData || DEFAULT_PPCT_DATA;
+            const badge = document.getElementById('wzPpctStatusBadge');
+            const lCount = document.getElementById('wzPpctLessonCount');
+            const pCount = document.getElementById('wzPpctPeriodCount');
+            const yCount = document.getElementById('wzPpctYccdCount');
+
+            const lessons = ppct.lessons || [];
+            const periods = ppct.periods || [];
+            const yccds = ppct.yccdIdeas || [];
+
+            if (lCount) lCount.textContent = lessons.length || 22;
+            if (pCount) pCount.textContent = periods.length || 42;
+            if (yCount) yCount.textContent = (appDB.objectives && appDB.objectives.length) ? appDB.objectives.length : (yccds.length || 27);
+
+            if (badge) {
+                if (appDB.ppctSource && appDB.ppctSource.isCustom) {
+                    badge.className = 'text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs';
+                    badge.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-700"></i> Đã nạp file: ${appDB.ppctSource.fileName} (${lessons.length} bài)`;
+                } else {
+                    badge.className = 'text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs';
+                    badge.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> PPCT Chuẩn KNTT 2018 (35 Tuần / 175 Tiết)';
+                }
+            }
+        }
+
+        function handleWizardPpctUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const raw = e.target.result;
+                    const parsed = JSON.parse(raw);
+
+                    if (!parsed.lessons && !parsed.topics && !parsed.yccdIdeas && !Array.isArray(parsed)) {
+                        showToast('File JSON không đúng cấu trúc Phân phối chương trình!', 'error');
+                        return;
+                    }
+
+                    if (Array.isArray(parsed)) {
+                        appDB.ppctData = {
+                            app: 'THAYKHAIEDU PPCT HUB',
+                            version: '2.0.0',
+                            lessons: parsed,
+                            periods: [],
+                            yccdIdeas: [],
+                            strands: [],
+                            groups: []
+                        };
+                    } else {
+                        appDB.ppctData = parsed;
+                    }
+
+                    appDB.ppctSource = {
+                        fileName: file.name,
+                        uploadedAt: new Date().toISOString(),
+                        isCustom: true
+                    };
+
+                    syncPpctYccdToObjectives();
+                    saveDB();
+
+                    updateWizardPpctStatusDisplay();
+                    onWizardSubjectOrPeriodChange();
+
+                    if (activeMatrixSubView === 'fullyear') {
+                        renderFullYearYccdMatrix();
+                    }
+
+                    showToast(`🎉 Đã tải và liên kết thành công PPCT "${file.name}" vào Trình Tạo Đề!`, 'success');
+                } catch (err) {
+                    console.error(err);
+                    showToast('Lỗi khi phân tích file JSON PPCT: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+            event.target.value = '';
+        }
+
+        function exportCurrentPpctJson() {
+            const data = appDB.ppctData || DEFAULT_PPCT_DATA;
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `thaykhaiedu_ppct_yccd_chuan_2018_${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            showToast('Đã tải xuống file dữ liệu PPCT!', 'info');
+        }
+
+        function resetToDefaultPpct() {
+            if (confirm('Khôi phục lại dữ liệu Phân phối chương trình chuẩn Kết nối tri thức (35 tuần)?')) {
+                appDB.ppctData = JSON.parse(JSON.stringify(DEFAULT_PPCT_DATA));
+                delete appDB.ppctSource;
+                syncPpctYccdToObjectives();
+                saveDB();
+                updateWizardPpctStatusDisplay();
+                onWizardSubjectOrPeriodChange();
+                if (activeMatrixSubView === 'fullyear') {
+                    renderFullYearYccdMatrix();
+                }
+                showToast('Đã khôi phục Phân phối chương trình chuẩn KNTT 2018!', 'success');
+            }
+        }
+
+        // =========================================================================
+        // 2. KHO MA TRẬN & TẢI FILE MA TRẬN LÊN ĐỂ TẠO ĐỀ
+        // =========================================================================
+
+        function getMatrixBank() {
+            if (!Array.isArray(appDB.matrixBank) || appDB.matrixBank.length === 0) {
+                appDB.matrixBank = JSON.parse(JSON.stringify(DEFAULT_MATRIX_BANK));
+            }
+            return appDB.matrixBank;
+        }
+
+        function handleMatrixFileUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const raw = e.target.result;
+                    const fileName = file.name.toLowerCase();
+
+                    if (fileName.endsWith('.json')) {
+                        const parsed = JSON.parse(raw);
+                        const bank = getMatrixBank();
+
+                        if (Array.isArray(parsed)) {
+                            parsed.forEach(m => {
+                                if (!m.id) m.id = `MTX_CUSTOM_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+                                m.isCustom = true;
+                                bank.push(m);
+                            });
+                            showToast(`Đã nạp ${parsed.length} ma trận vào kho!`, 'success');
+                        } else if (parsed && (parsed.slots || parsed.title)) {
+                            if (!parsed.id) parsed.id = `MTX_CUSTOM_${Date.now()}`;
+                            parsed.isCustom = true;
+                            bank.push(parsed);
+                            showToast(`Đã nạp ma trận "${parsed.title || 'Mới'}" vào kho!`, 'success');
+                        } else {
+                            showToast('File JSON không chứa cấu trúc ma trận hợp lệ!', 'error');
+                            return;
+                        }
+                    } else if (fileName.endsWith('.csv') || fileName.endsWith('.txt')) {
+                        // Parse simple CSV rows: Câu,Hình thức,Mức độ,Điểm,YCCĐ
+                        const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        const slots = [];
+                        let qIdx = 1;
+
+                        lines.forEach((line, idx) => {
+                            if (idx === 0 && (line.includes('Câu') || line.includes('cau'))) return; // Header row
+                            const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                            if (cols.length >= 4) {
+                                const qType = (cols[1] && (cols[1].toLowerCase().includes('tn') || cols[1].toLowerCase().includes('trắc nghiệm'))) ? 'mcq_single' : 'essay';
+                                const level = (cols[2] && cols[2].toUpperCase().includes('3')) ? 'M3' : (cols[2] && cols[2].toUpperCase().includes('2')) ? 'M2' : 'M1';
+                                const pts = parseFloat(cols[3]) || 1.0;
+                                const yccd = cols[4] || cols[0] || 'YCCĐ theo ma trận nhà trường';
+
+                                slots.push({
+                                    questionNumber: qIdx++,
+                                    type: qType,
+                                    level: level,
+                                    points: pts,
+                                    strand: 'Chuyên môn',
+                                    yccd: yccd,
+                                    lessonTitle: yccd
+                                });
+                            }
+                        });
+
+                        if (slots.length > 0) {
+                            const newMtx = {
+                                id: `MTX_CSV_${Date.now()}`,
+                                title: file.name.replace(/\.[^/.]+$/, ''),
+                                subject: 'MATH',
+                                subjectName: 'Toán',
+                                grade: 4,
+                                period: 'mid_term_1',
+                                periodLabel: 'Ma trận tải lên từ CSV',
+                                bookSeries: 'Tổ Chuyên Môn Nhà Trường',
+                                timeMinutes: 40,
+                                description: `Ma trận gồm ${slots.length} câu tải lên từ file ${file.name}.`,
+                                isCustom: true,
+                                summary: {
+                                    totalQuestions: slots.length,
+                                    totalPoints: slots.reduce((s, c) => s + (c.points || 0), 0),
+                                    tnCount: slots.filter(s => s.type === 'mcq_single').length,
+                                    tlCount: slots.filter(s => s.type !== 'mcq_single').length
+                                },
+                                slots: slots
+                            };
+                            getMatrixBank().push(newMtx);
+                            showToast(`Đã bóc tách thành công ${slots.length} câu từ file CSV vào kho!`, 'success');
+                        } else {
+                            showToast('Không trích xuất được dòng câu hỏi nào từ file CSV!', 'warning');
+                            return;
+                        }
+                    }
+
+                    saveDB();
+                    renderWizardMatrixList();
+                    renderMatrixBankTab();
+                } catch (err) {
+                    console.error(err);
+                    showToast('Lỗi khi đọc file ma trận: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+            event.target.value = '';
+        }
+
+        function filterWizardMatrixBank(subject) {
+            activeWizardMatrixFilter = subject;
+            ['ALL', 'MATH', 'VIETNAMESE', 'SCIENCE', 'HIST_GEO'].forEach(sub => {
+                const btn = document.getElementById(`wzMtxFilter_${sub}`);
+                if (btn) {
+                    if (sub === subject) {
+                        btn.className = 'px-2.5 py-1 rounded-lg font-bold bg-purple-700 text-white cursor-pointer shadow-2xs';
+                    } else {
+                        btn.className = 'px-2.5 py-1 rounded-lg font-bold bg-white text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer';
+                    }
+                }
+            });
+            renderWizardMatrixList();
+        }
+
+        function filterTabMatrixBank(subject) {
+            activeTabMatrixFilter = subject;
+            ['ALL', 'MATH', 'VIETNAMESE', 'SCIENCE', 'HIST_GEO'].forEach(sub => {
+                const btn = document.getElementById(`tabMtxFilter_${sub}`);
+                if (btn) {
+                    if (sub === subject) {
+                        btn.className = 'px-3 py-1.5 rounded-xl font-bold bg-purple-700 text-white cursor-pointer shadow-2xs';
+                    } else {
+                        btn.className = 'px-3 py-1.5 rounded-xl font-bold bg-slate-100 text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer';
+                    }
+                }
+            });
+            renderMatrixBankTab();
+        }
+
+        function renderWizardMatrixList() {
+            const container = document.getElementById('wzMatrixOptionsList');
+            const countBadge = document.getElementById('wzMatrixCountBadge');
+            if (!container) return;
+
+            const bank = getMatrixBank();
+            const filtered = bank.filter(m => {
+                if (activeWizardMatrixFilter === 'ALL') return true;
+                return m.subject === activeWizardMatrixFilter;
+            });
+
+            if (countBadge) countBadge.textContent = `${filtered.length} / ${bank.length} ma trận`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+                        <i class="fa-solid fa-table-cells text-3xl mb-2 text-slate-300"></i>
+                        <p class="font-bold text-xs text-slate-600">Chưa có ma trận nào cho môn này trong kho</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Bấm nút "Tải File Ma Trận Lên Kho" ở trên để bổ sung ngay</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(m => {
+                const isMath = m.subject === 'MATH';
+                const isViet = m.subject === 'VIETNAMESE';
+                const badgeColor = isMath ? 'bg-blue-100 text-blue-800 border-blue-200' : isViet ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                const icon = isMath ? 'fa-calculator' : isViet ? 'fa-book' : 'fa-flask';
+
+                const totalPts = m.summary?.totalPoints || 10.0;
+                const tnCnt = m.summary?.tnCount != null ? m.summary.tnCount : (m.slots || []).filter(s => s.type === 'mcq_single').length;
+                const tlCnt = m.summary?.tlCount != null ? m.summary.tlCount : (m.slots || []).length - tnCnt;
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 hover:border-purple-300 p-4 space-y-3 shadow-2xs hover:shadow-md transition">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg ${badgeColor} flex items-center justify-center text-xs font-bold shrink-0">
+                                    <i class="fa-solid ${icon}"></i>
+                                </span>
+                                <div>
+                                    <h5 class="font-black text-xs text-slate-900 line-clamp-1">${m.title}</h5>
+                                    <span class="text-[10px] text-slate-500 font-medium">${m.periodLabel || 'Định kì'} • ${m.timeMinutes || 40} phút</span>
+                                </div>
+                            </div>
+                            ${m.isCustom ? '<span class="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded border border-amber-200">Tải lên</span>' : '<span class="text-[9px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded border border-blue-200">Chuẩn BGD</span>'}
+                        </div>
+
+                        <p class="text-[11px] text-slate-600 line-clamp-2">${m.description || 'Ma trận chuẩn Thông tư 27'}</p>
+
+                        <!-- Specs tags -->
+                        <div class="flex flex-wrap items-center gap-1.5 text-[10px]">
+                            <span class="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-md border border-slate-200">
+                                ${(m.slots || []).length} câu (${totalPts.toFixed(1)}đ)
+                            </span>
+                            <span class="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-md border border-blue-200">
+                                ${tnCnt} Trắc nghiệm
+                            </span>
+                            <span class="bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded-md border border-purple-200">
+                                ${tlCnt} Tự luận
+                            </span>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                            <button type="button" onclick="openMatrixQuickPreview('${m.id}')" class="text-[11px] font-bold text-slate-600 hover:text-purple-700 cursor-pointer flex items-center gap-1 transition">
+                                <i class="fa-solid fa-eye text-purple-500"></i> Xem đặc tả
+                            </button>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="loadMatrixIntoWizardSlots('${m.id}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer transition" title="Nạp vào bảng thiết lập câu hỏi của Wizard để chỉnh sửa">
+                                    <i class="fa-solid fa-pen-to-square mr-1"></i>Tùy biến
+                                </button>
+                                <button type="button" onclick="createExamFromBankMatrix('${m.id}', true)" class="px-3 py-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-black text-[11px] shadow-xs cursor-pointer flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                                    <span>Tạo Đề Ngay</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderMatrixBankTab() {
+            const container = document.getElementById('mtxBankGridContainer');
+            const countBadge = document.getElementById('tabMatrixBankCountBadge');
+            const navBadge = document.getElementById('mtxBankCountBadge');
+            if (!container) return;
+
+            const bank = getMatrixBank();
+            const filtered = bank.filter(m => {
+                if (activeTabMatrixFilter === 'ALL') return true;
+                return m.subject === activeTabMatrixFilter;
+            });
+
+            if (countBadge) countBadge.textContent = `${filtered.length} / ${bank.length} ma trận`;
+            if (navBadge) navBadge.textContent = `${bank.length} Ma trận`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-10 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+                        <i class="fa-solid fa-boxes-stacked text-3xl mb-2 text-slate-300"></i>
+                        <p class="font-bold text-sm text-slate-600">Không tìm thấy ma trận nào trong kho</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(m => {
+                const totalPts = m.summary?.totalPoints || 10.0;
+                const tnCnt = m.summary?.tnCount != null ? m.summary.tnCount : (m.slots || []).filter(s => s.type === 'mcq_single').length;
+                const tlCnt = m.summary?.tlCount != null ? m.summary.tlCount : (m.slots || []).length - tnCnt;
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 hover:border-purple-300 p-5 space-y-3.5 shadow-2xs hover:shadow-md transition">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${m.subject === 'MATH' ? 'bg-blue-100 text-blue-800' : m.subject === 'VIETNAMESE' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}">
+                                        ${m.subjectName || m.subject}
+                                    </span>
+                                    <span class="text-xs text-slate-500 font-bold">${m.periodLabel || 'Định kì'}</span>
+                                    ${m.isCustom ? '<span class="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded border border-amber-200">Tự tạo</span>' : '<span class="text-[9px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded border border-blue-200">Bộ GD&ĐT</span>'}
+                                </div>
+                                <h4 class="font-extrabold text-sm text-slate-900 mt-1">${m.title}</h4>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-base font-black text-purple-700">${totalPts.toFixed(1)}đ</span>
+                                <div class="text-[10px] text-slate-400">${(m.slots || []).length} câu • ${m.timeMinutes || 40}p</div>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-600">${m.description || 'Ma trận định kì chuẩn Thông tư 27'}</p>
+
+                        <!-- Breakdown Pills -->
+                        <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <div>
+                                <span class="text-slate-400 block text-[10px]">Trắc nghiệm</span>
+                                <strong class="text-blue-900">${tnCnt} câu</strong>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px]">Tự luận</span>
+                                <strong class="text-purple-900">${tlCnt} câu</strong>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px]">Tỉ lệ TN/TL</span>
+                                <strong class="text-emerald-900">${Math.round(tnCnt * 10 / ((m.slots || []).length || 1))}:${Math.round(tlCnt * 10 / ((m.slots || []).length || 1))}</strong>
+                            </div>
+                        </div>
+
+                        <!-- Action Toolbar -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="openMatrixQuickPreview('${m.id}')" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition">
+                                    <i class="fa-solid fa-eye text-purple-600 mr-1"></i>Chi tiết
+                                </button>
+                                <button type="button" onclick="exportMatrixToJson('${m.id}')" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs cursor-pointer transition" title="Xuất file JSON ma trận">
+                                    <i class="fa-solid fa-download"></i>
+                                </button>
+                                ${m.isCustom ? `<button type="button" onclick="deleteCustomMatrix('${m.id}')" class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs cursor-pointer transition" title="Xóa ma trận này"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            </div>
+
+                            <button type="button" onclick="createExamFromBankMatrix('${m.id}', true)" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                                <span>Tạo Đề Từ Ma Trận Này</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function createExamFromBankMatrix(matrixId, autoGenerate = true) {
+            const bank = getMatrixBank();
+            const m = bank.find(x => x.id === matrixId);
+            if (!m) {
+                showToast('Không tìm thấy ma trận trong kho!', 'error');
+                return;
+            }
+
+            // Sync subject and grade
+            if (m.subject && m.subject !== appDB.activeSubject) {
+                if (typeof oneTouchSwitchSubject === 'function') {
+                    oneTouchSwitchSubject(m.subject);
+                } else {
+                    appDB.activeSubject = m.subject;
+                }
+            }
+
+            // Populate appDB.matrixSlots
+            appDB.currentMatrix = JSON.parse(JSON.stringify(m));
+            appDB.matrixSlots = (m.slots || []).map(s => ({
+                id: `slot_${s.questionNumber}_${Date.now()}`,
+                questionNumber: s.questionNumber,
+                objectiveId: s.objectiveId || `YCCD_${m.subject}_00${s.questionNumber}`,
+                topic: s.strand || 'Nội dung kiến thức',
+                yccd: s.yccd || s.lessonTitle || '',
+                cognitiveLevel: s.level || 'M1',
+                questionType: s.type || 'mcq_single',
+                pointValue: Number(s.points) || 1.0,
+                selectedFromPpct: true
+            }));
+
+            // Sync examMeta
+            if (!appDB.examMeta) appDB.examMeta = {};
+            appDB.examMeta.title = m.title;
+            appDB.examMeta.timeMinutes = m.timeMinutes || 40;
+            appDB.examMeta.totalPoints = m.summary?.totalPoints || 10.0;
+            appDB.examMeta.period = m.period || 'mid_term_1';
+
+            if (autoGenerate && typeof generateExamQuestionsFromMatrix === 'function') {
+                generateExamQuestionsFromMatrix(false);
+            }
+
+            saveDB();
+            renderAll();
+            closeCreateExamWizard();
+            closeMatrixQuickPreview();
+
+            if (typeof switchTab === 'function') {
+                switchTab('tab-reviewer');
+            }
+
+            showToast(`🚀 Đã khởi tạo đề kiểm tra thành công từ ma trận: "${m.title}"!`, 'success');
+        }
+
+        function loadMatrixIntoWizardSlots(matrixId) {
+            const bank = getMatrixBank();
+            const m = bank.find(x => x.id === matrixId);
+            if (!m) return;
+
+            // Update Wizard subject and period
+            wizardState.subject = m.subject || 'MATH';
+            wizardState.period = m.period || 'mid_term_1';
+            const subSel = document.getElementById('wzSubjectSelect');
+            const perSel = document.getElementById('wzPeriodSelect');
+            const titleInput = document.getElementById('wzExamTitleInput');
+            if (subSel) subSel.value = wizardState.subject;
+            if (perSel) perSel.value = wizardState.period;
+            if (titleInput) titleInput.value = m.title;
+
+            // Load slots
+            wizardState.slots = (m.slots || []).map((s, idx) => ({
+                qNum: s.questionNumber || (idx + 1),
+                qType: s.type || 'mcq_single',
+                level: s.level || 'M1',
+                points: Number(s.points) || 1.0,
+                lessonTitle: s.lessonTitle || s.yccd || 'Nội dung kiến thức'
+            }));
+
+            // Switch Wizard to PPCT/Slots mode
+            setWizardCreationMode('ppct');
+            renderWizardSlotsTable();
+            if (typeof updateWizardMetrics === 'function') updateWizardMetrics();
+
+            showToast(`Đã nạp ${wizardState.slots.length} câu từ ma trận "${m.title}" vào bảng thiết lập!`, 'info');
+        }
+
+        function openMatrixQuickPreview(matrixId) {
+            const bank = getMatrixBank();
+            const m = bank.find(x => x.id === matrixId);
+            if (!m) return;
+
+            const modal = document.getElementById('modalMatrixQuickPreview');
+            const titleEl = document.getElementById('prevMtxModalTitle');
+            const metaEl = document.getElementById('prevMtxModalMeta');
+            const contentEl = document.getElementById('prevMtxModalContent');
+            const useBtn = document.getElementById('prevMtxModalUseBtn');
+            const custBtn = document.getElementById('prevMtxModalCustomizeBtn');
+
+            if (titleEl) titleEl.textContent = m.title;
+            if (metaEl) metaEl.textContent = `${m.subjectName || m.subject} • ${m.periodLabel || 'Định kì'} • ${(m.slots || []).length} câu (${(m.summary?.totalPoints || 10).toFixed(1)}đ)`;
+
+            if (contentEl) {
+                contentEl.innerHTML = `
+                    <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                        <div class="font-bold text-slate-800 text-xs">Mô tả ma trận:</div>
+                        <p class="text-xs text-slate-600">${m.description || 'Ma trận chuẩn theo Thông tư 27'}</p>
+                    </div>
+
+                    <!-- 2D Table Spec -->
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <table class="w-full text-xs text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 font-bold text-slate-700 border-b border-slate-200">
+                                    <th class="p-2 w-12 text-center">Câu</th>
+                                    <th class="p-2 w-28">Hình thức</th>
+                                    <th class="p-2 w-20 text-center">Mức độ</th>
+                                    <th class="p-2 w-20 text-center">Điểm</th>
+                                    <th class="p-2">Mạch kiến thức & Yêu cầu cần đạt (YCCĐ)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200 bg-white">
+                                ${(m.slots || []).map(s => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-2 text-center font-bold text-blue-900">${s.questionNumber}</td>
+                                        <td class="p-2">
+                                            <span class="px-2 py-0.5 rounded font-bold text-[10px] ${s.type === 'mcq_single' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}">
+                                                ${s.type === 'mcq_single' ? 'Trắc nghiệm' : 'Tự luận'}
+                                            </span>
+                                        </td>
+                                        <td class="p-2 text-center">
+                                            <span class="px-2 py-0.5 rounded font-extrabold text-[10px] ${s.level === 'M1' ? 'bg-emerald-100 text-emerald-800' : s.level === 'M2' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}">
+                                                ${s.level}
+                                            </span>
+                                        </td>
+                                        <td class="p-2 text-center font-bold text-emerald-700">${Number(s.points).toFixed(1)}đ</td>
+                                        <td class="p-2">
+                                            <div class="font-bold text-slate-800">${s.strand || ''}</div>
+                                            <div class="text-[11px] text-slate-600">${s.yccd || s.lessonTitle || ''}</div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            if (useBtn) {
+                useBtn.onclick = function() {
+                    createExamFromBankMatrix(m.id, true);
+                };
+            }
+            if (custBtn) {
+                custBtn.onclick = function() {
+                    closeMatrixQuickPreview();
+                    openCreateExamWizard();
+                    loadMatrixIntoWizardSlots(m.id);
+                };
+            }
+
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeMatrixQuickPreview() {
+            const modal = document.getElementById('modalMatrixQuickPreview');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function exportMatrixToJson(matrixId) {
+            const bank = getMatrixBank();
+            const m = bank.find(x => x.id === matrixId);
+            if (!m) return;
+
+            const jsonStr = JSON.stringify(m, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Ma_tran_${m.subject}_${m.period}_${new Date().toISOString().slice(0, 10)}.json`;
+            link.click();
+            showToast('Đã xuất file ma trận JSON!', 'info');
+        }
+
+        function exportMatrixTemplateJson() {
+            const template = {
+                title: "Ma trận Đề Kiểm Tra Định Kì [Tên Môn] [Khối Lớp]",
+                subject: "MATH",
+                grade: 4,
+                period: "mid_term_1",
+                periodLabel: "Giữa Học kì I",
+                timeMinutes: 40,
+                description: "Mô tả ma trận theo quy định chuyên môn của tổ chuyên môn nhà trường.",
+                slots: [
+                    { questionNumber: 1, type: "mcq_single", level: "M1", points: 1.0, strand: "Số & phép tính", yccd: "Yêu cầu cần đạt 1", lessonTitle: "Bài 1" },
+                    { questionNumber: 2, type: "mcq_single", level: "M2", points: 1.0, strand: "Số & phép tính", yccd: "Yêu cầu cần đạt 2", lessonTitle: "Bài 2" },
+                    { questionNumber: 3, type: "essay", level: "M3", points: 2.0, strand: "Hình học", yccd: "Yêu cầu cần đạt 3", lessonTitle: "Bài 3" }
+                ]
+            };
+            const jsonStr = JSON.stringify(template, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "mau_ma_tran_de_kiem_tra_chuan_tt27.json";
+            link.click();
+            showToast('Đã tải về file mẫu ma trận JSON!', 'success');
+        }
+
+        function deleteCustomMatrix(matrixId) {
+            if (confirm('Bạn có chắc chắn muốn xóa ma trận tùy chỉnh này khỏi kho?')) {
+                appDB.matrixBank = getMatrixBank().filter(m => m.id !== matrixId);
+                saveDB();
+                renderWizardMatrixList();
+                renderMatrixBankTab();
+                showToast('Đã xóa ma trận khỏi kho!', 'info');
+            }
+        }
+
+        // =========================================================================
+        // 3. MA TRẬN CHUNG CẢ NĂM KÈM CÁC YÊU CẦU CẦN ĐẠT (35 TUẦN)
+        // =========================================================================
+
+        function switchMatrixSubView(subViewName) {
+            activeMatrixSubView = subViewName;
+
+            const viewCurrent = document.getElementById('subviewMtxCurrent');
+            const viewFullYear = document.getElementById('subviewMtxFullYear');
+            const viewBank = document.getElementById('subviewMtxBank');
+
+            const btnCurrent = document.getElementById('btnMtxSubCurrent');
+            const btnFullYear = document.getElementById('btnMtxSubFullYear');
+            const btnBank = document.getElementById('btnMtxSubBank');
+
+            // Reset tabs
+            [viewCurrent, viewFullYear, viewBank].forEach(el => {
+                if (el) el.classList.add('hidden');
+            });
+
+            [btnCurrent, btnFullYear, btnBank].forEach(b => {
+                if (b) {
+                    b.className = 'px-3.5 py-2 rounded-xl text-xs font-bold bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60 cursor-pointer flex items-center gap-2 transition';
+                }
+            });
+
+            if (subViewName === 'current') {
+                if (viewCurrent) viewCurrent.classList.remove('hidden');
+                if (btnCurrent) btnCurrent.className = 'px-3.5 py-2 rounded-xl text-xs font-black bg-white text-blue-900 shadow-xs cursor-pointer flex items-center gap-2 transition';
+                if (typeof renderMatrixView === 'function') renderMatrixView();
+            } else if (subViewName === 'fullyear') {
+                if (viewFullYear) viewFullYear.classList.remove('hidden');
+                if (btnFullYear) btnFullYear.className = 'px-3.5 py-2 rounded-xl text-xs font-black bg-white text-emerald-900 shadow-xs cursor-pointer flex items-center gap-2 transition';
+                renderFullYearYccdMatrix();
+            } else if (subViewName === 'bank') {
+                if (viewBank) viewBank.classList.remove('hidden');
+                if (btnBank) btnBank.className = 'px-3.5 py-2 rounded-xl text-xs font-black bg-white text-purple-900 shadow-xs cursor-pointer flex items-center gap-2 transition';
+                renderMatrixBankTab();
+            }
+        }
+
+        function renderFullYearYccdMatrix() {
+            const tbody = document.getElementById('fullYearYccdTableBody');
+            const subSelect = document.getElementById('fyMtxSubjectSelect');
+            if (!tbody) return;
+
+            const subject = (subSelect && subSelect.value) ? subSelect.value : (appDB.activeSubject || 'MATH');
+            
+            // Collect objectives for this subject
+            let objs = (appDB.objectives || []).filter(o => o.subject === subject);
+            if (objs.length === 0) {
+                // Try to sync
+                syncPpctYccdToObjectives();
+                objs = (appDB.objectives || []).filter(o => o.subject === subject);
+            }
+
+            // Stats
+            const total = objs.length;
+            const m1Count = objs.filter(o => (o.levels && o.levels.includes('M1')) || !o.levels).length;
+            const m2Count = objs.filter(o => o.levels && o.levels.includes('M2')).length;
+            const m3Count = objs.filter(o => o.levels && o.levels.includes('M3')).length;
+
+            const statTotal = document.getElementById('fyStatTotalYccd');
+            const statM1 = document.getElementById('fyStatM1');
+            const statM2 = document.getElementById('fyStatM2');
+            const statM3 = document.getElementById('fyStatM3');
+
+            if (statTotal) statTotal.textContent = `${total} YCCĐ`;
+            if (statM1) statM1.textContent = `${m1Count} YCCĐ (${Math.round(m1Count * 100 / (total || 1))}%)`;
+            if (statM2) statM2.textContent = `${m2Count} YCCĐ (${Math.round(m2Count * 100 / (total || 1))}%)`;
+            if (statM3) statM3.textContent = `${m3Count} YCCĐ (${Math.round(m3Count * 100 / (total || 1))}%)`;
+
+            if (objs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-8 text-slate-400">
+                            Chưa có dữ liệu YCCĐ môn ${subject}. Bấm "Đồng Bộ PPCT" để nạp từ chương trình.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = objs.map((obj, idx) => {
+                const week = obj.week || (idx % 35) + 1;
+                const isMid1 = week <= 9;
+                const isEnd1 = week <= 18;
+                const isMid2 = week >= 19 && week <= 27;
+                const isEndYear = true;
+
+                const levelText = (obj.levels && obj.levels.length) ? obj.levels.join(', ') : 'M1, M2';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="p-3 text-center font-bold text-slate-600">${idx + 1}</td>
+                        <td class="p-3 font-bold text-blue-950">${obj.topic || 'Mạch kiến thức'}</td>
+                        <td class="p-3 text-slate-700">
+                            <div class="font-bold text-slate-800">${obj.lessonTitle || ''}</div>
+                            <div class="text-[11px] text-slate-600 mt-0.5">${obj.description || ''}</div>
+                        </td>
+                        <td class="p-3 text-center font-extrabold text-indigo-700">T.${week}</td>
+                        <td class="p-3 text-center">
+                            <span class="px-2 py-0.5 rounded-full font-extrabold text-[10px] bg-slate-100 text-slate-800 border border-slate-200">
+                                ${levelText}
+                            </span>
+                        </td>
+                        <td class="p-2.5 text-center border-l border-slate-100 bg-blue-50/20">
+                            ${isMid1 ? '<span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md inline-block">✓ Đánh giá (1-2đ)</span>' : '<span class="text-slate-300">—</span>'}
+                        </td>
+                        <td class="p-2.5 text-center border-l border-slate-100 bg-emerald-50/20">
+                            ${isEnd1 ? '<span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md inline-block">✓ Đánh giá (1-2đ)</span>' : '<span class="text-slate-300">—</span>'}
+                        </td>
+                        <td class="p-2.5 text-center border-l border-slate-100 bg-amber-50/20">
+                            ${isMid2 ? '<span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md inline-block">✓ Đánh giá (1-2đ)</span>' : '<span class="text-slate-300">—</span>'}
+                        </td>
+                        <td class="p-2.5 text-center border-l border-slate-100 bg-purple-50/20">
+                            ${isEndYear ? '<span class="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-md inline-block">✓ Đánh giá (1-2đ)</span>' : '<span class="text-slate-300">—</span>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openWizardWithPreset(subject, period) {
+            openCreateExamWizard();
+            const subSel = document.getElementById('wzSubjectSelect');
+            const perSel = document.getElementById('wzPeriodSelect');
+            if (subSel) subSel.value = subject;
+            if (perSel) perSel.value = period;
+
+            onWizardSubjectOrPeriodChange();
+            showToast(`Đã thiết lập nhanh tạo đề cho giai đoạn: ${period}`, 'info');
+        }
+
+        function exportFullYearMatrixDoc() {
+            const subSelect = document.getElementById('fyMtxSubjectSelect');
+            const subject = (subSelect && subSelect.value) ? subSelect.value : (appDB.activeSubject || 'MATH');
+            const subjectNames = {
+                'MATH': 'TOÁN',
+                'VIETNAMESE': 'TIẾNG VIỆT',
+                'SCIENCE': 'KHOA HỌC',
+                'HIST_GEO': 'LỊCH SỬ VÀ ĐỊA LÍ'
+            };
+            const sName = subjectNames[subject] || subject;
+            const objs = (appDB.objectives || []).filter(o => o.subject === subject);
+
+            const profile = appDB.teacherProfile || {};
+            const schoolName = (profile.schoolName || 'TRƯỜNG TIỂU HỌC ...').toUpperCase();
+            const teacherName = profile.fullName || 'Võ Việt Khái';
+
+            const rowsHtml = objs.map((o, idx) => {
+                const week = o.week || (idx % 35) + 1;
+                const isMid1 = week <= 9 ? 'X' : '';
+                const isEnd1 = week <= 18 ? 'X' : '';
+                const isMid2 = (week >= 19 && week <= 27) ? 'X' : '';
+                const isEndYear = 'X';
+                const level = (o.levels && o.levels.length) ? o.levels.join(', ') : 'M1, M2';
+
+                return `
+                    <tr>
+                        <td style="text-align:center; padding:6px; border:1px solid #000;">${idx + 1}</td>
+                        <td style="padding:6px; border:1px solid #000; font-weight:bold;">${o.topic || ''}</td>
+                        <td style="padding:6px; border:1px solid #000;">
+                            <strong>${o.lessonTitle || ''}</strong><br>
+                            <span style="font-size:11px;">${o.description || ''}</span>
+                        </td>
+                        <td style="text-align:center; padding:6px; border:1px solid #000;">Tuần ${week}</td>
+                        <td style="text-align:center; padding:6px; border:1px solid #000;">${level}</td>
+                        <td style="text-align:center; font-weight:bold; padding:6px; border:1px solid #000;">${isMid1}</td>
+                        <td style="text-align:center; font-weight:bold; padding:6px; border:1px solid #000;">${isEnd1}</td>
+                        <td style="text-align:center; font-weight:bold; padding:6px; border:1px solid #000;">${isMid2}</td>
+                        <td style="text-align:center; font-weight:bold; padding:6px; border:1px solid #000;">${isEndYear}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const docContent = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <title>Ma Trận Chung Cả Năm Kèm YCCĐ — Môn ${sName} 4</title>
+                    <style>
+                        @page { size: A4 landscape; margin: 1.5cm; }
+                        body { font-family: "Times New Roman", Times, serif; font-size: 13pt; line-height: 1.3; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                        th { background-color: #f2f2f2; padding: 6px; border: 1px solid #000; text-align: center; font-weight: bold; }
+                        td { border: 1px solid #000; }
+                    </style>
+                </head>
+                <body>
+                    <table style="width:100%; border:none; margin-bottom:15px;">
+                        <tr style="border:none;">
+                            <td style="width:45%; text-align:center; border:none; vertical-align:top;">
+                                <strong>PHÒNG GIÁO DỤC VÀ ĐÀO TẠO</strong><br>
+                                <strong>${schoolName}</strong><br>
+                                <span style="font-size:11pt;">TỔ CHUYÊN MÔN KHỐI 4</span><br>
+                                --------------------
+                            </td>
+                            <td style="width:55%; text-align:center; border:none; vertical-align:top;">
+                                <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
+                                <strong>Độc lập - Tự do - Hạnh phúc</strong><br>
+                                --------------------
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div style="text-align:center; margin-bottom:20px;">
+                        <h2 style="margin:0; font-size:16pt; text-transform:uppercase;">BẢNG MA TRẬN TỔNG THỂ CẢ NĂM HỌC KÈM YÊU CẦU CẦN ĐẠT</h2>
+                        <h3 style="margin:5px 0; font-size:14pt;">MÔN: ${sName} — LỚP 4 (35 TUẦN HỌC)</h3>
+                        <p style="margin:0; font-style:italic; font-size:11pt;">(Căn cứ Thông tư 27/2020/TT-BGDĐT và Chương trình GDPT 2018 — Bộ sách Kết nối tri thức)</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="width:35px;">TT</th>
+                                <th rowspan="2" style="width:140px;">Mạch kiến thức / Chủ đề</th>
+                                <th rowspan="2">Yêu cầu cần đạt (YCCĐ chuẩn GDPT 2018)</th>
+                                <th rowspan="2" style="width:65px;">Tuần dạy</th>
+                                <th rowspan="2" style="width:65px;">Mức độ</th>
+                                <th colspan="4">Phân bổ 4 đợt kiểm tra định kì</th>
+                            </tr>
+                            <tr>
+                                <th style="width:60px;">Giữa HK1 (T9)</th>
+                                <th style="width:60px;">Cuối HK1 (T18)</th>
+                                <th style="width:60px;">Giữa HK2 (T27)</th>
+                                <th style="width:60px;">Cuối Năm (T35)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+
+                    <table style="width:100%; border:none; margin-top:30px;">
+                        <tr style="border:none;">
+                            <td style="width:33%; text-align:center; border:none;">
+                                <strong>BAN GIÁM HIỆU DUYỆT</strong><br><br><br><br>
+                            </td>
+                            <td style="width:33%; text-align:center; border:none;">
+                                <strong>TỔ TRƯỞNG CHUYÊN MÔN</strong><br><br><br><br>
+                            </td>
+                            <td style="width:34%; text-align:center; border:none;">
+                                <em>Ngày ..... tháng ..... năm 2026</em><br>
+                                <strong>GIÁO VIÊN LẬP BẢNG</strong><br><br><br><br>
+                                <strong>${teacherName}</strong>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff', docContent], { type: 'application/msword;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Ma_tran_ca_nam_kem_YCCD_${subject}_Lop4.doc`;
+            link.click();
+            showToast(`Đã xuất bảng ma trận cả năm môn ${sName} ra file Word (.doc)!`, 'success');
+        }
+
+        function exportFullYearMatrixCsv() {
+            const subSelect = document.getElementById('fyMtxSubjectSelect');
+            const subject = (subSelect && subSelect.value) ? subSelect.value : (appDB.activeSubject || 'MATH');
+            const objs = (appDB.objectives || []).filter(o => o.subject === subject);
+
+            let csv = '\uFEFFTT,Mạch kiến thức,Bài học,Yêu cầu cần đạt (YCCĐ),Tuần dạy,Mức độ,Giữa HK1 (T9),Cuối HK1 (T18),Giữa HK2 (T27),Cuối Năm (T35)\n';
+
+            objs.forEach((o, idx) => {
+                const week = o.week || (idx % 35) + 1;
+                const isMid1 = week <= 9 ? 'X' : '';
+                const isEnd1 = week <= 18 ? 'X' : '';
+                const isMid2 = (week >= 19 && week <= 27) ? 'X' : '';
+                const isEndYear = 'X';
+                const level = (o.levels && o.levels.length) ? o.levels.join(' - ') : 'M1 - M2';
+
+                const topic = `"${(o.topic || '').replace(/"/g, '""')}"`;
+                const lesson = `"${(o.lessonTitle || '').replace(/"/g, '""')}"`;
+                const desc = `"${(o.description || '').replace(/"/g, '""')}"`;
+
+                csv += `${idx + 1},${topic},${lesson},${desc},${week},${level},${isMid1},${isEnd1},${isMid2},${isEndYear}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Ma_tran_ca_nam_kem_YCCD_${subject}_Lop4.csv`;
+            link.click();
+            showToast('Đã xuất ma trận cả năm ra file Excel (.csv)!', 'success');
+        }
+
+        function syncFullYearMatrixFromPpct() {
+            syncPpctYccdToObjectives();
+            saveDB();
+            renderFullYearYccdMatrix();
+            showToast('Đã đồng bộ lại toàn bộ YCCĐ từ PPCT Hub!', 'success');
+        }
+
+
+    </script>
 
     <!-- ======================================================================= -->
     <!-- MODAL 1: TRUNG TÂM TẠO ĐỀ KIỂM TRA MỚI (WIZARD TÍCH HỢP PPCT & MA TRẬN) -->
@@ -8301,6 +9735,51 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
 
                 <!-- SUB-PANEL A: TẠO TỪ PHÂN PHỐI CHƯƠNG TRÌNH (PPCT HUB) -->
                 <div id="wzPpctPanel" class="space-y-4">
+
+                    <!-- PPCT CONNECTION & UPLOAD BANNER (LIÊN KẾT TRỰC TIẾP VỚI TẠO ĐỀ) -->
+                    <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200/80 rounded-2xl p-4 space-y-3 shadow-xs">
+                        <div class="flex flex-wrap items-center justify-between gap-2.5">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+                                    <i class="fa-solid fa-link"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-black text-blue-950 uppercase tracking-wide">Phân Phối Chương Trình Đang Kết Nối:</span>
+                                        <span id="wzPpctStatusBadge" class="text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
+                                            <i class="fa-solid fa-circle-check text-emerald-600"></i> PPCT Chuẩn KNTT 2018 (35 Tuần / 175 Tiết)
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Mọi bài học và YCCĐ từ file PPCT sẽ tự động liên kết với từng câu hỏi trong đề kiểm tra.</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Upload & Export Buttons -->
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <input type="file" id="wzPpctFileInput" accept=".json" onchange="handleWizardPpctUpload(event)" class="hidden">
+                                <button type="button" onclick="document.getElementById('wzPpctFileInput').click()" class="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
+                                    <span>Tải File PPCT Khác (.json)</span>
+                                </button>
+                                <button type="button" onclick="exportCurrentPpctJson()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải về file PPCT JSON hiện tại để lưu hoặc chỉnh sửa">
+                                    <i class="fa-solid fa-download text-blue-600"></i>
+                                    <span>Tải File Mẫu</span>
+                                </button>
+                                <button type="button" onclick="resetToDefaultPpct()" class="px-2 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-slate-200 font-bold text-[11px] cursor-pointer transition" title="Khôi phục lại PPCT Chuẩn 35 tuần mặc định">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PPCT Live Summary Details -->
+                        <div class="text-[11px] text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1 bg-white/80 rounded-xl p-2.5 border border-blue-100">
+                            <span class="flex items-center gap-1"><i class="fa-solid fa-layer-group text-indigo-600"></i> <strong id="wzPpctLessonCount" class="text-indigo-900">22</strong> bài học theo môn</span>
+                            <span class="flex items-center gap-1"><i class="fa-solid fa-clock text-amber-600"></i> <strong id="wzPpctPeriodCount" class="text-amber-900">42</strong> tiết dạy</span>
+                            <span class="flex items-center gap-1"><i class="fa-solid fa-bullseye text-emerald-600"></i> <strong id="wzPpctYccdCount" class="text-emerald-900">27</strong> YCCĐ chuẩn GDPT 2018</span>
+                            <span class="text-blue-700 font-medium ml-auto flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Bài học tự động hiển thị trong dropdown từng câu</span>
+                        </div>
+                    </div>
+
                     
                     <!-- PPCT Lessons in stage banner -->
                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-2.5">
@@ -8373,11 +9852,54 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                 </div>
 
                 <!-- SUB-PANEL B: TẠO TỪ KHO MA TRẬN CHUẨN -->
+                <!-- SUB-PANEL B: TẠO TỪ KHO MA TRẬN CHUẨN & TẢI LÊN -->
                 <div id="wzMatrixPanel" class="space-y-4 hidden">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="wzMatrixOptionsList"></div>
-                    <div id="wzMatrixPreviewBox" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2"></div>
-                </div>
+                    
+                    <!-- Matrix Bank Toolbar in Wizard -->
+                    <div class="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-200 rounded-2xl p-3.5 space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2.5">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                    <i class="fa-solid fa-boxes-stacked"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-xs text-purple-950 uppercase tracking-wide">Kho Ma Trận Đề Kiểm Tra Chuẩn Thông Tư 27 & Tải Lên</h4>
+                                    <p class="text-[11px] text-slate-500">Chọn bất kì ma trận nào trong kho để tự động phân bổ câu hỏi hoặc tải file ma trận mới lên.</p>
+                                </div>
+                            </div>
 
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <input type="file" id="matrixFileInputWizard" accept=".json,.csv" onchange="handleMatrixFileUpload(event)" class="hidden">
+                                <button type="button" onclick="document.getElementById('matrixFileInputWizard').click()" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
+                                    <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>
+                                </button>
+                                <button type="button" onclick="exportMatrixTemplateJson()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải về file ma trận mẫu định dạng JSON">
+                                    <i class="fa-solid fa-download text-purple-600"></i>
+                                    <span>File Mẫu Ma Trận</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Subject Filters for Matrix Bank in Wizard -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-purple-100 pt-2 text-[11px]">
+                            <div class="flex flex-wrap items-center gap-1" id="wzMatrixFilterBtns">
+                                <button type="button" onclick="filterWizardMatrixBank('ALL')" id="wzMtxFilter_ALL" class="px-2.5 py-1 rounded-lg font-bold bg-purple-700 text-white cursor-pointer shadow-2xs">Tất Cả Môn</button>
+                                <button type="button" onclick="filterWizardMatrixBank('MATH')" id="wzMtxFilter_MATH" class="px-2.5 py-1 rounded-lg font-bold bg-white text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">📐 Toán</button>
+                                <button type="button" onclick="filterWizardMatrixBank('VIETNAMESE')" id="wzMtxFilter_VIETNAMESE" class="px-2.5 py-1 rounded-lg font-bold bg-white text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">📖 Tiếng Việt</button>
+                                <button type="button" onclick="filterWizardMatrixBank('SCIENCE')" id="wzMtxFilter_SCIENCE" class="px-2.5 py-1 rounded-lg font-bold bg-white text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">🔬 Khoa học</button>
+                                <button type="button" onclick="filterWizardMatrixBank('HIST_GEO')" id="wzMtxFilter_HIST_GEO" class="px-2.5 py-1 rounded-lg font-bold bg-white text-slate-700 hover:bg-purple-100 border border-slate-200 cursor-pointer">🌏 Lịch sử & ĐL</button>
+                            </div>
+                            <span id="wzMatrixCountBadge" class="text-purple-800 font-bold">8 ma trận trong kho</span>
+                        </div>
+                    </div>
+
+                    <!-- Grid of Matrix Cards in Wizard -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[46vh] overflow-y-auto custom-scroll pr-1" id="wzMatrixOptionsList"></div>
+                    
+                    <!-- Quick Matrix Preview Box -->
+                    <div id="wzMatrixPreviewBox" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2 hidden"></div>
+                </div>
             </div>
 
             <!-- Modal Footer -->
@@ -8483,6 +10005,46 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                     <i class="fa-solid fa-file-signature"></i>
                     <span>Sử Dụng & Chỉnh Sửa Đề Này</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ======================================================================= -->
+    <!-- MODAL 4: XEM CHI TIẾT & ĐẶC TẢ MA TRẬN (MATRIX QUICK PREVIEW)           -->
+    <!-- ======================================================================= -->
+    <div id="modalMatrixQuickPreview" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-4xl w-full my-6 p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200 max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between border-b pb-3 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-2xl bg-purple-700 text-white flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-table-cells-large"></i>
+                    </div>
+                    <div>
+                        <h3 id="prevMtxModalTitle" class="font-extrabold text-base text-slate-900">Chi Tiết Ma Trận Đề Kiểm Tra</h3>
+                        <p id="prevMtxModalMeta" class="text-xs text-slate-500"></p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeMatrixQuickPreview()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Scrollable Content of Matrix Modal -->
+            <div id="prevMtxModalContent" class="overflow-y-auto custom-scroll space-y-4 pr-1 flex-1 text-xs text-slate-700"></div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t shrink-0">
+                <button type="button" onclick="closeMatrixQuickPreview()" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer">Đóng</button>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="prevMtxModalCustomizeBtn" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs cursor-pointer border border-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen-to-square text-blue-600"></i>
+                        <span>Tùy Chỉnh Trong Trình Tạo Đề</span>
+                    </button>
+                    <button type="button" id="prevMtxModalUseBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                        <span>🚀 Nạp & Tạo Đề Ngay</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
