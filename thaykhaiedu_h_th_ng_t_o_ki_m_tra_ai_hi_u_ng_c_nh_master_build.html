@@ -359,19 +359,13 @@
                 </button>
             </div>
 
-            <!-- SYSTEM BACKUP / RESTORE -->
-            <div class="flex items-center space-x-1.5">
-                <button onclick="openCreateExamWizard()" class="text-xs bg-amber-400 hover:bg-amber-300 text-blue-950 px-3 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold shadow-md cursor-pointer" title="Khởi tạo đề kiểm tra mới">
+            <!-- HEADER ACTIONS -->
+            <div class="flex items-center space-x-2">
+                <button onclick="openCreateExamWizard()" class="text-xs bg-amber-400 hover:bg-amber-300 text-blue-950 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-black shadow-md cursor-pointer" title="Khởi tạo đề kiểm tra mới">
                     <i class="fa-solid fa-plus-circle text-sm"></i> <span>Tạo Đề Mới</span>
                 </button>
-                <button onclick="promptResetSeedData()" class="text-xs bg-blue-800 hover:bg-blue-700 px-2.5 py-2 rounded-xl transition flex items-center gap-1 border border-blue-600 cursor-pointer" title="Khôi phục dữ liệu mẫu chuẩn 6 môn Sách Kết nối tri thức">
-                    <i class="fa-solid fa-rotate"></i> <span class="hidden sm:inline">Mẫu KNTT</span>
-                </button>
-                <button onclick="document.getElementById('importJsonInput').click()" class="text-xs bg-indigo-700 hover:bg-indigo-600 px-2.5 py-2 rounded-xl transition flex items-center gap-1 border border-indigo-500 cursor-pointer" title="Nạp file JSON sao lưu">
-                    <i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Nhập JSON</span>
-                </button>
-                <button onclick="exportDatabaseJSON()" class="text-xs bg-emerald-600 hover:bg-emerald-500 px-2.5 py-2 rounded-xl transition flex items-center gap-1 font-semibold shadow-xs cursor-pointer" title="Tải file JSON sao lưu toàn hệ thống">
-                    <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Sao lưu JSON</span>
+                <button onclick="openExamBankModal()" class="text-xs bg-blue-900/80 hover:bg-blue-800 text-blue-100 hover:text-white border border-blue-700/80 px-3 py-2 rounded-xl transition flex items-center gap-1.5 font-bold cursor-pointer" title="Mở kho đề kiểm tra và đề mẫu">
+                    <i class="fa-solid fa-folder-open text-amber-300"></i> <span class="hidden sm:inline">Kho Đề</span>
                 </button>
             </div>
         </div>
@@ -383,24 +377,6 @@
         <!-- LEFT SIDEBAR -->
         <aside class="lg:col-span-3 space-y-4">
             
-            <!-- PRIMARY ACTION: TẠO ĐỀ & KHO ĐỀ (THAYKHAIEDU ENGINE) -->
-            <div class="bg-gradient-to-br from-blue-950 via-indigo-950 to-slate-900 rounded-2xl p-3.5 shadow-md border border-blue-800 space-y-2.5 text-white">
-                <div class="flex items-center justify-between border-b border-blue-800/80 pb-2">
-                    <span class="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1">
-                        <i class="fa-solid fa-sparkles"></i> Khởi Tạo Đề Kiểm Tra
-                    </span>
-                    <span class="text-[9px] bg-blue-800 text-blue-200 px-1.5 py-0.5 rounded font-bold">KNTT</span>
-                </div>
-                <button type="button" onclick="openCreateExamWizard()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 group">
-                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300 group-hover:rotate-12 transition-transform"></i>
-                    <span>➕ TẠO ĐỀ MỚI</span>
-                </button>
-                <button type="button" onclick="openExamBankModal()" class="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-blue-100 hover:text-white border border-blue-700/60 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-boxes-stacked text-amber-400"></i>
-                    <span>📂 Kho Đề & Đề Mẫu Có Sẵn</span>
-                </button>
-            </div>
-
             <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-3 space-y-1">
                 <div class="text-[11px] font-black text-amber-600 uppercase tracking-wider px-3 pb-1 pt-1 flex items-center justify-between">
                     <span class="flex items-center gap-1.5"><i class="fa-solid fa-route text-amber-500"></i> Quy Trình Tạo Đề (5 Bước)</span>
@@ -490,10 +466,9 @@
                         </span>
                     </div>
                     <div class="text-[11px] text-slate-500 font-semibold flex items-center gap-2">
-                        <span>Tiến trình 5 bước sư phạm</span>
-                        <button type="button" onclick="openCreateExamWizard()" class="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-blue-950 font-black text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Tạo Đề Nhanh
-                        </button>
+                        <span class="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
+                            <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>Hệ Thống Sẵn Sàng Tạo Đề
+                        </span>
                     </div>
                 </div>
 
@@ -505,8 +480,8 @@
                             <i class="fa-solid fa-circle-check text-slate-300 text-xs wf-check-icon" id="wfCheck-curriculum"></i>
                         </div>
                         <div>
-                            <strong class="text-slate-800 block text-xs font-bold leading-tight">Phân Phối CT</strong>
-                            <span class="text-[10px] text-slate-500 block leading-tight">PPCT Hub 35 Tuần</span>
+                            <strong class="text-slate-800 block text-xs font-bold leading-tight">Nguồn Tri Thức</strong>
+                            <span class="text-[10px] text-slate-500 block leading-tight">Nạp PPCT & Ma Trận</span>
                         </div>
                     </button>
 
@@ -566,150 +541,6 @@
             <!-- ======================================================================= -->
             <section id="tab-reviewer" class="space-y-4">
                 
-                <!-- HERO CREATION BANNER (THAYKHAIEDU ENGINE) -->
-                <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-4 shadow-sm border border-blue-800 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[11px] font-black uppercase tracking-wider text-amber-400 bg-amber-400/20 px-2.5 py-0.5 rounded-full border border-amber-400/40">
-                                Trung Tâm Khởi Tạo Đề Kiểm Tra
-                            </span>
-                            <span class="text-xs text-blue-200">Chuẩn GDPT 2018 • Sách Kết nối tri thức</span>
-                        </div>
-                        <h3 class="text-sm sm:text-base font-extrabold mt-1">Khởi tạo đề kiểm tra mới hoặc chọn từ kho đề mẫu chuẩn</h3>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button type="button" onclick="openCreateExamWizard()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-black text-xs shadow-md cursor-pointer flex items-center gap-1.5 transition">
-                            <i class="fa-solid fa-plus-circle text-amber-300"></i>
-                            <span>➕ Tạo Đề Mới (PPCT / Ma Trận)</span>
-                        </button>
-                        <button type="button" onclick="openExamBankModal()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/30 font-bold text-xs cursor-pointer flex items-center gap-1.5 transition">
-                            <i class="fa-solid fa-folder-open text-amber-300"></i>
-                            <span>📂 Kho Đề & Đề Mẫu</span>
-                        </button>
-                    </div>
-                </div>
-
-
-                <!-- ======================================================================= -->
-                <!-- BỐ TRÍ 2 THẺ TRỰC DIỆN NGAY TRÊN GIAO DIỆN CHÍNH:                            -->
-                <!-- THẺ 1: NHẬP PHÂN PHỐI CHƯƠNG TRÌNH (PPCT HUB)                           -->
-                <!-- THẺ 2: NHẬP KHO MA TRẬN ĐỀ KIỂM TRA (.DOCX, .XLSX, .CSV, .JSON)         -->
-                <!-- ======================================================================= -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="mainImportHubsContainer">
-                    
-                    <!-- THẺ 1: NHẬP PHÂN PHỐI CHƯƠNG TRÌNH -->
-                    <div class="bg-gradient-to-br from-blue-50/90 via-indigo-50/60 to-white border-2 border-blue-200 hover:border-blue-400 rounded-3xl p-5 shadow-xs transition space-y-4 flex flex-col justify-between">
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between gap-2 border-b border-blue-100 pb-2.5">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
-                                        <i class="fa-solid fa-calendar-days"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-extrabold text-sm text-blue-950">Phân Phối Chương Trình</h4>
-                                        <span class="text-[11px] text-slate-500 font-medium">Kết nối trực tiếp vào Trình tạo đề</span>
-                                    </div>
-                                </div>
-                                <span id="mainPpctStatusBadge" class="text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1">
-                                    <i class="fa-solid fa-circle-check text-emerald-600"></i> Chuẩn KNTT 35 Tuần
-                                </span>
-                            </div>
-
-                            <!-- Live PPCT Stats -->
-                            <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-white/90 p-2.5 rounded-2xl border border-blue-100/80 shadow-2xs">
-                                <div>
-                                    <span class="text-slate-400 block text-[10px]">Bài học</span>
-                                    <strong id="mainPpctLessonCount" class="text-blue-900 text-xs font-black">22</strong>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block text-[10px]">Tiết dạy</span>
-                                    <strong id="mainPpctPeriodCount" class="text-indigo-900 text-xs font-black">42</strong>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block text-[10px]">YCCĐ 2018</span>
-                                    <strong id="mainPpctYccdCount" class="text-emerald-800 text-xs font-black">27</strong>
-                                </div>
-                            </div>
-
-                            <!-- Upload Box with Drag & Drop styling -->
-                            <div class="border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-2xl p-3 text-center bg-blue-50/50 hover:bg-blue-50 transition cursor-pointer" onclick="document.getElementById('mainPpctFileInput').click()">
-                                <input type="file" id="mainPpctFileInput" accept=".json,.xlsx,.xls,.csv" multiple onchange="handleMainPpctUpload(event)" class="hidden">
-                                <i class="fa-solid fa-cloud-arrow-up text-xl text-blue-600 mb-1"></i>
-                                <div class="text-xs font-black text-blue-950">Bấm hoặc kéo thả nhiều file PPCT vào đây (Toán, Tiếng Việt, Khoa học...)</div>
-                                <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ chọn cùng lúc nhiều file JSON sao lưu hoặc Excel (.xlsx, .csv)</div>
-                            </div>
-                        </div>
-
-                        <!-- Card Action Buttons -->
-                        <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-blue-100/70 text-xs">
-                            <button type="button" onclick="exportCurrentPpctJson()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu PPCT">
-                                <i class="fa-solid fa-download text-blue-600"></i> File Mẫu
-                            </button>
-                            <button type="button" onclick="resetToDefaultPpct()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-slate-200 font-bold text-[11px] cursor-pointer transition" title="Khôi phục PPCT Chuẩn 35 tuần">
-                                <i class="fa-solid fa-arrow-rotate-left mr-1"></i>Chuẩn 35T
-                            </button>
-                            <button type="button" onclick="openCreateExamWizard('ppct')" class="px-3.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-black text-[11px] shadow-xs cursor-pointer flex items-center gap-1 transition ml-auto">
-                                <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
-                                <span>Tạo Đề Từ PPCT</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- THẺ 2: NHẬP KHO MA TRẬN (.DOCX, EXCEL .XLSX, .CSV, .JSON) -->
-                    <div class="bg-gradient-to-br from-purple-50/90 via-indigo-50/60 to-white border-2 border-purple-200 hover:border-purple-400 rounded-3xl p-5 shadow-xs transition space-y-4 flex flex-col justify-between">
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between gap-2 border-b border-purple-100 pb-2.5">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
-                                        <i class="fa-solid fa-boxes-stacked"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-extrabold text-sm text-purple-950">Kho Ma Trận Đề Kiểm Tra</h4>
-                                        <span class="text-[11px] text-slate-500 font-medium">Bóc tách tự động Word, Excel & JSON</span>
-                                    </div>
-                                </div>
-                                <span id="mainMatrixBankCountBadge" class="text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1">
-                                    <i class="fa-solid fa-table-cells text-purple-600"></i> 8 Ma trận có sẵn
-                                </span>
-                            </div>
-
-                            <!-- Live Matrix Stats -->
-                            <div class="grid grid-cols-4 gap-1.5 text-center text-[10px] bg-white/90 p-2.5 rounded-2xl border border-purple-100/80 shadow-2xs font-bold text-slate-700">
-                                <div class="p-1 rounded-lg bg-blue-50 text-blue-800">📐 Toán 4</div>
-                                <div class="p-1 rounded-lg bg-rose-50 text-rose-800">📖 Tiếng Việt</div>
-                                <div class="p-1 rounded-lg bg-emerald-50 text-emerald-800">🔬 Khoa học</div>
-                                <div class="p-1 rounded-lg bg-teal-50 text-teal-800">🌏 Lịch sử-ĐL</div>
-                            </div>
-
-                            <!-- Upload Box with Drag & Drop styling -->
-                            <div class="border-2 border-dashed border-purple-300 hover:border-purple-500 rounded-2xl p-3 text-center bg-purple-50/50 hover:bg-purple-50 transition cursor-pointer" onclick="document.getElementById('mainMatrixFileInput').click()">
-                                <input type="file" id="mainMatrixFileInput" accept=".docx,.xlsx,.xls,.csv,.json" multiple onchange="handleMainMatrixFileUpload(event)" class="hidden">
-                                <i class="fa-solid fa-file-arrow-up text-xl text-purple-600 mb-1"></i>
-                                <div class="text-xs font-black text-purple-950">Nhập File Ma Trận Word (.docx) hoặc Excel (.xlsx)</div>
-                                <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ chọn cùng lúc nhiều file ma trận (.docx, .xlsx, .json)</div>
-                            </div>
-                        </div>
-
-                        <!-- Card Action Buttons -->
-                        <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-purple-100/70 text-xs">
-                            <div class="flex items-center gap-1">
-                                <button type="button" onclick="exportMatrixTemplateDoc()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu ma trận Word (.doc)">
-                                    <i class="fa-solid fa-file-word text-blue-600"></i> Mẫu Word
-                                </button>
-                                <button type="button" onclick="exportMatrixTemplateExcel()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu ma trận Excel (.xlsx)">
-                                    <i class="fa-solid fa-file-excel text-emerald-600"></i> Mẫu Excel
-                                </button>
-                            </div>
-                            <button type="button" onclick="openCreateExamWizard('matrix')" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-[11px] shadow-xs cursor-pointer flex items-center gap-1 transition ml-auto">
-                                <i class="fa-solid fa-boxes-stacked text-amber-300"></i>
-                                <span>Kho Ma Trận & Tạo Đề</span>
-                            </button>
-                        </div>
-                    </div>
-
-                </div>
-
-
                 <!-- ZERO-PROMPT 1-TOUCH CONTEXT BAR (6 MÔN SÁCH KẾT NỐI TRI THỨC) -->
                 <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
                     <div class="flex flex-wrap justify-between items-start gap-3 border-b border-slate-100 pb-3">
@@ -1119,11 +950,9 @@
                             <h2 class="text-lg font-extrabold text-slate-800 mt-1" id="mtxTitleHeader">Trung Tâm Quản Lý Ma Trận Đề Kiểm Tra & YCCĐ Chuẩn GDPT 2018</h2>
                         </div>
                         <div class="flex flex-wrap items-center gap-2" id="mtxTopHeaderActions">
-                            <button onclick="openCreateExamWizard()" class="bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white text-xs font-extrabold px-4 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
-                                <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>Tạo Đề Mới
-                            </button>
-                            <button onclick="openModal('modalImportMatrix')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs cursor-pointer">
-                                <i class="fa-solid fa-file-import mr-1"></i>Bóc tách Ma trận Chuyên Môn
+                            <button type="button" onclick="switchTab('tab-curriculum')" class="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 transition" title="Đến Trung Tâm Nạp Nguồn Dữ Liệu (Bước 1)">
+                                <i class="fa-solid fa-cloud-arrow-up text-purple-700"></i>
+                                <span>Nạp Ma Trận Mới (Tại Bước 1)</span>
                             </button>
                         </div>
                     </div>
@@ -1339,14 +1168,13 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2">
-                                <input type="file" id="matrixFileInputBank" accept=".docx,.xlsx,.xls,.csv,.json" multiple onchange="handleMainMatrixFileUpload(event)" class="hidden">
-                                <button type="button" onclick="document.getElementById('matrixFileInputBank').click()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
-                                    <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
-                                    <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>
+                                <button type="button" onclick="switchTab('tab-curriculum')" class="bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-200 font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 transition" title="Đến Bước 1 để nạp thêm file Ma trận Word/Excel">
+                                    <i class="fa-solid fa-cloud-arrow-up text-purple-700"></i>
+                                    <span>Nạp Thêm Ma Trận (Tại Bước 1)</span>
                                 </button>
                                 <button type="button" onclick="exportMatrixTemplateJson()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs px-3 py-2 rounded-xl cursor-pointer flex items-center gap-1.5 transition">
                                     <i class="fa-solid fa-download text-purple-600"></i>
-                                    <span>Tải File Ma Trận Mẫu</span>
+                                    <span>Tải File Mẫu</span>
                                 </button>
                             </div>
                         </div>
@@ -1705,7 +1533,145 @@
             <!-- ======================================================================= -->
             <!-- TAB 7: GIAI ĐOẠN 1 - CÂY CHƯƠNG TRÌNH GDPT 2018 (SÁCH KẾT NỐI TRI THỨC)   -->
             <!-- ======================================================================= -->
-            <section id="tab-curriculum" class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4 hidden">
+                        <!-- ======================================================================= -->
+            <!-- BƯỚC 1: TRUNG TÂM NGUỒN TRI THỨC (PHÂN PHỐI CHƯƠNG TRÌNH & KHO MA TRẬN) -->
+            <!-- ĐÂY LÀ VỊ TRÍ DUY NHẤT TRONG TOÀN HỆ THỐNG ĐỂ NẠP FILE PPCT VÀ MA TRẬN   -->
+            <!-- ======================================================================= -->
+            <section id="tab-curriculum" class="space-y-4 hidden">
+                
+                <!-- BẢNG NẠP NGUỒN DUY NHẤT: 2 THẺ NẠP PPCT VÀ MA TRẬN -->
+                <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-4 sm:p-5 shadow-sm border border-blue-800 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-blue-800/80 pb-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-400/20 px-2.5 py-0.5 rounded-full border border-amber-400/40">
+                                Bước 1: Trung Tâm Nạp Nguồn Tri Thức Duy Nhất
+                            </span>
+                        </div>
+                        <span class="text-xs text-blue-200">
+                            Nạp 1 lần ở đây — Tự động liên kết toàn bộ Trình tạo đề, Bàn duyệt đề & Ma trận
+                        </span>
+                    </div>
+
+                    <!-- 2 THẺ NẠP NGUỒN TẬP TRUNG (PPCT & MA TRẬN) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-800" id="mainImportHubsContainer">
+                        
+                        <!-- THẺ 1: NHẬP PHÂN PHỐI CHƯƠNG TRÌNH -->
+                        <div class="bg-white border-2 border-blue-200 hover:border-blue-400 rounded-2xl p-4 shadow-xs transition space-y-3 flex flex-col justify-between">
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between gap-2 border-b border-blue-100 pb-2">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                            <i class="fa-solid fa-calendar-days"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-extrabold text-sm text-blue-950">Phân Phối Chương Trình</h4>
+                                            <span class="text-[11px] text-slate-500 font-medium">Toán, Tiếng Việt, Khoa học, Sử - Địa...</span>
+                                        </div>
+                                    </div>
+                                    <span id="mainPpctStatusBadge" class="text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                                        <i class="fa-solid fa-circle-check text-emerald-600"></i> Chuẩn KNTT 35 Tuần
+                                    </span>
+                                </div>
+
+                                <!-- Live PPCT Stats -->
+                                <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-blue-50/60 p-2 rounded-xl border border-blue-100">
+                                    <div>
+                                        <span class="text-slate-400 block text-[10px]">Bài học</span>
+                                        <strong id="mainPpctLessonCount" class="text-blue-900 text-xs font-black">22</strong>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 block text-[10px]">Tiết dạy</span>
+                                        <strong id="mainPpctPeriodCount" class="text-indigo-900 text-xs font-black">42</strong>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 block text-[10px]">YCCĐ 2018</span>
+                                        <strong id="mainPpctYccdCount" class="text-emerald-800 text-xs font-black">27</strong>
+                                    </div>
+                                </div>
+
+                                <!-- Upload Box with Drag & Drop styling -->
+                                <div class="border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-xl p-3 text-center bg-blue-50/40 hover:bg-blue-50 transition cursor-pointer" onclick="document.getElementById('mainPpctFileInput').click()">
+                                    <input type="file" id="mainPpctFileInput" accept=".json,.xlsx,.xls,.csv" multiple onchange="handleMainPpctUpload(event)" class="hidden">
+                                    <i class="fa-solid fa-cloud-arrow-up text-xl text-blue-600 mb-1"></i>
+                                    <div class="text-xs font-black text-blue-950">Chọn hoặc kéo thả file PPCT vào đây (Nhiều file cùng lúc)</div>
+                                    <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ file Excel (.xlsx, .csv) hoặc JSON sao lưu</div>
+                                </div>
+                            </div>
+
+                            <!-- Card Action Buttons -->
+                            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-slate-100 text-xs">
+                                <button type="button" onclick="exportCurrentPpctJson()" class="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu PPCT">
+                                    <i class="fa-solid fa-download text-blue-600"></i> File Mẫu
+                                </button>
+                                <button type="button" onclick="resetToDefaultPpct()" class="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-slate-200 font-bold text-[11px] cursor-pointer transition" title="Khôi phục PPCT Chuẩn 35 tuần">
+                                    <i class="fa-solid fa-arrow-rotate-left mr-1"></i>Chuẩn 35T
+                                </button>
+                                <button type="button" onclick="openCreateExamWizard('ppct')" class="px-3.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-black text-[11px] shadow-xs cursor-pointer flex items-center gap-1 transition ml-auto">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                                    <span>Tạo Đề Từ PPCT Này</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- THẺ 2: NHẬP KHO MA TRẬN (.DOCX, EXCEL .XLSX, .CSV, .JSON) -->
+                        <div class="bg-white border-2 border-purple-200 hover:border-purple-400 rounded-2xl p-4 shadow-xs transition space-y-3 flex flex-col justify-between">
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between gap-2 border-b border-purple-100 pb-2">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                            <i class="fa-solid fa-boxes-stacked"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-extrabold text-sm text-purple-950">Kho Ma Trận Đề Kiểm Tra</h4>
+                                            <span class="text-[11px] text-slate-500 font-medium">Bóc tách tự động Word, Excel & JSON</span>
+                                        </div>
+                                    </div>
+                                    <span id="mainMatrixBankCountBadge" class="text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                                        <i class="fa-solid fa-table-cells text-purple-600"></i> 8 Ma trận có sẵn
+                                    </span>
+                                </div>
+
+                                <!-- Live Matrix Stats -->
+                                <div class="grid grid-cols-4 gap-1.5 text-center text-[10px] bg-purple-50/60 p-2 rounded-xl border border-purple-100 font-bold text-slate-700">
+                                    <div class="p-1 rounded-lg bg-white text-blue-800 border border-blue-100">📐 Toán 4</div>
+                                    <div class="p-1 rounded-lg bg-white text-rose-800 border border-rose-100">📖 Tiếng Việt</div>
+                                    <div class="p-1 rounded-lg bg-white text-emerald-800 border border-emerald-100">🔬 Khoa học</div>
+                                    <div class="p-1 rounded-lg bg-white text-teal-800 border border-teal-100">🌏 Lịch sử-ĐL</div>
+                                </div>
+
+                                <!-- Upload Box with Drag & Drop styling -->
+                                <div class="border-2 border-dashed border-purple-300 hover:border-purple-500 rounded-xl p-3 text-center bg-purple-50/40 hover:bg-purple-50 transition cursor-pointer" onclick="document.getElementById('mainMatrixFileInput').click()">
+                                    <input type="file" id="mainMatrixFileInput" accept=".docx,.xlsx,.xls,.csv,.json" multiple onchange="handleMainMatrixFileUpload(event)" class="hidden">
+                                    <i class="fa-solid fa-file-arrow-up text-xl text-purple-600 mb-1"></i>
+                                    <div class="text-xs font-black text-purple-950">Chọn hoặc kéo thả file Ma trận Word (.docx) hoặc Excel (.xlsx)</div>
+                                    <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ chọn cùng lúc nhiều file ma trận (.docx, .xlsx, .json)</div>
+                                </div>
+                            </div>
+
+                            <!-- Card Action Buttons -->
+                            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-slate-100 text-xs">
+                                <div class="flex items-center gap-1">
+                                    <button type="button" onclick="exportMatrixTemplateDoc()" class="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-purple-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu ma trận Word (.doc)">
+                                        <i class="fa-solid fa-file-word text-blue-600"></i> Mẫu Word
+                                    </button>
+                                    <button type="button" onclick="exportMatrixTemplateExcel()" class="px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu ma trận Excel (.xlsx)">
+                                        <i class="fa-solid fa-file-excel text-emerald-600"></i> Mẫu Excel
+                                    </button>
+                                </div>
+                                <button type="button" onclick="switchTab('tab-matrix')" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-[11px] shadow-xs cursor-pointer flex items-center gap-1 transition ml-auto">
+                                    <i class="fa-solid fa-boxes-stacked text-amber-300"></i>
+                                    <span>Xem Kho Ma Trận & Cấu Trúc (Bước 2)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- SUB-TAB SWITCHER & NỘI DUNG PPCT CHI TIẾT -->
+                <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
+
                 <!-- SUB-TAB SWITCHER -->
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
                     <div class="flex flex-wrap items-center gap-2">
@@ -1728,57 +1694,26 @@
                 </div>
 
                 <!-- HIDDEN FILE INPUT FOR IMPORTING PPCT JSON -->
-                <input type="file" id="inputPpctJsonFile" accept=".json,.xlsx,.xls,.csv" multiple class="hidden" onchange="handleMainPpctUpload(event)">
-
+                
                 <!-- SUB-VIEW 1: PPCT HUB (SCHEDULE BY WEEKS) -->
                 <div id="ppctHubContainer" class="space-y-4">
-                    <!-- Top Action & Drag-Drop Banner -->
-                    <div class="flex flex-wrap justify-between items-center gap-3">
+                    <!-- Tiêu đề lịch trình 35 tuần -->
+                    <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-2">
                         <div>
                             <span class="text-[11px] font-bold uppercase tracking-wider text-blue-800 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                                THAYKHAIEDU PPCT HUB — Phân phối chương trình chi tiết
+                                Lịch trình 35 Tuần & Bài Học SGK Kết Nối Tri Thức
                             </span>
-                            <h2 class="text-lg font-bold text-slate-800 mt-1">Lịch Trình Tiết Học & Gắn Kết YCCĐ Chuẩn GDPT 2018 (Đủ 35 Tuần)</h2>
+                            <h3 class="text-base font-extrabold text-slate-800 mt-1">Danh Mục Bài Học & Gắn Kết YCCĐ Chuẩn GDPT 2018</h3>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button type="button" onclick="document.getElementById('inputPpctJsonFile').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow cursor-pointer flex items-center space-x-1.5">
-                                <i class="fa-solid fa-file-arrow-up"></i>
-                                <span>Nạp Tệp JSON PPCT Hub</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="generateFullAcademicYearPpctScaffold()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs cursor-pointer flex items-center space-x-1.5" title="Mở rộng khung phân phối chương trình đủ 35 tuần cho cả năm học (Toán & Tiếng Việt Kết nối tri thức)">
+                                <i class="fa-solid fa-wand-magic-sparkles text-amber-200"></i>
+                                <span>Khung 35 Tuần Cả Năm</span>
                             </button>
-                            <button type="button" onclick="exportPpctJson()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow cursor-pointer flex items-center space-x-1.5">
-                                <i class="fa-solid fa-file-arrow-down"></i>
-                                <span>Xuất Tệp JSON PPCT</span>
+                            <button type="button" onclick="exportPpctJson()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-300 cursor-pointer flex items-center space-x-1.5">
+                                <i class="fa-solid fa-file-arrow-down text-blue-600"></i>
+                                <span>Xuất JSON</span>
                             </button>
-                            <button type="button" onclick="generateFullAcademicYearPpctScaffold()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow cursor-pointer flex items-center space-x-1.5" title="Mở rộng khung phân phối chương trình đủ 35 tuần cho cả năm học (Toán & Tiếng Việt Kết nối tri thức)">
-                                <i class="fa-solid fa-star text-amber-200"></i>
-                                <span>Khung 35 Tuần (Cả Năm)</span>
-                            </button>
-                            <button type="button" onclick="resetPpctDataToDefault()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 cursor-pointer flex items-center space-x-1.5" title="Khôi phục dữ liệu phân phối chương trình mặc định 2026-2027">
-                                <i class="fa-solid fa-rotate-left"></i>
-                                <span>Khôi phục Mẫu</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Drag & Drop Zone -->
-                    <div id="ppctDropZone" 
-                         ondragover="handlePpctDragOver(event)" 
-                         ondragleave="handlePpctDragLeave(event)" 
-                         ondrop="handlePpctDrop(event)" 
-                         onclick="document.getElementById('inputPpctJsonFile').click()"
-                         class="border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/40 hover:bg-blue-50/70 transition-all rounded-2xl p-4 text-center cursor-pointer group">
-                        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all flex items-center justify-center font-bold text-lg shadow-xs">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
-                            </div>
-                            <div class="text-left">
-                                <div class="text-xs font-bold text-slate-800">
-                                    <span class="text-blue-700 underline font-black">Bấm vào đây để chọn tệp</span> hoặc Kéo thả tệp sao lưu JSON PPCT Hub (<code class="bg-blue-100/70 text-blue-800 px-1.5 py-0.5 rounded text-[11px]">thaykhaiedu_ppct_yccd_backup_*.json</code>) vào khung này
-                                </div>
-                                <div class="text-[11px] text-slate-500 mt-0.5">
-                                    Tự động đồng bộ lịch trình các tiết học theo tuần, bài học SGK Kết nối tri thức và 27 Yêu cầu cần đạt sang Ma trận đề AI.
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -2031,7 +1966,7 @@
                             <p class="text-xs text-slate-500">Tải lên tệp sao lưu JSON từ công cụ PPCT Hub, xuất file dự phòng hoặc khôi phục dữ liệu ban đầu.</p>
                         </div>
                         <div class="flex flex-wrap gap-2">
-                            <button type="button" onclick="document.getElementById('inputPpctJsonFile').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow cursor-pointer flex items-center space-x-1.5">
+                            <button type="button" onclick="document.getElementById('mainPpctFileInput').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow cursor-pointer flex items-center space-x-1.5">
                                 <i class="fa-solid fa-file-arrow-up"></i>
                                 <span>Nạp Tệp JSON PPCT</span>
                             </button>
@@ -2197,26 +2132,7 @@
         </div>
     </div>
 
-    <!-- MODAL: BÓC TÁCH MA TRẬN TẢI LÊN -->
-    <div id="modalImportMatrix" class="fixed inset-0 bg-slate-900/60 hidden items-center justify-center z-50 p-4 backdrop-blur-xs">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-base text-slate-800">Bóc tách Ma trận Tổ Chuyên Môn (Sách Kết nối tri thức)</h3>
-                <button onclick="closeModal('modalImportMatrix')" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="space-y-3 text-xs">
-                <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border">
-                    <span>Định dạng: <code>Câu | Mã_YCCĐ | Mức (M1/M2/M3) | Dạng (mcq_single/essay_problem) | Điểm</code></span>
-                    <button type="button" onclick="fillSampleKNTTMatrixCSV()" class="bg-emerald-100 text-emerald-900 font-bold px-3 py-1 rounded-lg cursor-pointer">Nạp Mẫu Tổ Khối 4</button>
-                </div>
-                <textarea id="importMatrixText" rows="7" class="w-full border rounded-xl p-3 font-mono text-xs"></textarea>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button type="button" onclick="closeModal('modalImportMatrix')" class="px-4 py-2 rounded-xl border font-semibold cursor-pointer">Hủy</button>
-                <button type="button" onclick="parseImportedMatrixKNTT()" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold cursor-pointer">Áp dụng & Khóa Ma trận</button>
-            </div>
-        </div>
-    </div>
+
 
     <!-- ======================================================================= -->
     <!-- MASTER JAVASCRIPT ENGINE (TRỌN BỘ GIAI ĐOẠN 1 -> 8 • SÁCH KNTT)         -->
@@ -4417,7 +4333,7 @@ Trả về định dạng JSON:
                 generateExamQuestionsFromMatrix(false);
                 saveDB();
                 renderAll();
-                closeModal('modalImportMatrix');
+                if (document.getElementById('modalImportMatrix')) closeModal('modalImportMatrix');
                 showToast(`Đã bóc tách và áp dụng ${slots.length} ô ma trận của Tổ chuyên môn!`, 'success');
             }
         }
@@ -10714,48 +10630,26 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                 <!-- SUB-PANEL A: TẠO TỪ PHÂN PHỐI CHƯƠNG TRÌNH (PPCT HUB) -->
                 <div id="wzPpctPanel" class="space-y-4">
 
-                    <!-- PPCT CONNECTION & UPLOAD BANNER (LIÊN KẾT TRỰC TIẾP VỚI TẠO ĐỀ) -->
-                    <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200/80 rounded-2xl p-4 space-y-3 shadow-xs">
-                        <div class="flex flex-wrap items-center justify-between gap-2.5">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-8 h-8 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-                                    <i class="fa-solid fa-link"></i>
-                                </div>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-xs font-black text-blue-950 uppercase tracking-wide">Phân Phối Chương Trình Đang Kết Nối:</span>
-                                        <span id="wzPpctStatusBadge" class="text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 shadow-2xs">
-                                            <i class="fa-solid fa-circle-check text-emerald-600"></i> PPCT Chuẩn KNTT 2018 (35 Tuần / 175 Tiết)
-                                        </span>
-                                    </div>
-                                    <p class="text-[11px] text-slate-500 mt-0.5">Mọi bài học và YCCĐ từ file PPCT sẽ tự động liên kết với từng câu hỏi trong đề kiểm tra.</p>
-                                </div>
+                    <!-- KẾT NỐI NGUỒN PPCT DUY NHẤT (TINH GỌN) -->
+                    <div class="bg-blue-50/80 border border-blue-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2.5">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                                <i class="fa-solid fa-link"></i>
                             </div>
-                            
-                            <!-- Action Upload & Export Buttons -->
-                            <div class="flex flex-wrap items-center gap-1.5">
-                                <input type="file" id="wzPpctFileInput" accept=".json,.xlsx,.xls,.csv" multiple onchange="handleMainPpctUpload(event)" class="hidden">
-                                <button type="button" onclick="document.getElementById('wzPpctFileInput').click()" class="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] shadow-xs cursor-pointer flex items-center gap-1.5 transition">
-                                    <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
-                                    <span>Tải File PPCT Khác (.json)</span>
-                                </button>
-                                <button type="button" onclick="exportCurrentPpctJson()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải về file PPCT JSON hiện tại để lưu hoặc chỉnh sửa">
-                                    <i class="fa-solid fa-download text-blue-600"></i>
-                                    <span>Tải File Mẫu</span>
-                                </button>
-                                <button type="button" onclick="resetToDefaultPpct()" class="px-2 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-slate-200 font-bold text-[11px] cursor-pointer transition" title="Khôi phục lại PPCT Chuẩn 35 tuần mặc định">
-                                    <i class="fa-solid fa-arrow-rotate-left"></i>
-                                </button>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-black text-blue-950">Phân Phối Chương Trình Đang Kết Nối:</span>
+                                    <span id="wzPpctStatusBadge" class="text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                                        <i class="fa-solid fa-circle-check text-emerald-600"></i> PPCT Chuẩn KNTT 2018 (35 Tuần)
+                                    </span>
+                                </div>
+                                <p class="text-[10.5px] text-slate-500 mt-0.5">Mọi bài học và YCCĐ tự động liên kết với từng câu hỏi trong đề kiểm tra theo giai đoạn đã chọn.</p>
                             </div>
                         </div>
-
-                        <!-- PPCT Live Summary Details -->
-                        <div class="text-[11px] text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1 bg-white/80 rounded-xl p-2.5 border border-blue-100">
-                            <span class="flex items-center gap-1"><i class="fa-solid fa-layer-group text-indigo-600"></i> <strong id="wzPpctLessonCount" class="text-indigo-900">22</strong> bài học theo môn</span>
-                            <span class="flex items-center gap-1"><i class="fa-solid fa-clock text-amber-600"></i> <strong id="wzPpctPeriodCount" class="text-amber-900">42</strong> tiết dạy</span>
-                            <span class="flex items-center gap-1"><i class="fa-solid fa-bullseye text-emerald-600"></i> <strong id="wzPpctYccdCount" class="text-emerald-900">27</strong> YCCĐ chuẩn GDPT 2018</span>
-                            <span class="text-blue-700 font-medium ml-auto flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Bài học tự động hiển thị trong dropdown từng câu</span>
-                        </div>
+                        <button type="button" onclick="closeCreateExamWizard(); switchTab('tab-curriculum');" class="text-blue-700 hover:text-blue-900 bg-white hover:bg-blue-100/60 border border-blue-200 px-3 py-1.5 rounded-xl font-bold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs ml-auto">
+                            <i class="fa-solid fa-sliders text-blue-600"></i>
+                            <span>Nạp / Quản lý nguồn PPCT (Bước 1)</span>
+                        </button>
                     </div>
 
                     
@@ -10833,30 +10727,23 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                 <!-- SUB-PANEL B: TẠO TỪ KHO MA TRẬN CHUẨN & TẢI LÊN -->
                 <div id="wzMatrixPanel" class="space-y-4 hidden">
                     
-                    <!-- Matrix Bank Toolbar in Wizard -->
-                    <div class="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-200 rounded-2xl p-3.5 space-y-3">
+                    <!-- Matrix Bank Toolbar in Wizard (Streamlined) -->
+                    <div class="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-200 rounded-2xl p-3 space-y-2.5">
                         <div class="flex flex-wrap items-center justify-between gap-2.5">
                             <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                                <div class="w-7 h-7 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                                     <i class="fa-solid fa-boxes-stacked"></i>
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-xs text-purple-950 uppercase tracking-wide">Kho Ma Trận Đề Kiểm Tra Chuẩn Thông Tư 27 & Tải Lên</h4>
-                                    <p class="text-[11px] text-slate-500">Chọn bất kì ma trận nào trong kho để tự động phân bổ câu hỏi hoặc tải file ma trận mới lên.</p>
+                                    <h4 class="font-bold text-xs text-purple-950 uppercase tracking-wide">Chọn Ma Trận Từ Kho Chuẩn Bộ GD&ĐT</h4>
+                                    <p class="text-[10.5px] text-slate-500">Nhấp chọn một ma trận để hệ thống tự động thiết lập số câu, mức độ và bài học.</p>
                                 </div>
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-1.5">
-                                <input type="file" id="matrixFileInputWizard" accept=".docx,.xlsx,.xls,.csv,.json" multiple onchange="handleMainMatrixFileUpload(event)" class="hidden">
-                                <button type="button" onclick="document.getElementById('matrixFileInputWizard').click()" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] shadow-xs cursor-pointer flex items-center gap-1.5 transition">
-                                    <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
-                                    <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>
-                                </button>
-                                <button type="button" onclick="exportMatrixTemplateJson()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải về file ma trận mẫu định dạng JSON">
-                                    <i class="fa-solid fa-download text-purple-600"></i>
-                                    <span>File Mẫu Ma Trận</span>
-                                </button>
-                            </div>
+                            <button type="button" onclick="closeCreateExamWizard(); switchTab('tab-curriculum');" class="text-purple-700 hover:text-purple-900 bg-white hover:bg-purple-100/60 border border-purple-200 px-3 py-1.5 rounded-xl font-bold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-2xs ml-auto">
+                                <i class="fa-solid fa-cloud-arrow-up text-purple-600"></i>
+                                <span>Nạp thêm file ma trận (Bước 1)</span>
+                            </button>
                         </div>
 
                         <!-- Subject Filters for Matrix Bank in Wizard -->
