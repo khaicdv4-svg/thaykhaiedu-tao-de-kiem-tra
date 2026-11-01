@@ -11,7 +11,12 @@
 - **Nhập file PPCT JSON cá nhân**: Cho phép giáo viên tải file Phân phối chương trình của trường lên, hệ thống lập tức đồng bộ bài học, tuần học vào Trình tạo đề theo thời gian thực.
 - **Tạo từ Kho Ma trận chuẩn**: Lựa chọn nhanh từ 8 ma trận chuẩn GDPT 2018 (Toán, Tiếng Việt, Khoa học, Lịch sử & Địa lí) để sinh đề 1-chạm.
 
-### 2. 🗃️ Kho Ma Trận Đề Kiểm Tra (Matrix Bank) & Tải Lên (.json, .csv)
+### 2. 🗃️ Kho Ma Trận Đề Kiểm Tra (Matrix Bank) & Tải Lên Word (.docx), Excel (.xlsx), CSV, JSON
+- Tích hợp công nghệ bóc tách tự động bảng ma trận trực tiếp từ file **Word (.docx)** và **Excel (.xlsx, .xls, .csv, .json)**.
+- Tự động nhận diện cấu trúc dòng: *Câu số, Hình thức (Trắc nghiệm/Tự luận), Mức độ (M1/M2/M3), Điểm số và YCCĐ/Mạch kiến thức*.
+- Tích hợp 2 Thẻ điều khiển trực diện ngay trên giao diện chính:
+  + **Thẻ 1: Nhập Phân Phối Chương Trình (PPCT Hub)**: Kéo thả file JSON, Excel .xlsx và liên kết ngay với Trình tạo đề.
+  + **Thẻ 2: Nhập Kho Ma Trận Đề Kiểm Tra**: Kéo thả file Word .docx, Excel .xlsx và bổ sung tức thì vào Kho ma trận.
 - Tích hợp sẵn **8 ma trận chuẩn Thông tư 27**: Toán Giữa HK1, Cuối HK1, Giữa HK2, Cuối Năm; Tiếng Việt Cuối HK1, Cuối Năm; Khoa học Cuối HK1; Lịch sử & Địa lí Cuối HK1.
 - Hỗ trợ **Tải file ma trận lên kho**: Đọc và bóc tách định dạng `.json` hoặc bảng `.csv` do tổ chuyên môn nhà trường xây dựng.
 - Chức năng **Tùy biến trong Trình tạo đề** hoặc **Nạp & Tạo đề ngay** chỉ bằng 1 cú nhấp chuột.

@@ -6,6 +6,9 @@
     <title>ThayKhaiEdu - Hệ thống Tạo Đề Kiểm Tra AI Hiểu Ngữ Cảnh (Final Master Build)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+        <!-- EXTERNAL LIBRARIES: SHEETJS (EXCEL) & MAMMOTH (WORD DOCX) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
@@ -483,6 +486,127 @@
                         </button>
                     </div>
                 </div>
+
+
+                <!-- ======================================================================= -->
+                <!-- BỐ TRÍ 2 THẺ TRỰC DIỆN NGAY TRÊN GIAO DIỆN CHÍNH:                            -->
+                <!-- THẺ 1: NHẬP PHÂN PHỐI CHƯƠNG TRÌNH (PPCT HUB)                           -->
+                <!-- THẺ 2: NHẬP KHO MA TRẬN ĐỀ KIỂM TRA (.DOCX, .XLSX, .CSV, .JSON)         -->
+                <!-- ======================================================================= -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="mainImportHubsContainer">
+                    
+                    <!-- THẺ 1: NHẬP PHÂN PHỐI CHƯƠNG TRÌNH -->
+                    <div class="bg-gradient-to-br from-blue-50/90 via-indigo-50/60 to-white border-2 border-blue-200 hover:border-blue-400 rounded-3xl p-5 shadow-xs transition space-y-4 flex flex-col justify-between">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between gap-2 border-b border-blue-100 pb-2.5">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                                        <i class="fa-solid fa-calendar-days"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-extrabold text-sm text-blue-950">Phân Phối Chương Trình</h4>
+                                        <span class="text-[11px] text-slate-500 font-medium">Kết nối trực tiếp vào Trình tạo đề</span>
+                                    </div>
+                                </div>
+                                <span id="mainPpctStatusBadge" class="text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check text-emerald-600"></i> Chuẩn KNTT 35 Tuần
+                                </span>
+                            </div>
+
+                            <!-- Live PPCT Stats -->
+                            <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-white/90 p-2.5 rounded-2xl border border-blue-100/80 shadow-2xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[10px]">Bài học</span>
+                                    <strong id="mainPpctLessonCount" class="text-blue-900 text-xs font-black">22</strong>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px]">Tiết dạy</span>
+                                    <strong id="mainPpctPeriodCount" class="text-indigo-900 text-xs font-black">42</strong>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[10px]">YCCĐ 2018</span>
+                                    <strong id="mainPpctYccdCount" class="text-emerald-800 text-xs font-black">27</strong>
+                                </div>
+                            </div>
+
+                            <!-- Upload Box with Drag & Drop styling -->
+                            <div class="border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-2xl p-3 text-center bg-blue-50/50 hover:bg-blue-50 transition cursor-pointer" onclick="document.getElementById('mainPpctFileInput').click()">
+                                <input type="file" id="mainPpctFileInput" accept=".json,.xlsx,.xls,.csv" onchange="handleMainPpctUpload(event)" class="hidden">
+                                <i class="fa-solid fa-cloud-arrow-up text-xl text-blue-600 mb-1"></i>
+                                <div class="text-xs font-black text-blue-950">Bấm hoặc kéo thả file PPCT vào đây</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">Hỗ trợ file JSON sao lưu hoặc Excel (.xlsx, .csv)</div>
+                            </div>
+                        </div>
+
+                        <!-- Card Action Buttons -->
+                        <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-blue-100/70 text-xs">
+                            <button type="button" onclick="exportCurrentPpctJson()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu PPCT">
+                                <i class="fa-solid fa-download text-blue-600"></i> File Mẫu
+                            </button>
+                            <button type="button" onclick="resetToDefaultPpct()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-700 border border-slate-200 font-bold text-[11px] cursor-pointer transition" title="Khôi phục PPCT Chuẩn 35 tuần">
+                                <i class="fa-solid fa-arrow-rotate-left mr-1"></i>Chuẩn 35T
+                            </button>
+                            <button type="button" onclick="openCreateExamWizard('ppct')" class="px-3.5 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-black text-[11px] shadow-xs cursor-pointer flex items-center gap-1 transition ml-auto">
+                                <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                                <span>Tạo Đề Từ PPCT</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- THẺ 2: NHẬP KHO MA TRẬN (.DOCX, EXCEL .XLSX, .CSV, .JSON) -->
+                    <div class="bg-gradient-to-br from-purple-50/90 via-indigo-50/60 to-white border-2 border-purple-200 hover:border-purple-400 rounded-3xl p-5 shadow-xs transition space-y-4 flex flex-col justify-between">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between gap-2 border-b border-purple-100 pb-2.5">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+                                        <i class="fa-solid fa-boxes-stacked"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-extrabold text-sm text-purple-950">Kho Ma Trận Đề Kiểm Tra</h4>
+                                        <span class="text-[11px] text-slate-500 font-medium">Bóc tách tự động Word, Excel & JSON</span>
+                                    </div>
+                                </div>
+                                <span id="mainMatrixBankCountBadge" class="text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-table-cells text-purple-600"></i> 8 Ma trận có sẵn
+                                </span>
+                            </div>
+
+                            <!-- Live Matrix Stats -->
+                            <div class="grid grid-cols-4 gap-1.5 text-center text-[10px] bg-white/90 p-2.5 rounded-2xl border border-purple-100/80 shadow-2xs font-bold text-slate-700">
+                                <div class="p-1 rounded-lg bg-blue-50 text-blue-800">📐 Toán 4</div>
+                                <div class="p-1 rounded-lg bg-rose-50 text-rose-800">📖 Tiếng Việt</div>
+                                <div class="p-1 rounded-lg bg-emerald-50 text-emerald-800">🔬 Khoa học</div>
+                                <div class="p-1 rounded-lg bg-teal-50 text-teal-800">🌏 Lịch sử-ĐL</div>
+                            </div>
+
+                            <!-- Upload Box with Drag & Drop styling -->
+                            <div class="border-2 border-dashed border-purple-300 hover:border-purple-500 rounded-2xl p-3 text-center bg-purple-50/50 hover:bg-purple-50 transition cursor-pointer" onclick="document.getElementById('mainMatrixFileInput').click()">
+                                <input type="file" id="mainMatrixFileInput" accept=".docx,.xlsx,.xls,.csv,.json" onchange="handleMainMatrixFileUpload(event)" class="hidden">
+                                <i class="fa-solid fa-file-arrow-up text-xl text-purple-600 mb-1"></i>
+                                <div class="text-xs font-black text-purple-950">Nhập File Ma Trận Word (.docx) hoặc Excel (.xlsx)</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">Bóc tách tự động bảng ma trận chuẩn Thông tư 27</div>
+                            </div>
+                        </div>
+
+                        <!-- Card Action Buttons -->
+                        <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-purple-100/70 text-xs">
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="exportMatrixTemplateDoc()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-purple-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu ma trận Word (.doc)">
+                                    <i class="fa-solid fa-file-word text-blue-600"></i> Mẫu Word
+                                </button>
+                                <button type="button" onclick="exportMatrixTemplateExcel()" class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 border border-slate-200 font-bold text-[11px] cursor-pointer flex items-center gap-1 transition" title="Tải file mẫu ma trận Excel (.xlsx)">
+                                    <i class="fa-solid fa-file-excel text-emerald-600"></i> Mẫu Excel
+                                </button>
+                            </div>
+                            <button type="button" onclick="openCreateExamWizard('matrix')" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-[11px] shadow-xs cursor-pointer flex items-center gap-1 transition ml-auto">
+                                <i class="fa-solid fa-boxes-stacked text-amber-300"></i>
+                                <span>Kho Ma Trận & Tạo Đề</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
 
                 <!-- ZERO-PROMPT 1-TOUCH CONTEXT BAR (6 MÔN SÁCH KẾT NỐI TRI THỨC) -->
                 <div class="bg-white rounded-2xl shadow-xs border border-slate-200 p-5 space-y-4">
@@ -1097,7 +1221,7 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2">
-                                <input type="file" id="matrixFileInputBank" accept=".json,.csv" onchange="handleMatrixFileUpload(event)" class="hidden">
+                                <input type="file" id="matrixFileInputBank" accept=".docx,.xlsx,.xls,.csv,.json" onchange="handleMatrixFileUpload(event)" class="hidden">
                                 <button type="button" onclick="document.getElementById('matrixFileInputBank').click()" class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 transition">
                                     <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
                                     <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>
@@ -2933,6 +3057,7 @@ const DEFAULT_SEED_DATA = {
                 }
             }
             if (typeof updateWizardPpctStatusDisplay === 'function') updateWizardPpctStatusDisplay();
+            if (typeof updateMainHubStatusDisplay === 'function') updateMainHubStatusDisplay();
             saveDB();
             renderAll();
             switchTab('tab-reviewer');
@@ -7671,6 +7796,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
 
             onWizardSubjectOrPeriodChange();
             if (typeof updateWizardPpctStatusDisplay === 'function') updateWizardPpctStatusDisplay();
+            if (typeof updateMainHubStatusDisplay === 'function') updateMainHubStatusDisplay();
             if (typeof renderWizardMatrixList === 'function') renderWizardMatrixList();
 
             const modal = document.getElementById('modalCreateExam');
@@ -8797,101 +8923,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
         }
 
         function handleMatrixFileUpload(event) {
-            const file = event.target.files && event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const raw = e.target.result;
-                    const fileName = file.name.toLowerCase();
-
-                    if (fileName.endsWith('.json')) {
-                        const parsed = JSON.parse(raw);
-                        const bank = getMatrixBank();
-
-                        if (Array.isArray(parsed)) {
-                            parsed.forEach(m => {
-                                if (!m.id) m.id = `MTX_CUSTOM_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-                                m.isCustom = true;
-                                bank.push(m);
-                            });
-                            showToast(`Đã nạp ${parsed.length} ma trận vào kho!`, 'success');
-                        } else if (parsed && (parsed.slots || parsed.title)) {
-                            if (!parsed.id) parsed.id = `MTX_CUSTOM_${Date.now()}`;
-                            parsed.isCustom = true;
-                            bank.push(parsed);
-                            showToast(`Đã nạp ma trận "${parsed.title || 'Mới'}" vào kho!`, 'success');
-                        } else {
-                            showToast('File JSON không chứa cấu trúc ma trận hợp lệ!', 'error');
-                            return;
-                        }
-                    } else if (fileName.endsWith('.csv') || fileName.endsWith('.txt')) {
-                        // Parse simple CSV rows: Câu,Hình thức,Mức độ,Điểm,YCCĐ
-                        const lines = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
-                        const slots = [];
-                        let qIdx = 1;
-
-                        lines.forEach((line, idx) => {
-                            if (idx === 0 && (line.includes('Câu') || line.includes('cau'))) return; // Header row
-                            const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-                            if (cols.length >= 4) {
-                                const qType = (cols[1] && (cols[1].toLowerCase().includes('tn') || cols[1].toLowerCase().includes('trắc nghiệm'))) ? 'mcq_single' : 'essay';
-                                const level = (cols[2] && cols[2].toUpperCase().includes('3')) ? 'M3' : (cols[2] && cols[2].toUpperCase().includes('2')) ? 'M2' : 'M1';
-                                const pts = parseFloat(cols[3]) || 1.0;
-                                const yccd = cols[4] || cols[0] || 'YCCĐ theo ma trận nhà trường';
-
-                                slots.push({
-                                    questionNumber: qIdx++,
-                                    type: qType,
-                                    level: level,
-                                    points: pts,
-                                    strand: 'Chuyên môn',
-                                    yccd: yccd,
-                                    lessonTitle: yccd
-                                });
-                            }
-                        });
-
-                        if (slots.length > 0) {
-                            const newMtx = {
-                                id: `MTX_CSV_${Date.now()}`,
-                                title: file.name.replace(/\.[^/.]+$/, ''),
-                                subject: 'MATH',
-                                subjectName: 'Toán',
-                                grade: 4,
-                                period: 'mid_term_1',
-                                periodLabel: 'Ma trận tải lên từ CSV',
-                                bookSeries: 'Tổ Chuyên Môn Nhà Trường',
-                                timeMinutes: 40,
-                                description: `Ma trận gồm ${slots.length} câu tải lên từ file ${file.name}.`,
-                                isCustom: true,
-                                summary: {
-                                    totalQuestions: slots.length,
-                                    totalPoints: slots.reduce((s, c) => s + (c.points || 0), 0),
-                                    tnCount: slots.filter(s => s.type === 'mcq_single').length,
-                                    tlCount: slots.filter(s => s.type !== 'mcq_single').length
-                                },
-                                slots: slots
-                            };
-                            getMatrixBank().push(newMtx);
-                            showToast(`Đã bóc tách thành công ${slots.length} câu từ file CSV vào kho!`, 'success');
-                        } else {
-                            showToast('Không trích xuất được dòng câu hỏi nào từ file CSV!', 'warning');
-                            return;
-                        }
-                    }
-
-                    saveDB();
-                    renderWizardMatrixList();
-                    renderMatrixBankTab();
-                } catch (err) {
-                    console.error(err);
-                    showToast('Lỗi khi đọc file ma trận: ' + err.message, 'error');
-                }
-            };
-            reader.readAsText(file, 'utf-8');
-            event.target.value = '';
+            handleMainMatrixFileUpload(event);
         }
 
         function filterWizardMatrixBank(subject) {
@@ -9618,6 +9650,547 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
         }
 
 
+    
+
+
+        // =========================================================================
+        // PHẦN BỔ SUNG: BỘ BÓC TÁCH MA TRẬN WORD (.DOCX) & EXCEL (.XLSX, .CSV)
+        // VÀ BỘ ĐIỀU KHIỂN THẺ NHẬP TRỰC DIỆN TRÊN GIAO DIỆN CHÍNH
+        // =========================================================================
+
+        async function parseMatrixFile(file) {
+            const fileName = file.name.toLowerCase();
+            const arrayBuffer = await file.arrayBuffer();
+
+            let slots = [];
+            let detectedTitle = file.name.replace(/\.[^/.]+$/, '');
+            let detectedSubject = 'MATH';
+            let detectedPeriod = 'mid_term_1';
+
+            // 1. FILE WORD (.DOCX)
+            if (fileName.endsWith('.docx')) {
+                if (typeof mammoth !== 'undefined') {
+                    try {
+                        const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                        const html = result.value || '';
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const tables = doc.querySelectorAll('table');
+
+                        if (tables.length > 0) {
+                            tables.forEach(table => {
+                                const trList = Array.from(table.querySelectorAll('tr'));
+                                let headerColMap = {};
+                                let foundHeader = false;
+
+                                trList.forEach((tr, rIdx) => {
+                                    const cells = Array.from(tr.querySelectorAll('th, td')).map(td => td.textContent.trim());
+                                    if (cells.length < 2) return;
+                                    const rowText = cells.join(' ').toLowerCase();
+
+                                    // Header detection
+                                    if (!foundHeader && (rowText.includes('câu') || rowText.includes('mức') || rowText.includes('hình thức') || rowText.includes('điểm') || rowText.includes('yccđ') || rowText.includes('mạch') || rowText.includes('stt'))) {
+                                        foundHeader = true;
+                                        cells.forEach((cText, cIdx) => {
+                                            const low = cText.toLowerCase();
+                                            if (low.includes('câu') || low.includes('tt') || low.includes('stt')) headerColMap.qNum = cIdx;
+                                            else if (low.includes('hình thức') || low.includes('dạng')) headerColMap.qType = cIdx;
+                                            else if (low.includes('mức') || low.includes('cấp độ')) headerColMap.level = cIdx;
+                                            else if (low.includes('điểm') || low.includes('số điểm')) headerColMap.points = cIdx;
+                                            else if (low.includes('yccđ') || low.includes('yêu cầu') || low.includes('nội dung') || low.includes('mạch') || low.includes('chủ đề') || low.includes('bài')) headerColMap.yccd = cIdx;
+                                        });
+                                        return;
+                                    }
+
+                                    // Data row
+                                    if (cells.length >= 3 && cells.some(c => /\d/.test(c))) {
+                                        let qNum = headerColMap.qNum != null ? parseInt(cells[headerColMap.qNum]) : (slots.length + 1);
+                                        if (isNaN(qNum) || qNum <= 0) qNum = slots.length + 1;
+
+                                        const rawType = headerColMap.qType != null ? cells[headerColMap.qType] : (cells[1] || '');
+                                        const isMCQ = rawType.toLowerCase().includes('tn') || rawType.toLowerCase().includes('trắc nghiệm') || rawType.toLowerCase().includes('mcq');
+
+                                        const rawLevel = headerColMap.level != null ? cells[headerColMap.level] : (cells[2] || '');
+                                        let lvl = 'M1';
+                                        if (rawLevel.includes('3') || rawLevel.toLowerCase().includes('vận dụng')) lvl = 'M3';
+                                        else if (rawLevel.includes('2') || rawLevel.toLowerCase().includes('kết nối') || rawLevel.toLowerCase().includes('thông hiểu')) lvl = 'M2';
+
+                                        const rawPts = headerColMap.points != null ? cells[headerColMap.points] : (cells[3] || '1');
+                                        let pts = parseFloat(rawPts.replace(',', '.')) || 1.0;
+
+                                        const rawYccd = headerColMap.yccd != null ? cells[headerColMap.yccd] : (cells[cells.length - 1] || 'Nội dung kiến thức theo ma trận');
+
+                                        slots.push({
+                                            questionNumber: qNum,
+                                            type: isMCQ ? 'mcq_single' : 'essay',
+                                            level: lvl,
+                                            points: pts,
+                                            strand: 'Kiến thức theo ma trận',
+                                            yccd: rawYccd,
+                                            lessonTitle: rawYccd
+                                        });
+                                    }
+                                });
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('Mammoth docx parse error:', err);
+                    }
+                }
+            }
+            // 2. FILE EXCEL (.XLSX, .XLS, .CSV)
+            else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+                if (typeof XLSX !== 'undefined') {
+                    try {
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                        let headerColMap = {};
+                        let foundHeader = false;
+
+                        data.forEach((cells, rIdx) => {
+                            if (!Array.isArray(cells) || cells.length === 0) return;
+                            const rowText = cells.map(c => String(c || '').trim()).join(' ').toLowerCase();
+
+                            if (!foundHeader && (rowText.includes('câu') || rowText.includes('mức') || rowText.includes('hình thức') || rowText.includes('điểm') || rowText.includes('yccđ') || rowText.includes('mạch') || rowText.includes('stt'))) {
+                                foundHeader = true;
+                                cells.forEach((cText, cIdx) => {
+                                    const low = String(cText || '').toLowerCase();
+                                    if (low.includes('câu') || low.includes('tt') || low.includes('stt')) headerColMap.qNum = cIdx;
+                                    else if (low.includes('hình thức') || low.includes('dạng')) headerColMap.qType = cIdx;
+                                    else if (low.includes('mức') || low.includes('cấp độ')) headerColMap.level = cIdx;
+                                    else if (low.includes('điểm') || low.includes('số điểm')) headerColMap.points = cIdx;
+                                    else if (low.includes('yccđ') || low.includes('yêu cầu') || low.includes('nội dung') || low.includes('mạch') || low.includes('chủ đề') || low.includes('bài')) headerColMap.yccd = cIdx;
+                                });
+                                return;
+                            }
+
+                            if (cells.length >= 3 && cells.some(c => /\d/.test(String(c)))) {
+                                let qNum = headerColMap.qNum != null ? parseInt(cells[headerColMap.qNum]) : (slots.length + 1);
+                                if (isNaN(qNum) || qNum <= 0) qNum = slots.length + 1;
+
+                                const rawType = String(headerColMap.qType != null ? cells[headerColMap.qType] : (cells[1] || ''));
+                                const isMCQ = rawType.toLowerCase().includes('tn') || rawType.toLowerCase().includes('trắc nghiệm') || rawType.toLowerCase().includes('mcq');
+
+                                const rawLevel = String(headerColMap.level != null ? cells[headerColMap.level] : (cells[2] || ''));
+                                let lvl = 'M1';
+                                if (rawLevel.includes('3') || rawLevel.toLowerCase().includes('vận dụng')) lvl = 'M3';
+                                else if (rawLevel.includes('2') || rawLevel.toLowerCase().includes('kết nối') || rawLevel.toLowerCase().includes('thông hiểu')) lvl = 'M2';
+
+                                const rawPts = String(headerColMap.points != null ? cells[headerColMap.points] : (cells[3] || '1'));
+                                let pts = parseFloat(rawPts.replace(',', '.')) || 1.0;
+
+                                const rawYccd = String(headerColMap.yccd != null ? cells[headerColMap.yccd] : (cells[cells.length - 1] || 'Nội dung kiến thức theo ma trận'));
+
+                                slots.push({
+                                    questionNumber: qNum,
+                                    type: isMCQ ? 'mcq_single' : 'essay',
+                                    level: lvl,
+                                    points: pts,
+                                    strand: 'Kiến thức theo ma trận',
+                                    yccd: rawYccd,
+                                    lessonTitle: rawYccd
+                                });
+                            }
+                        });
+                    } catch (err) {
+                        console.warn('SheetJS excel parse error:', err);
+                    }
+                }
+            }
+            // 3. FILE JSON
+            else if (fileName.endsWith('.json')) {
+                const text = new TextDecoder('utf-8').decode(arrayBuffer);
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                } else if (parsed && (parsed.slots || parsed.title)) {
+                    return [parsed];
+                }
+            }
+
+            if (slots.length > 0) {
+                slots.forEach((s, i) => { if (!s.questionNumber) s.questionNumber = i + 1; });
+
+                const fnLow = fileName.toLowerCase();
+                if (fnLow.includes('toan') || fnLow.includes('math')) detectedSubject = 'MATH';
+                else if (fnLow.includes('tieng viet') || fnLow.includes('tv') || fnLow.includes('viet')) detectedSubject = 'VIETNAMESE';
+                else if (fnLow.includes('khoa') || fnLow.includes('sci')) detectedSubject = 'SCIENCE';
+                else if (fnLow.includes('su') || fnLow.includes('dia') || fnLow.includes('lsdl')) detectedSubject = 'HIST_GEO';
+
+                if (fnLow.includes('giua hk1') || fnLow.includes('giua ky 1') || fnLow.includes('mid1')) detectedPeriod = 'mid_term_1';
+                else if (fnLow.includes('cuoi hk1') || fnLow.includes('cuoi ky 1') || fnLow.includes('end1')) detectedPeriod = 'end_term_1';
+                else if (fnLow.includes('giua hk2') || fnLow.includes('giua ky 2') || fnLow.includes('mid2')) detectedPeriod = 'mid_term_2';
+                else if (fnLow.includes('cuoi nam') || fnLow.includes('cuoi ky 2') || fnLow.includes('end2')) detectedPeriod = 'end_year';
+
+                const totalPoints = slots.reduce((s, c) => s + (Number(c.points) || 0), 0);
+                const tnCount = slots.filter(s => s.type === 'mcq_single').length;
+                const tlCount = slots.length - tnCount;
+
+                const newMtx = {
+                    id: `MTX_UPLOAD_${Date.now()}`,
+                    title: detectedTitle,
+                    subject: detectedSubject,
+                    subjectName: detectedSubject === 'MATH' ? 'Toán' : detectedSubject === 'VIETNAMESE' ? 'Tiếng Việt' : detectedSubject === 'SCIENCE' ? 'Khoa học' : 'Lịch sử & Địa lí',
+                    grade: 4,
+                    period: detectedPeriod,
+                    periodLabel: detectedPeriod === 'mid_term_1' ? 'Giữa Học kì I' : detectedPeriod === 'end_term_1' ? 'Cuối Học kì I' : detectedPeriod === 'mid_term_2' ? 'Giữa Học kì II' : 'Cuối Năm Học',
+                    bookSeries: 'Tổ Chuyên Môn Nhà Trường',
+                    timeMinutes: 40,
+                    description: `Ma trận gồm ${slots.length} câu bóc tách tự động từ file ${file.name}.`,
+                    isCustom: true,
+                    sourceFile: file.name,
+                    summary: {
+                        totalQuestions: slots.length,
+                        totalPoints: totalPoints || 10.0,
+                        tnCount: tnCount,
+                        tlCount: tlCount,
+                        m1Points: slots.filter(s => s.level === 'M1').reduce((s, c) => s + (Number(c.points) || 0), 0),
+                        m2Points: slots.filter(s => s.level === 'M2').reduce((s, c) => s + (Number(c.points) || 0), 0),
+                        m3Points: slots.filter(s => s.level === 'M3').reduce((s, c) => s + (Number(c.points) || 0), 0)
+                    },
+                    slots: slots
+                };
+
+                return [newMtx];
+            }
+
+            return [];
+        }
+
+        async function parsePpctExcelFile(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            if (typeof XLSX === 'undefined') return null;
+
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+            let headerColMap = {};
+            let foundHeader = false;
+            const lessons = [];
+            const periods = [];
+            const yccdIdeas = [];
+
+            data.forEach((cells, rIdx) => {
+                if (!Array.isArray(cells) || cells.length === 0) return;
+                const rowText = cells.map(c => String(c || '').trim()).join(' ').toLowerCase();
+
+                if (!foundHeader && (rowText.includes('tuần') || rowText.includes('tiết') || rowText.includes('bài') || rowText.includes('yccđ') || rowText.includes('nội dung'))) {
+                    foundHeader = true;
+                    cells.forEach((cText, cIdx) => {
+                        const low = String(cText || '').toLowerCase();
+                        if (low.includes('tuần') || low.includes('week')) headerColMap.week = cIdx;
+                        else if (low.includes('tiết') || low.includes('period')) headerColMap.period = cIdx;
+                        else if (low.includes('bài') || low.includes('tên bài') || low.includes('lesson')) headerColMap.lesson = cIdx;
+                        else if (low.includes('yccđ') || low.includes('yêu cầu') || low.includes('mục tiêu')) headerColMap.yccd = cIdx;
+                        else if (low.includes('môn') || low.includes('subject')) headerColMap.subject = cIdx;
+                    });
+                    return;
+                }
+
+                if (cells.length >= 2 && cells.some(c => String(c).trim().length > 0)) {
+                    const rawWeek = headerColMap.week != null ? parseInt(cells[headerColMap.week]) : null;
+                    const week = (!isNaN(rawWeek) && rawWeek > 0) ? rawWeek : (Math.floor(lessons.length / 2) + 1);
+
+                    const rawPeriod = headerColMap.period != null ? parseInt(cells[headerColMap.period]) : (periods.length + 1);
+                    const rawLesson = headerColMap.lesson != null ? String(cells[headerColMap.lesson] || '').trim() : String(cells[1] || '').trim();
+                    const rawYccd = headerColMap.yccd != null ? String(cells[headerColMap.yccd] || '').trim() : '';
+                    const rawSubject = headerColMap.subject != null ? String(cells[headerColMap.subject] || '').trim().toLowerCase() : '';
+
+                    if (rawLesson) {
+                        const lesId = `les-excel-${lessons.length + 1}`;
+                        lessons.push({
+                            id: lesId,
+                            code: `Bài ${lessons.length + 1}`,
+                            title: rawLesson,
+                            plannedPeriods: 2,
+                            subjectId: rawSubject.includes('tv') ? 'subj-tv4' : 'subj-toan4'
+                        });
+
+                        periods.push({
+                            id: `per-excel-${periods.length + 1}`,
+                            lessonId: lesId,
+                            week: week,
+                            periodNumber: rawPeriod || (periods.length + 1)
+                        });
+
+                        if (rawYccd) {
+                            yccdIdeas.push({
+                                id: `idea-excel-${yccdIdeas.length + 1}`,
+                                code: `YCCD-EXCEL-${yccdIdeas.length + 1}`,
+                                itemText: rawYccd,
+                                linkedLessonIds: [lesId],
+                                linkedPeriodIds: [`per-excel-${periods.length}`]
+                            });
+                        }
+                    }
+                }
+            });
+
+            if (lessons.length > 0) {
+                return {
+                    app: 'THAYKHAIEDU PPCT HUB',
+                    version: '2.0.0',
+                    sourceFile: file.name,
+                    lessons: lessons,
+                    periods: periods,
+                    yccdIdeas: yccdIdeas
+                };
+            }
+            return null;
+        }
+
+        function updateMainHubStatusDisplay() {
+            const ppct = appDB.ppctData || DEFAULT_PPCT_DATA;
+            const badge = document.getElementById('mainPpctStatusBadge');
+            const lCount = document.getElementById('mainPpctLessonCount');
+            const pCount = document.getElementById('mainPpctPeriodCount');
+            const yCount = document.getElementById('mainPpctYccdCount');
+
+            const lessons = ppct.lessons || [];
+            const periods = ppct.periods || [];
+            const yccds = ppct.yccdIdeas || [];
+
+            if (lCount) lCount.textContent = lessons.length || 22;
+            if (pCount) pCount.textContent = periods.length || 42;
+            if (yCount) yCount.textContent = (appDB.objectives && appDB.objectives.length) ? appDB.objectives.length : (yccds.length || 27);
+
+            if (badge) {
+                if (appDB.ppctSource && appDB.ppctSource.isCustom) {
+                    badge.className = 'text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1';
+                    badge.innerHTML = `<i class="fa-solid fa-file-circle-check text-emerald-700"></i> File: ${appDB.ppctSource.fileName}`;
+                } else {
+                    badge.className = 'text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-1 rounded-full shadow-2xs inline-flex items-center gap-1';
+                    badge.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i> Chuẩn KNTT 35 Tuần';
+                }
+            }
+
+            const mtxBadge = document.getElementById('mainMatrixBankCountBadge');
+            const bank = getMatrixBank();
+            if (mtxBadge) {
+                mtxBadge.innerHTML = `<i class="fa-solid fa-table-cells text-purple-600"></i> ${bank.length} Ma trận sẵn sàng`;
+            }
+        }
+
+        async function handleMainPpctUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name.toLowerCase();
+
+            try {
+                if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                    const parsed = await parsePpctExcelFile(file);
+                    if (parsed) {
+                        appDB.ppctData = parsed;
+                        appDB.ppctSource = { fileName: file.name, uploadedAt: new Date().toISOString(), isCustom: true };
+                        syncPpctYccdToObjectives();
+                        saveDB();
+                        updateMainHubStatusDisplay();
+                        updateWizardPpctStatusDisplay();
+                        onWizardSubjectOrPeriodChange();
+                        showToast(`🎉 Đã nạp thành công file PPCT Excel: "${file.name}" (${parsed.lessons.length} bài) và liên kết vào Trình Tạo Đề!`, 'success');
+                    } else {
+                        showToast('Không thể đọc dữ liệu bài học từ file Excel PPCT!', 'warning');
+                    }
+                } else {
+                    // JSON or CSV
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const raw = e.target.result;
+                            const parsed = JSON.parse(raw);
+                            appDB.ppctData = Array.isArray(parsed) ? { lessons: parsed, periods: [], yccdIdeas: [] } : parsed;
+                            appDB.ppctSource = { fileName: file.name, uploadedAt: new Date().toISOString(), isCustom: true };
+                            syncPpctYccdToObjectives();
+                            saveDB();
+                            updateMainHubStatusDisplay();
+                            updateWizardPpctStatusDisplay();
+                            onWizardSubjectOrPeriodChange();
+                            showToast(`🎉 Đã nạp thành công file PPCT "${file.name}" và liên kết vào Trình Tạo Đề!`, 'success');
+                        } catch (err) {
+                            showToast('Lỗi phân tích file JSON PPCT: ' + err.message, 'error');
+                        }
+                    };
+                    reader.readAsText(file, 'utf-8');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Lỗi đọc file: ' + err.message, 'error');
+            }
+            event.target.value = '';
+        }
+
+        async function handleMainMatrixFileUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            try {
+                const parsedList = await parseMatrixFile(file);
+                if (parsedList && parsedList.length > 0) {
+                    const bank = getMatrixBank();
+                    parsedList.forEach(m => {
+                        if (!m.id) m.id = `MTX_UPLOAD_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+                        m.isCustom = true;
+                        bank.push(m);
+                    });
+                    saveDB();
+                    updateMainHubStatusDisplay();
+                    renderWizardMatrixList();
+                    renderMatrixBankTab();
+
+                    const firstMtx = parsedList[0];
+                    showToast(`🎉 Đã bóc tách thành công ${(firstMtx.slots || []).length} câu từ file "${file.name}" vào Kho Ma Trận!`, 'success');
+                } else {
+                    showToast('Không trích xuất được bảng ma trận từ file!', 'warning');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Lỗi bóc tách file ma trận: ' + err.message, 'error');
+            }
+            event.target.value = '';
+        }
+
+        function exportMatrixTemplateExcel() {
+            if (typeof XLSX === 'undefined') {
+                showToast('Đang tải thư viện Excel...', 'info');
+                return;
+            }
+            const ws_data = [
+                ["Câu", "Hình thức", "Mức độ", "Điểm số", "Mạch kiến thức / Yêu cầu cần đạt (YCCĐ)"],
+                [1, "Trắc nghiệm", "Mức 1", 1.0, "Đọc, viết, so sánh số có sáu chữ số"],
+                [2, "Trắc nghiệm", "Mức 1", 1.0, "Xác định giá trị chữ số theo hàng và lớp"],
+                [3, "Trắc nghiệm", "Mức 1", 1.0, "Tính giá trị biểu thức chứa một chữ"],
+                [4, "Trắc nghiệm", "Mức 2", 1.0, "Nhận biết góc nhọn, góc vuông, góc tù, góc bẹt"],
+                [5, "Trắc nghiệm", "Mức 2", 1.0, "Đổi đơn vị đo khối lượng yến, tạ, tấn"],
+                [6, "Trắc nghiệm", "Mức 2", 1.0, "Đổi đơn vị đo thời gian giây, thế kỉ"],
+                [7, "Trắc nghiệm", "Mức 3", 1.0, "Tính chất kết hợp của phép cộng tính nhanh"],
+                [8, "Tự luận", "Mức 1", 1.5, "Đặt tính rồi tính cộng, trừ số có nhiều chữ số"],
+                [9, "Tự luận", "Mức 2", 1.0, "Tìm hai số khi biết tổng và hiệu của hai số đó"],
+                [10, "Tự luận", "Mức 3", 0.5, "Giải bài toán có đến ba bước tính thực tế"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "MaTranChuan");
+            XLSX.writeFile(wb, "mau_ma_tran_de_kiem_tra_chuan_tt27.xlsx");
+            showToast("Đã tải xuống file mẫu ma trận Excel (.xlsx)!", "success");
+        }
+
+        function exportMatrixTemplateDoc() {
+            const docContent = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="utf-8">
+                    <title>Mẫu Ma Trận Đề Kiểm Tra Chuẩn Thông Tư 27</title>
+                    <style>
+                        body { font-family: "Times New Roman", Times, serif; font-size: 13pt; line-height: 1.3; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                        th { background-color: #f2f2f2; padding: 6px; border: 1px solid #000; text-align: center; font-weight: bold; }
+                        td { border: 1px solid #000; padding: 6px; }
+                    </style>
+                </head>
+                <body>
+                    <div style="text-align:center;">
+                        <h2 style="margin:0; text-transform:uppercase;">MA TRẬN ĐỀ KIỂM TRA ĐỊNH KÌ MÔN TOÁN LỚP 4</h2>
+                        <h3 style="margin:5px 0;">CHƯƠNG TRÌNH GDPT 2018 — THÔNG TƯ 27/2020/TT-BGDĐT</h3>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">Câu</th>
+                                <th style="width:120px;">Hình thức</th>
+                                <th style="width:80px;">Mức độ</th>
+                                <th style="width:80px;">Điểm số</th>
+                                <th>Mạch kiến thức & Yêu cầu cần đạt (YCCĐ)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align:center;">1</td>
+                                <td style="text-align:center;">Trắc nghiệm</td>
+                                <td style="text-align:center;">Mức 1</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Đọc, viết, so sánh số có sáu chữ số</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">2</td>
+                                <td style="text-align:center;">Trắc nghiệm</td>
+                                <td style="text-align:center;">Mức 1</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Xác định giá trị chữ số theo hàng và lớp</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">3</td>
+                                <td style="text-align:center;">Trắc nghiệm</td>
+                                <td style="text-align:center;">Mức 1</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Tính giá trị biểu thức chứa một chữ</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">4</td>
+                                <td style="text-align:center;">Trắc nghiệm</td>
+                                <td style="text-align:center;">Mức 2</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Nhận biết góc nhọn, góc vuông, góc tù, góc bẹt</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">5</td>
+                                <td style="text-align:center;">Trắc nghiệm</td>
+                                <td style="text-align:center;">Mức 2</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Đổi đơn vị đo khối lượng yến, tạ, tấn</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">6</td>
+                                <td style="text-align:center;">Trắc nghiệm</td>
+                                <td style="text-align:center;">Mức 2</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Đổi đơn vị đo thời gian giây, thế kỉ</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">7</td>
+                                <td style="text-align:center;">Trắc nghiệm</td>
+                                <td style="text-align:center;">Mức 3</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Tính chất kết hợp của phép cộng tính nhanh</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">8</td>
+                                <td style="text-align:center;">Tự luận</td>
+                                <td style="text-align:center;">Mức 1</td>
+                                <td style="text-align:center;">1.5</td>
+                                <td>Đặt tính rồi tính cộng, trừ số có nhiều chữ số</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">9</td>
+                                <td style="text-align:center;">Tự luận</td>
+                                <td style="text-align:center;">Mức 2</td>
+                                <td style="text-align:center;">1.0</td>
+                                <td>Tìm hai số khi biết tổng và hiệu của hai số đó</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center;">10</td>
+                                <td style="text-align:center;">Tự luận</td>
+                                <td style="text-align:center;">Mức 3</td>
+                                <td style="text-align:center;">0.5</td>
+                                <td>Giải bài toán có đến ba bước tính thực tế</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+            const blob = new Blob(['\ufeff', docContent], { type: 'application/msword;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'mau_ma_tran_de_kiem_tra_chuan_tt27.doc';
+            link.click();
+            showToast("Đã tải xuống file mẫu ma trận Word (.doc)!", "success");
+        }
+
+
     </script>
 
     <!-- ======================================================================= -->
@@ -9869,7 +10442,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                             </div>
 
                             <div class="flex flex-wrap items-center gap-1.5">
-                                <input type="file" id="matrixFileInputWizard" accept=".json,.csv" onchange="handleMatrixFileUpload(event)" class="hidden">
+                                <input type="file" id="matrixFileInputWizard" accept=".docx,.xlsx,.xls,.csv,.json" onchange="handleMatrixFileUpload(event)" class="hidden">
                                 <button type="button" onclick="document.getElementById('matrixFileInputWizard').click()" class="px-3 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] shadow-xs cursor-pointer flex items-center gap-1.5 transition">
                                     <i class="fa-solid fa-file-arrow-up text-amber-300"></i>
                                     <span>Tải File Ma Trận Lên Kho (.json, .csv)</span>
