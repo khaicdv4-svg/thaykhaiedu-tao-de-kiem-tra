@@ -3057,6 +3057,28 @@ const DEFAULT_SEED_DATA = {
         let reviewerViewMode = 'dual';
         let simUserAnswers = {};
 
+        function cleanQuestionStem(rawStem) {
+            if (!rawStem || typeof rawStem !== 'string') return '';
+            let s = rawStem.trim();
+            // 1. Loại bỏ các tiền tố meta trong ngoặc vuông như [Tự luận - M1], [Nhận biết], [Tiếng Việt - M1], v.v.
+            s = s.replace(/^\[(?:Tự luận|Trắc nghiệm|Nhận biết|Thông hiểu|Vận dụng|Vận dụng cao|Mức\s*[1234]|M[1234]|Câu\s*hỏi\s*\d+|Tiếng Việt|Toán|Khoa học|Lịch sử[^\]]*|Địa lí|Đạo đức|Tin học|Công nghệ|Biến thể[^\]]*)[^\]]*\]\s*/i, '');
+            // 2. Loại bỏ các phần dẫn bài học: Dựa trên nội dung bài học "...", Dựa vào kiến thức bài "...", Theo bài học "...", v.v.
+            s = s.replace(/^(?:(?:Dựa trên|Dựa vào|Theo|Bám sát)\s*(?:nội dung|kiến thức)?\s*(?:bài học|bài|chủ đề)?\s*["“][^"”]+["”]\s*[:：,，\-–]?\s*(?:\\n|\n)?|(?:Nội dung|Kiến thức)\s*(?:bài học|bài|chủ đề)\s*["“][^"”]+["”]\s*[:：,，\-–]?\s*(?:\\n|\n)?)/i, '');
+            // 3. Loại bỏ tiền tố fallback: Câu hỏi (Chủ đề ... - Sách Kết nối tri thức):
+            s = s.replace(/^Câu hỏi\s*\([^)]*\)\s*[:：,，\-–]?\s*/i, '');
+            // 4. Lọc lại nếu có lồng nhiều lớp tag
+            s = s.replace(/^\[(?:Tự luận|Trắc nghiệm|Nhận biết|Thông hiểu|Vận dụng|Vận dụng cao|Mức\s*[1234]|M[1234]|Câu\s*hỏi\s*\d+|Tiếng Việt|Toán|Khoa học|Lịch sử[^\]]*|Địa lí|Đạo đức|Tin học|Công nghệ|Biến thể[^\]]*)[^\]]*\]\s*/i, '');
+            // 5. Loại bỏ dấu câu mào đầu thừa: xuống dòng, dấu hai chấm, dấu phẩy, gạch đầu dòng...
+            s = s.replace(/^[\r\n\s,:：，\-–]+/, '');
+            // 6. Viết hoa chữ cái đầu câu hỏi
+            if (s.length > 0) {
+                s = s.charAt(0).toUpperCase() + s.slice(1);
+            }
+            return s;
+        }
+
+
+
         // =========================================================================
         // TIỆN ÍCH HỆ THỐNG (TOAST, MODAL, STORAGE)
         // =========================================================================
@@ -3142,6 +3164,33 @@ const DEFAULT_SEED_DATA = {
                 }
                 if (!appDB.ppctData || !appDB.ppctData.periods || !appDB.ppctData.periods.length) {
                     appDB.ppctData = JSON.parse(JSON.stringify(DEFAULT_PPCT_DATA));
+                }
+                // Tự động làm sạch stem câu hỏi trong đề hiện hành và các đề đã lưu
+                if (appDB.currentExamDraft && Array.isArray(appDB.currentExamDraft.questions)) {
+                    appDB.currentExamDraft.questions.forEach(q => {
+                        if (q.stem) q.stem = cleanQuestionStem(q.stem);
+                        if (q.inclusiveStem) q.inclusiveStem = cleanQuestionStem(q.inclusiveStem);
+                    });
+                }
+                if (Array.isArray(appDB.revisions)) {
+                    appDB.revisions.forEach(r => {
+                        if (r.snapshot && Array.isArray(r.snapshot.questions)) {
+                            r.snapshot.questions.forEach(q => {
+                                if (q.stem) q.stem = cleanQuestionStem(q.stem);
+                                if (q.inclusiveStem) q.inclusiveStem = cleanQuestionStem(q.inclusiveStem);
+                            });
+                        }
+                    });
+                }
+                if (Array.isArray(appDB.savedExamsList)) {
+                    appDB.savedExamsList.forEach(ex => {
+                        if (Array.isArray(ex.questions)) {
+                            ex.questions.forEach(q => {
+                                if (q.stem) q.stem = cleanQuestionStem(q.stem);
+                                if (q.inclusiveStem) q.inclusiveStem = cleanQuestionStem(q.inclusiveStem);
+                            });
+                        }
+                    });
                 }
             } else {
                 appDB = JSON.parse(JSON.stringify(DEFAULT_SEED_DATA));
@@ -4394,13 +4443,13 @@ Trả về định dạng JSON:
                     level: slot.level,
                     qType: slot.qType,
                     points: Number(slot.points),
-                    stem: tpl.stem,
+                    stem: cleanQuestionStem(tpl.stem),
                     svgMarkup: svgMarkup,
                     options: opts,
                     correctAnswer: tpl.correctAnswer,
                     expectedNumericAnswer: tpl.expectedNumericAnswer || '',
                     gradingGuide: tpl.gradingGuide,
-                    inclusiveStem: tpl.inclusiveStem || `[Đề Hòa nhập - Giảm tải] ${tpl.stem}`,
+                    inclusiveStem: cleanQuestionStem(tpl.inclusiveStem || tpl.stem),
                     customEssayLines: defaultLinesCount,
                     isLockedByTeacher: false
                 };
@@ -4416,7 +4465,7 @@ Trả về định dạng JSON:
                 level: slot.level,
                 qType: slot.qType,
                 points: Number(slot.points),
-                stem: `Câu hỏi (${slot.topic} - Sách Kết nối tri thức): Vận dụng kiến thức "${slot.objectiveText}" để thực hiện yêu cầu sau:`,
+                stem: cleanQuestionStem(`Thực hiện yêu cầu sau về kiến thức: ${slot.objectiveText}`),
                 svgMarkup: svgMarkup,
                 options: isMCQType(slot.qType) ? [
                     { id: 'A', text: 'Đáp án đúng theo chuẩn kiến thức Kết nối tri thức', isCorrect: true, mistakeRef: '' },
@@ -4426,7 +4475,7 @@ Trả về định dạng JSON:
                 ] : [],
                 correctAnswer: 'Đáp án A',
                 gradingGuide: `Chấm điểm theo chuẩn YCCĐ (${slot.points} điểm).`,
-                inclusiveStem: `[Đề Hòa nhập - M1] Câu hỏi giảm tải cho nội dung: ${slot.objectiveText}`,
+                inclusiveStem: cleanQuestionStem(`Câu hỏi giảm tải: ${slot.objectiveText}`),
                 customEssayLines: defaultLinesCount,
                 isLockedByTeacher: false
             };
@@ -4848,7 +4897,7 @@ Trả về định dạng JSON:
             const container = document.getElementById('revQuestionsContainer');
             container.innerHTML = qs.map((q, idx) => {
                 const isEssay = !isMCQType(q.qType) || !q.options || q.options.length === 0;
-                const displayStem = isInc && q.inclusiveStem ? q.inclusiveStem : q.stem;
+                const displayStem = cleanQuestionStem(isInc && q.inclusiveStem ? q.inclusiveStem : q.stem);
                 const linesCount = parseInt(q.customEssayLines ?? appDB.essayLineConfig?.defaultLines ?? 4);
 
                 let visibleOpts = q.options || [];
@@ -4861,7 +4910,7 @@ Trả về định dạng JSON:
                 const inlineEditHtml = activeInlineEditIdx === idx ? `
                     <div class="bg-blue-50 border-2 border-blue-400 rounded-xl p-3.5 space-y-2.5 text-xs">
                         <div class="font-bold text-blue-950">Chỉnh sửa trực tiếp Câu ${idx + 1} (${q.objectiveId})</div>
-                        <textarea id="editStem_${idx}" rows="2" class="w-full border rounded-lg p-2 bg-white font-semibold">${q.stem}</textarea>
+                        <textarea id="editStem_${idx}" rows="2" class="w-full border rounded-lg p-2 bg-white font-semibold">${cleanQuestionStem(q.stem)}</textarea>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                                 <label class="block font-bold text-slate-600 mb-0.5">Đáp án đúng:</label>
@@ -4998,7 +5047,7 @@ Trả về định dạng JSON:
         function saveInlineCardEdit(idx) {
             const q = appDB.currentExamDraft?.questions?.[idx];
             if (!q) return;
-            q.stem = document.getElementById(`editStem_${idx}`).value.trim();
+            q.stem = cleanQuestionStem(document.getElementById(`editStem_${idx}`).value.trim());
             q.correctAnswer = document.getElementById(`editAns_${idx}`).value.trim();
             q.gradingGuide = document.getElementById(`editGuide_${idx}`).value.trim();
             activeInlineEditIdx = -1;
@@ -5043,7 +5092,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             }
 
             const newQ = buildQuestionObjectForSlot(mtx.slots[idx], idx, Math.floor(Math.random() * 3) + 1);
-            newQ.stem = `[Biến thể tương đương - Sách Kết nối tri thức] ` + newQ.stem;
+            newQ.stem = cleanQuestionStem(newQ.stem);
             newQ.customEssayLines = q.customEssayLines;
             draft.questions[idx] = newQ;
             saveDB();
@@ -5414,7 +5463,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             }
 
             const renderQuestionItem = (q, idx) => {
-                const stemText = isInclusive && q.inclusiveStem ? q.inclusiveStem : q.stem;
+                const stemText = cleanQuestionStem(isInclusive && q.inclusiveStem ? q.inclusiveStem : q.stem);
                 const isEssayQ = !isMCQType(q.qType) || !q.options || q.options.length === 0;
                 let opts = q.options ? JSON.parse(JSON.stringify(q.options)) : [];
                 if (isInclusive && opts.length === 4) {
@@ -5427,7 +5476,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                 const allShort = opts.length > 0 && opts.every(o => (o.text || '').length <= 16);
 
                 const questionHeaderHtml = (sheetTheme === 'worksheet_mint' && isEssayQ)
-                    ? `<div class="ws-question-pill"><b>Câu ${idx + 1} (${q.points} điểm).</b> ${stemText.split('\n')[0]}</div>`
+                    ? `<div class="ws-question-pill"><b>Câu ${idx + 1} (${q.points} điểm).</b> ${stemText.replace(/\n/g, '<br>')}</div>`
                     : `<div style="margin-bottom: 5px;"><b>Câu ${idx + 1} (${q.points} điểm).</b> ${stemText.replace(/\n/g, '<br>')}</div>`;
 
                 return `
@@ -5693,7 +5742,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             if (simBox) {
                 simBox.innerHTML = draft.questions.map((q, idx) => `
                     <div class="border border-slate-200 rounded-xl p-4 space-y-2.5 bg-slate-50/40">
-                        <div class="font-bold text-sm text-blue-950">Câu ${idx + 1} (${q.points} điểm): ${q.stem}</div>
+                        <div class="font-bold text-sm text-blue-950">Câu ${idx + 1} (${q.points} điểm): ${cleanQuestionStem(q.stem)}</div>
                         ${q.svgMarkup ? `<div class="max-w-xs">${q.svgMarkup}</div>` : ''}
                         ${q.options && q.options.length > 0 ? `
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -6187,7 +6236,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             const htmlStr = `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>${draft.title}</title><script src="https://cdn.tailwindcss.com"><\/script></head>
             <body class="bg-slate-100 p-6"><div class="max-w-3xl mx-auto bg-white rounded-2xl shadow p-6 space-y-4">
             <h1 class="text-xl font-bold text-center">${draft.title} (Sách Kết nối tri thức)</h1>
-            ${draft.questions.map((q, i) => `<div class="border rounded-xl p-4 space-y-2"><div class="font-bold">Câu ${i + 1} (${q.points}đ): ${q.stem}</div>${q.svgMarkup || ''}</div>`).join('')}
+            ${draft.questions.map((q, i) => `<div class="border rounded-xl p-4 space-y-2"><div class="font-bold">Câu ${i + 1} (${q.points}đ): ${cleanQuestionStem(q.stem)}</div>${q.svgMarkup || ''}</div>`).join('')}
             </div></body></html>`;
             const blob = new Blob([htmlStr], { type: 'text/html;charset=utf-8' });
             const a = document.createElement('a');
@@ -8326,7 +8375,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
             if (wizardState.subject === 'MATH') {
                 if (isMCQ) {
                     if (s.level === 'M1') {
-                        stem = `[Nhận biết] Theo bài học "${lesson}", kết quả của phép tính nào sau đây là đúng?`;
+                        stem = 'Kết quả của phép tính nào sau đây là đúng?';
                         opts = [
                             { id: 'A', text: '45 000 + 5 000 = 50 000', isCorrect: true },
                             { id: 'B', text: '45 000 + 5 000 = 40 000', isCorrect: false },
@@ -8335,7 +8384,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                         ];
                         correctAns = 'A';
                     } else if (s.level === 'M2') {
-                        stem = `[Thông hiểu] Dựa vào kiến thức bài "${lesson}", một hình chữ nhật có chu vi 48cm. Nửa chu vi hình chữ nhật đó là:`;
+                        stem = 'Một hình chữ nhật có chu vi 48 cm. Nửa chu vi hình chữ nhật đó là:';
                         opts = [
                             { id: 'A', text: '24 cm', isCorrect: true },
                             { id: 'B', text: '12 cm', isCorrect: false },
@@ -8344,7 +8393,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                         ];
                         correctAns = 'A';
                     } else {
-                        stem = `[Vận dụng] Bác Khôi thu hoạch được 3 tạ 50 kg thóc. Số kilôgam thóc bác Khôi thu hoạch được là:`;
+                        stem = 'Bác Khôi thu hoạch được 3 tạ 50 kg thóc. Số kilôgam thóc bác Khôi thu hoạch được là:';
                         opts = [
                             { id: 'A', text: '350 kg', isCorrect: true },
                             { id: 'B', text: '305 kg', isCorrect: false },
@@ -8354,14 +8403,14 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                         correctAns = 'A';
                     }
                 } else {
-                    // Essay
-                    stem = `[Tự luận - ${s.level}] Dựa trên nội dung bài học "${lesson}":\\nMột đội công nhân tuần đầu sửa được 1 250 m đường, tuần thứ hai sửa được gấp đôi tuần đầu. Hỏi cả hai tuần đội công nhân đó sửa được bao nhiêu mét đường?`;
+                    // Essay: Chỉ nêu câu hỏi thuần túy, bỏ toàn bộ tiền tố meta
+                    stem = 'Một đội công nhân tuần đầu sửa được 1 250 m đường, tuần thứ hai sửa được gấp đôi tuần đầu. Hỏi cả hai tuần đội công nhân đó sửa được bao nhiêu mét đường?';
                     guide = 'Tuần thứ hai sửa được: 1 250 x 2 = 2 500 (m) (0.5đ). Cả hai tuần sửa được: 1 250 + 2 500 = 3 750 (m) (0.5đ).';
                     opts = [];
                 }
             } else if (wizardState.subject === 'VIETNAMESE') {
                 if (isMCQ) {
-                    stem = `[Tiếng Việt - ${s.level}] Dựa vào nội dung bài "${lesson}", câu nào dưới đây chứa danh từ chỉ hiện tượng tự nhiên?`;
+                    stem = 'Câu nào dưới đây chứa danh từ chỉ hiện tượng tự nhiên?';
                     opts = [
                         { id: 'A', text: 'Cơn mưa rào mùa hạ vừa tưới mát cho cánh đồng.', isCorrect: true },
                         { id: 'B', text: 'Em chăm chỉ học bài vào mỗi buổi tối.', isCorrect: false },
@@ -8370,14 +8419,14 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                     ];
                     correctAns = 'A';
                 } else {
-                    stem = `[Tự luận - ${s.level}] Dựa vào kiến thức bài học "${lesson}": Viết một câu có sử dụng từ ngữ chỉ cảm xúc khi em được giúp đỡ một người gặp khó khăn.`;
+                    stem = 'Viết một câu có sử dụng từ ngữ chỉ cảm xúc khi em được giúp đỡ một người gặp khó khăn.';
                     guide = 'Học sinh viết câu đúng ngữ pháp, có dùng từ chỉ cảm xúc phù hợp (vui sướng, hạnh phúc, ấm áp...): 1.0 điểm.';
                     opts = [];
                 }
             } else {
                 // Other subjects
                 if (isMCQ) {
-                    stem = `[Câu hỏi ${idx + 1} - ${s.level}] Nội dung bài học "${lesson}": Chọn đáp án đúng nhất trong các khẳng định sau:`;
+                    stem = 'Chọn đáp án đúng nhất trong các khẳng định sau:';
                     opts = [
                         { id: 'A', text: 'Khẳng định chính xác theo chuẩn SGK Kết nối tri thức.', isCorrect: true },
                         { id: 'B', text: 'Ý kiến chưa đầy đủ.', isCorrect: false },
@@ -8386,7 +8435,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                     ];
                     correctAns = 'A';
                 } else {
-                    stem = `[Tự luận - ${s.level}] Em hãy giải thích hoặc nêu hiểu biết của mình về bài học "${lesson}".`;
+                    stem = `Em hãy giải thích hoặc nêu hiểu biết của mình về "${lesson}".`;
                     guide = 'Trả lời đúng trọng tâm bài học, diễn đạt rõ ràng mạch lạc: ' + pts + ' điểm.';
                     opts = [];
                 }
@@ -8401,7 +8450,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                 objectiveId: `YCCD_${wizardState.subject}_${s.level}_${idx + 1}`,
                 objectiveText: s.lessonTitle,
                 topic: s.lessonTitle,
-                stem: stem,
+                stem: cleanQuestionStem(stem),
                 options: opts,
                 correctAnswer: correctAns,
                 gradingGuide: guide,
@@ -8492,6 +8541,12 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
         const rev = (appDB.revisions || []).find(r => r.version === examId || r.snapshot?.examId === examId);
         if (rev && rev.snapshot) {
             appDB.currentExamDraft = JSON.parse(JSON.stringify(rev.snapshot));
+            if (Array.isArray(appDB.currentExamDraft.questions)) {
+                appDB.currentExamDraft.questions.forEach(q => {
+                    if (q.stem) q.stem = cleanQuestionStem(q.stem);
+                    if (q.inclusiveStem) q.inclusiveStem = cleanQuestionStem(q.inclusiveStem);
+                });
+            }
             saveDB();
             renderAll();
             switchTab('tab-reviewer');
@@ -8660,7 +8715,7 @@ Trả về JSON: {"stem":"...","options":[{"id":"A","text":"...","isCorrect":tru
                     meta = `${rev.subjectName || snap.subjectName} • ${snap.periodLabel} • ${(snap.questions || []).length} câu (${snap.totalPoints}đ)`;
                     htmlQuestions = (snap.questions || []).map((q, idx) => `
                         <div class="border border-slate-200 rounded-xl p-3 bg-white space-y-1">
-                            <div class="font-bold text-blue-950">Câu ${idx + 1} (${q.points}đ): ${q.stem}</div>
+                            <div class="font-bold text-blue-950">Câu ${idx + 1} (${q.points}đ): ${cleanQuestionStem(q.stem)}</div>
                             ${q.options && q.options.length > 0 ? `<div class="grid grid-cols-2 gap-1 text-[11px] text-slate-600 mt-1">${q.options.map(o => `<div class="${o.isCorrect ? 'font-bold text-emerald-700' : ''}">${o.id}. ${o.text}</div>`).join('')}</div>` : ''}
                         </div>
                     `).join('');
