@@ -40,11 +40,14 @@ export function TheBaiDoc({
   onDoi,
   chiXem = false,
   hanhDong,
+  phuTro,
 }: {
   bai: BaiDocSua;
   onDoi?: (b: BaiDocSua) => void;
   chiXem?: boolean;
   hanhDong?: React.ReactNode;
+  /** Khối phụ hiện trên nút hành động (ví dụ gợi ý cắt đoạn, nút lưu). */
+  phuTro?: React.ReactNode;
 }) {
   const [moNoiDung, setMoNoiDung] = useState(false);
   const [dangKiemLink, setDangKiemLink] = useState(false);
@@ -158,6 +161,7 @@ export function TheBaiDoc({
       {kq.hopLe && kq.canhBao.length === 0 && (
         <div className="flex items-center gap-1.5 text-sm text-emerald-700"><CheckCircle2 className="w-4 h-4" /> Đạt các kiểm tra tự động.</div>
       )}
+      {phuTro}
       {hanhDong}
     </div>
   );

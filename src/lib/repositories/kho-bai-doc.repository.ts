@@ -181,3 +181,50 @@ export async function duyetBaiDoc(id: string, hanhDong: 'DUYET' | 'TU_CHOI', ghi
     .eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+export interface ThayDoiBaiDoc {
+  tieuDe: string;
+  noiDung: string;
+  tacGia: string;
+  nguon: string;
+  nguonUrl: string;
+  loai: LoaiBaiDoc | null;
+  ky: KyKiemTraBaiDoc | null;
+  theLoai: TheLoaiBaiDoc | null;
+  chuDiem: string | null;
+}
+
+/** Sửa bài đang nháp hoặc chờ duyệt; kiểm tra lại, đạt thì vào "Chờ duyệt", chưa đạt thì về "nháp". */
+export async function suaBaiDocChoDuyet(id: string, d: ThayDoiBaiDoc) {
+  const { supabase, role } = await layNguoiDung();
+  if (!['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    throw new Error('Chỉ tổ trưởng hoặc quản trị mới được sửa bài trong hàng chờ.');
+  }
+  const { data: cu, error: e1 } = await supabase.from('reading_passages').select('status, source_check_status').eq('id', id).single();
+  if (e1 || !cu) throw new Error('Không tìm thấy bài đọc.');
+  if (!['DRAFT', 'PENDING_REVIEW'].includes(cu.status)) throw new Error('Chỉ sửa được bài đang nháp hoặc chờ duyệt.');
+
+  const kq = kiemTraBaiDoc(
+    { ...d, nguonUrl: d.nguonUrl, trangThaiLink: (cu.source_check_status ?? 'CHUA_KIEM') as TrangThaiLink },
+    await layVanBanSgkTiengViet(),
+  );
+  const { error } = await supabase
+    .from('reading_passages')
+    .update({
+      title: d.tieuDe.trim(),
+      content: d.noiDung,
+      word_count: kq.soTieng,
+      author: d.tacGia.trim() || CHUA_RO,
+      source_reference: d.nguon.trim() || CHUA_RO,
+      source_url: d.nguonUrl.trim() || null,
+      reading_use: d.loai,
+      assessment_period: d.ky,
+      literary_form: d.theLoai,
+      theme: d.chuDiem,
+      check_result: { loi: kq.loi, canhBao: kq.canhBao },
+      status: kq.hopLe ? 'PENDING_REVIEW' : 'DRAFT',
+    })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  return { hopLe: kq.hopLe, loi: kq.loi, canhBao: kq.canhBao };
+}

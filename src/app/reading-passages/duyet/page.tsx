@@ -7,8 +7,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, FilePlus2, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FilePlus2, Loader2, RefreshCw, Save, XCircle } from 'lucide-react';
 import { TheBaiDoc, type BaiDocSua } from '@/components/kho-bai-doc/TheBaiDoc';
+import { GoiYCat } from '@/components/kho-bai-doc/GoiYCat';
+import { kiemTraBaiDoc } from '@/core/reading-passages/kiem-tra';
 import type { TrangThaiLink } from '@/core/reading-passages/kiem-tra';
 
 interface BaiTrongKho {
@@ -24,6 +26,7 @@ export default function HangChoDuyetPage() {
   const [dangTai, setDangTai] = useState(true);
   const [dangXuLy, setDangXuLy] = useState<string | null>(null);
   const [lyDo, setLyDo] = useState<Record<string, string>>({});
+  const [sua, setSua] = useState<Record<string, BaiDocSua>>({});
   const [thongBao, setThongBao] = useState<{ loai: 'ok' | 'loi'; text: string } | null>(null);
 
   const tai = async () => {
@@ -58,14 +61,42 @@ export default function HangChoDuyetPage() {
     }
   };
 
+  const luuSua = async (id: string) => {
+    const b = sua[id];
+    if (!b) return;
+    setDangXuLy(id);
+    setThongBao(null);
+    try {
+      const r = await fetch('/api/reading-passages/sua', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, bai: { tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, nguonUrl: b.nguonUrl ?? '', loai: b.loai, ky: b.ky, theLoai: b.theLoai, chuDiem: b.chuDiem } }),
+      }).then((x) => x.json());
+      if (r.error) throw new Error(r.error);
+      setSua(({ [id]: _bo, ...con }) => con);
+      await tai();
+      setThongBao({ loai: r.hopLe ? 'ok' : 'loi', text: r.hopLe ? 'Đã lưu. Bài đạt kiểm tra, đang ở mục Chờ duyệt.' : `Đã lưu nhưng bài còn lỗi: ${r.loi.join(' ')}` });
+    } catch (e) {
+      setThongBao({ loai: 'loi', text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setDangXuLy(null);
+    }
+  };
+
   const choDuyet = ds.filter((b) => b.trangThai === 'PENDING_REVIEW');
   const banNhap = ds.filter((b) => b.trangThai === 'DRAFT');
 
-  const the = (b: BaiTrongKho, coNut: boolean) => (
+  const baiGoc = (b: BaiTrongKho): BaiDocSua => ({ khoa: b.id, chon: false, tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, nguonUrl: b.nguonUrl ?? '', loai: b.loai, ky: b.ky, theLoai: b.theLoai, chuDiem: b.chuDiem, trangThaiLink: b.trangThaiLink, ghiChu: [`Nguồn gốc: ${NGUON_GOC[b.nguonGoc] ?? b.nguonGoc} · ${new Date(b.taoLuc).toLocaleDateString('vi-VN')}`] });
+
+  const the = (b: BaiTrongKho, coNut: boolean) => {
+    const bai = sua[b.id] ?? baiGoc(b);
+    const kq = kiemTraBaiDoc(bai);
+    const quaDai = bai.loai === 'DOC_THANH_TIENG' && !!bai.ky && kq.canhBao.some((c) => c.includes('cắt một đoạn'));
+    const daSua = !!sua[b.id];
+    return (
     <TheBaiDoc
       key={b.id}
-      chiXem
-      bai={{ khoa: b.id, chon: false, tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, nguonUrl: b.nguonUrl ?? '', loai: b.loai, ky: b.ky, theLoai: b.theLoai, chuDiem: b.chuDiem, trangThaiLink: b.trangThaiLink, ghiChu: [`Nguồn gốc: ${NGUON_GOC[b.nguonGoc] ?? b.nguonGoc} · ${new Date(b.taoLuc).toLocaleDateString('vi-VN')}`] }}
+      bai={bai}
+      onDoi={(nb) => setSua({ ...sua, [b.id]: nb })}
       hanhDong={coNut ? (
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
           <input className="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Lí do (bắt buộc khi từ chối)" value={lyDo[b.id] ?? ''} onChange={(e) => setLyDo({ ...lyDo, [b.id]: e.target.value })} />
@@ -75,8 +106,22 @@ export default function HangChoDuyetPage() {
           </button>
         </div>
       ) : null}
+      phuTro={(
+        <>
+          {quaDai && bai.ky && <GoiYCat tieuDe={bai.tieuDe} noiDung={bai.noiDung} ky={bai.ky} onDung={(doan) => setSua({ ...sua, [b.id]: { ...bai, noiDung: doan } })} />}
+          {daSua && (
+            <div className="flex items-center gap-2 pt-1">
+              <button type="button" disabled={dangXuLy === b.id} onClick={() => luuSua(b.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                {dangXuLy === b.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu thay đổi
+              </button>
+              <button type="button" onClick={() => setSua(({ [b.id]: _bo, ...con }) => con)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">Bỏ thay đổi</button>
+            </div>
+          )}
+        </>
+      )}
     />
-  );
+    );
+  };
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-16">
