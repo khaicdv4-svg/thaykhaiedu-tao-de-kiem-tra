@@ -82,6 +82,20 @@ export default function HangChoDuyetPage() {
     }
   };
 
+  const luuDoanCat = async (idGoc: string, doan: string) => {
+    setThongBao(null);
+    try {
+      const r = await fetch('/api/reading-passages/luu-doan-cat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idGoc, doan }),
+      }).then((x) => x.json());
+      if (r.error) throw new Error(r.error);
+      await tai();
+      setThongBao({ loai: r.choDuyet > 0 ? 'ok' : 'loi', text: r.choDuyet > 0 ? 'Đã lưu đoạn cắt thành bài đọc thành tiếng mới, đang ở mục Chờ duyệt. Bài gốc vẫn giữ nguyên.' : 'Đã lưu đoạn cắt nhưng còn lỗi, xem ở mục Bản nháp còn lỗi.' });
+    } catch (e) {
+      setThongBao({ loai: 'loi', text: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
   const choDuyet = ds.filter((b) => b.trangThai === 'PENDING_REVIEW');
   const banNhap = ds.filter((b) => b.trangThai === 'DRAFT');
 
@@ -108,7 +122,7 @@ export default function HangChoDuyetPage() {
       ) : null}
       phuTro={(
         <>
-          {quaDai && bai.ky && <GoiYCat tieuDe={bai.tieuDe} noiDung={bai.noiDung} ky={bai.ky} onDung={(doan) => setSua({ ...sua, [b.id]: { ...bai, noiDung: doan } })} />}
+          {quaDai && bai.ky && <GoiYCat tieuDe={bai.tieuDe} noiDung={bai.noiDung} ky={bai.ky} onLuu={(doan) => luuDoanCat(b.id, doan)} />}
           {daSua && (
             <div className="flex items-center gap-2 pt-1">
               <button type="button" disabled={dangXuLy === b.id} onClick={() => luuSua(b.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">

@@ -228,3 +228,22 @@ export async function suaBaiDocChoDuyet(id: string, d: ThayDoiBaiDoc) {
   if (error) throw new Error(error.message);
   return { hopLe: kq.hopLe, loi: kq.loi, canhBao: kq.canhBao };
 }
+
+/** Lưu một đoạn cắt từ bài dài thành bài đọc thành tiếng mới (giữ nguyên bài gốc). Bài mới vào hàng chờ duyệt. */
+export async function taoBaiTuDoanCat(idGoc: string, doan: string) {
+  const { supabase, role } = await layNguoiDung();
+  if (!['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    throw new Error('Chỉ tổ trưởng hoặc quản trị mới được lưu đoạn cắt.');
+  }
+  if (!doan.trim()) throw new Error('Đoạn cắt đang trống.');
+  const { data: r, error } = await supabase.from('reading_passages').select('*').eq('id', idGoc).single();
+  if (error || !r) throw new Error('Không tìm thấy bài gốc.');
+  const g = anhXa(r);
+  const kq = await luuVaoHangCho([{
+    tieuDe: g.tieuDe, noiDung: doan, tacGia: g.tacGia, nguon: g.nguon, nguonUrl: g.nguonUrl ?? '',
+    loai: 'DOC_THANH_TIENG', ky: g.ky, theLoai: g.theLoai, chuDiem: g.chuDiem,
+    trangThaiLink: g.trangThaiLink, nguonGoc: g.nguonGoc as BaiDocNhapKho['nguonGoc'],
+    tenFile: r.import_file_name ?? undefined, ghiChuAI: { doanTrichTu: idGoc },
+  }]);
+  return kq;
+}

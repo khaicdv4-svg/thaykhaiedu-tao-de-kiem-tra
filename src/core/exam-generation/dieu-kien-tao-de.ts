@@ -12,6 +12,7 @@
 
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
 import { danhSachCau, kiemDinhMaTranRieng } from '@/core/matrix/matrix-template';
+import { laCungBai } from '@/core/reading-passages/cung-bai';
 import { CHU_DIEM_THEO_KY, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 export interface BaiDocDaChon {
@@ -84,6 +85,11 @@ export function kiemTraDieuKienTaoDe(d: DauVaoTaoDe): KetQuaDieuKien {
     tt.forEach((b, i) => kiemBaiDoc(b, 'DOC_THANH_TIENG', ky, `Bài đọc thành tiếng ${i + 1}`, loi));
     const ids = [d.baiDocHieu?.id, ...tt.map((b) => b.id)].filter(Boolean);
     if (new Set(ids).size !== ids.length) loi.push('Có bài đọc được chọn hai lần.');
+    // Cùng một bài (kể cả đoạn trích khác nhau) không được dùng cho cả đọc hiểu và đọc thành tiếng, hay hai lần trong phần đọc thành tiếng.
+    const baiTrung: string[] = [];
+    if (d.baiDocHieu) tt.forEach((b) => { if (laCungBai(d.baiDocHieu!, b)) baiTrung.push(`"${b.tieuDe}" vừa là bài đọc hiểu vừa là bài đọc thành tiếng`); });
+    tt.forEach((b, i) => tt.slice(i + 1).forEach((c) => { if (laCungBai(b, c)) baiTrung.push(`"${b.tieuDe}" được chọn cho hai bài đọc thành tiếng`); }));
+    if (baiTrung.length) loi.push(`Không chọn cùng một bài trong một đề: ${baiTrung.join('; ')}.`);
   }
 
   // 3. Căn cứ SGK cho từng câu

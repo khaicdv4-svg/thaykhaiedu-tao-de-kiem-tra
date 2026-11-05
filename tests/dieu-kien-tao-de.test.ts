@@ -55,4 +55,19 @@ describe('Điều kiện trước khi tạo đề', () => {
     expect(dung.loi).toEqual([]);
     expect(dung.duocTaoDe).toBe(true);
   });
+
+  it('Tiếng Việt: không chọn cùng một bài cho đọc hiểu và đọc thành tiếng, hay hai lần cho đọc thành tiếng', () => {
+    const tv = timMaTranChung('TIENG_VIET', 'CUOI_HK1')!;
+    const mtr = mtrDaXacNhan(tv, { loai_van_ban: 'VBVH', the_loai: 'TRUYEN' });
+    const hieu = { ...bai('h', 'DOC_HIEU', 'TRUYEN'), tieuDe: 'Mùa thu' };
+    const tt = [
+      { ...bai('1', 'DOC_THANH_TIENG'), tieuDe: 'Mùa thu (đoạn trích)' },
+      { ...bai('2', 'DOC_THANH_TIENG'), tieuDe: 'Gió vườn' },
+      { ...bai('3', 'DOC_THANH_TIENG'), tieuDe: 'gió vườn' },
+      { ...bai('4', 'DOC_THANH_TIENG'), tieuDe: 'Nói lời cổ vũ' },
+    ];
+    const s = kiemTraDieuKienTaoDe({ maTranChung: tv, maTranRieng: mtr, baiDocHieu: hieu, baiDocThanhTieng: tt }).loi.join(' | ');
+    expect(s).toContain('"Mùa thu (đoạn trích)" vừa là bài đọc hiểu vừa là bài đọc thành tiếng');
+    expect(s).toContain('"Gió vườn" được chọn cho hai bài đọc thành tiếng');
+  });
 });

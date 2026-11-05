@@ -39,4 +39,19 @@ describe('chọn 4 bài đọc thành tiếng', () => {
     expect(chonBonBaiDocThanhTieng('CUOI_HK1', nhap).baiDoc).toHaveLength(0);
     expect(chonBonBaiDocThanhTieng('CUOI_HK1', nhap, { chiDaDuyet: false }).baiDoc).toHaveLength(4);
   });
+
+  it('không lấy bài cùng tên với bài đọc hiểu, cũng không lấy hai đoạn của cùng một bài', () => {
+    const k2 = [
+      { ...bai('a', 'Niềm vui sáng tạo', 'TRUYEN'), tieuDe: 'Mùa thu' },
+      { ...bai('b', 'Niềm vui sáng tạo', 'THO'), tieuDe: 'Mùa thu (đoạn trích)' },
+      { ...bai('c', 'Niềm vui sáng tạo', 'MIEU_TA'), tieuDe: 'Gió vườn' },
+      { ...bai('d', 'Chắp cánh ước mơ', 'TRUYEN'), tieuDe: 'Nói lời cổ vũ' },
+      { ...bai('e', 'Chắp cánh ước mơ', 'MIEU_TA'), tieuDe: 'Con heo đất' },
+    ];
+    const kq = chonBonBaiDocThanhTieng('CUOI_HK1', k2);
+    expect(kq.baiDoc.filter((b) => b.tieuDe.startsWith('Mùa thu'))).toHaveLength(1);
+    const khongHieu = chonBonBaiDocThanhTieng('CUOI_HK1', k2, { baiDocHieuTieuDe: 'Mùa thu' });
+    expect(khongHieu.baiDoc.some((b) => b.tieuDe.startsWith('Mùa thu'))).toBe(false);
+    expect(khongHieu.thieu[0]).toContain('Niềm vui sáng tạo');
+  });
 });

@@ -2,7 +2,7 @@
 
 /**
  * Gợi ý đoạn cắt cho bài đọc thành tiếng quá dài. Hiện khi bài là "Đọc thành tiếng" và dài hơn quy định của kì.
- * Code đếm tiếng; AI (nếu đã cấu hình) chọn đoạn trọn ý nhất. Bấm "Dùng đoạn này" để thay nội dung (chưa lưu).
+ * Code đếm tiếng; AI (nếu đã cấu hình) chọn đoạn trọn ý nhất. Bấm "Lưu thành bài đọc thành tiếng mới" để tạo thêm một bài từ đoạn đó, bài gốc vẫn giữ nguyên.
  */
 
 import React, { useState } from 'react';
@@ -17,7 +17,8 @@ interface KetQua {
   aiLoi?: string | null;
 }
 
-export function GoiYCat({ tieuDe, noiDung, ky, onDung }: { tieuDe: string; noiDung: string; ky: KyKiemTraBaiDoc; onDung: (doan: string) => void }) {
+export function GoiYCat({ tieuDe, noiDung, ky, onLuu }: { tieuDe: string; noiDung: string; ky: KyKiemTraBaiDoc; onLuu: (doan: string) => Promise<void> }) {
+  const [dangLuu, setDangLuu] = useState<number | null>(null);
   const [dang, setDang] = useState(false);
   const [kq, setKq] = useState<KetQua | null>(null);
   const [loi, setLoi] = useState<string | null>(null);
@@ -62,8 +63,8 @@ export function GoiYCat({ tieuDe, noiDung, ky, onDung }: { tieuDe: string; noiDu
           </div>
           {kq.aiChon?.chi === i && kq.aiChon.lyDo && <p className="text-xs text-violet-800">{kq.aiChon.lyDo}</p>}
           <p className="whitespace-pre-line text-slate-800" style={{ fontFamily: "'Times New Roman', serif", fontSize: '13pt' }}>{d.doan}</p>
-          <button type="button" onClick={() => onDung(d.doan)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50">
-            <Scissors className="w-3.5 h-3.5" /> Dùng đoạn này
+          <button type="button" disabled={dangLuu !== null} onClick={async () => { setDangLuu(i); try { await onLuu(d.doan); } finally { setDangLuu(null); } }} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50">
+            {dangLuu === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />} Lưu thành bài đọc thành tiếng mới
           </button>
         </div>
       ))}

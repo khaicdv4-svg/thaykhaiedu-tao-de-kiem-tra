@@ -7,6 +7,7 @@
  */
 
 import { catDoanTotNhat, type DoanCat, type KieuNgat } from '@/core/reading-passages/cat-doan';
+import { laCungBai } from '@/core/reading-passages/cung-bai';
 import { CHU_DIEM_THEO_KY, khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 export interface UngVienBaiDoc {
@@ -42,29 +43,32 @@ function diemChatLuong(d: DoanCat): number {
 export function chonBonBaiDocThanhTieng(
   ky: KyKiemTraBaiDoc,
   kho: UngVienBaiDoc[],
-  tuyChon: { baiDocHieuId?: string | null; chiDaDuyet?: boolean } = {},
+  tuyChon: { baiDocHieuId?: string | null; baiDocHieuTieuDe?: string | null; chiDaDuyet?: boolean } = {},
 ): KetQuaChonBonBai {
-  const { baiDocHieuId = null, chiDaDuyet = true } = tuyChon;
+  const { baiDocHieuId = null, baiDocHieuTieuDe = null, chiDaDuyet = true } = tuyChon;
+  // Bài đọc hiểu: có thể chỉ biết id, nên tìm thêm tên trong kho để loại cả đoạn trích cùng bài.
+  const hieu = { id: baiDocHieuId ?? undefined, tieuDe: baiDocHieuTieuDe ?? kho.find((b) => b.id === baiDocHieuId)?.tieuDe ?? '' };
   const q = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN')!;
   const baiDoc: BaiDocThanhTiengDuocChon[] = [];
   const thieu: string[] = [];
 
   for (const chuDiem of CHU_DIEM_THEO_KY[ky]) {
     const ungVien = kho
-      .filter((b) => b.chuDiem === chuDiem && b.id !== baiDocHieuId && (!chiDaDuyet || b.trangThai === 'APPROVED'))
+      .filter((b) => b.chuDiem === chuDiem && !laCungBai(hieu, b) && !baiDoc.some((d) => laCungBai(d, b)) && (!chiDaDuyet || b.trangThai === 'APPROVED'))
       .map((b) => ({ b, doan: catDoanTotNhat(b.noiDung, { min: q.min, max: q.max, dungSai: q.dungSai }) }))
       .filter((x): x is { b: UngVienBaiDoc; doan: DoanCat } => x.doan !== null)
       .sort((x, y) => diemChatLuong(x.doan) - diemChatLuong(y.doan));
 
     const chon: typeof ungVien = [];
     const theLoaiDaLay = new Set<string>();
+    const trungBaiDaChon = (x: { b: UngVienBaiDoc }) => chon.some((c) => laCungBai(c.b, x.b));
     for (const x of ungVien) {
-      if (chon.length < 2 && !theLoaiDaLay.has(x.b.theLoai ?? '')) {
+      if (chon.length < 2 && !trungBaiDaChon(x) && !theLoaiDaLay.has(x.b.theLoai ?? '')) {
         chon.push(x);
         theLoaiDaLay.add(x.b.theLoai ?? '');
       }
     }
-    for (const x of ungVien) if (chon.length < 2 && !chon.includes(x)) chon.push(x);
+    for (const x of ungVien) if (chon.length < 2 && !chon.includes(x) && !trungBaiDaChon(x)) chon.push(x);
 
     if (chon.length < 2) thieu.push(`Chủ điểm "${chuDiem}" mới có ${chon.length}/2 bài cắt được${chiDaDuyet ? ' (chỉ tính bài đã duyệt)' : ''}.`);
     for (const x of chon) {
