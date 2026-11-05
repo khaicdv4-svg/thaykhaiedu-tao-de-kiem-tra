@@ -98,7 +98,11 @@ describe('Kiểm tra bài đọc', () => {
   });
 
   it('độ dài: ngoài ±5 thì chặn, trong ±5 thì cảnh báo', () => {
-    expect(kiemTraBaiDoc({ ...hopLe, noiDung: motBai(96) }).loi.some((l) => l.includes('96 tiếng'))).toBe(true);
+    expect(kiemTraBaiDoc({ ...hopLe, noiDung: motBai(60) }).loi.some((l) => l.includes('60 tiếng'))).toBe(true);
+    // đọc thành tiếng: bài dài hơn quy định vẫn qua, chỉ cảnh báo vì sẽ cắt đoạn
+    const dai = kiemTraBaiDoc({ ...hopLe, noiDung: motBai(96) });
+    expect(dai.loi).toEqual([]);
+    expect(dai.canhBao.some((c) => c.includes('cắt một đoạn'))).toBe(true);
     const kq = kiemTraBaiDoc({ ...hopLe, noiDung: motBai(93) });
     expect(kq.loi).toEqual([]);
     expect(kq.canhBao.some((c) => c.includes('93 tiếng'))).toBe(true);

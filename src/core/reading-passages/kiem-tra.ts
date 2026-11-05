@@ -160,6 +160,9 @@ export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = []): Ke
     khoang = khoangDoDai(b.loai, b.ky, b.theLoai);
     if (!khoang) {
       canhBao.push(`Tổ chưa quy định độ dài cho ${TEN_LOAI[b.loai].toLowerCase()} thể loại ${TEN_THE_LOAI[b.theLoai].toLowerCase()}.`);
+    } else if (b.loai === 'DOC_THANH_TIENG' && soTieng > khoang.max + khoang.dungSai) {
+      // Bài dài vẫn dùng được: tổ cho phép cắt một đoạn đủ số tiếng (xem cat-doan.ts).
+      canhBao.push(`Bài có ${soTieng} tiếng, dài hơn quy định (${khoang.min} – ${khoang.max}). Khi soạn đề sẽ cắt một đoạn đủ số tiếng.`);
     } else if (soTieng < khoang.min - khoang.dungSai || soTieng > khoang.max + khoang.dungSai) {
       loi.push(`Bài có ${soTieng} tiếng; quy định ${khoang.min} – ${khoang.max} tiếng, lệch tối đa ±${khoang.dungSai}.`);
     } else if (soTieng < khoang.min || soTieng > khoang.max) {
