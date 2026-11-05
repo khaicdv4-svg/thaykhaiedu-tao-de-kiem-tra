@@ -4,3 +4,11 @@ Thumbs.db
 *.log
 .vercel
 scratch/
+
+# Ung dung Next.js
+node_modules/
+.next/
+.env.local
+.env*.local
+tsconfig.tsbuildinfo
+next-env.d.ts
