@@ -45,6 +45,7 @@ export default function ReadingPassagesPage() {
   const [denTieng, setDenTieng] = useState('');
   const [doanCat, setDoanCat] = useState<DoanCat[] | null>(null);
   const [daChep, setDaChep] = useState<number | null>(null);
+  const [kyCat, setKyCat] = useState<KyKiemTraBaiDoc>('GIUA_HK1');
 
   const danhSachHienThi = useMemo(() => {
     const tu = tuTieng.trim() ? Number(tuTieng) : null;
@@ -63,12 +64,12 @@ export default function ReadingPassagesPage() {
     setSelectedPassageForView(p);
     setDoanCat(null);
     setDaChep(null);
+    if (p?.assessmentPeriod) setKyCat(p.assessmentPeriod as KyKiemTraBaiDoc);
   };
 
-  const catDoan = (p: ReadingPassage) => {
-    const ky = (p.assessmentPeriod as KyKiemTraBaiDoc | null) ?? 'GIUA_HK1';
-    const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN') ?? { min: 80, max: 85 };
-    setDoanCat(goiYCatDoan(p.content, { min: kh.min, max: kh.max }));
+  const catDoan = (p: ReadingPassage, ky: KyKiemTraBaiDoc = kyCat) => {
+    const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN') ?? { min: 80, max: 85, dungSai: 5 };
+    setDoanCat(goiYCatDoan(p.content, { min: kh.min, max: kh.max, dungSai: kh.dungSai }));
     setDaChep(null);
   };
 
@@ -375,6 +376,25 @@ export default function ReadingPassagesPage() {
             </div>
 
             <div className="space-y-2 border-t pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="font-semibold text-slate-600">Cắt cho kì</label>
+                <select
+                  value={kyCat}
+                  onChange={(e) => {
+                    setKyCat(e.target.value as KyKiemTraBaiDoc);
+                    catDoan(selectedPassageForView, e.target.value as KyKiemTraBaiDoc);
+                  }}
+                  className="px-2 py-1 rounded-lg border border-slate-300 bg-white"
+                >
+                  {DANH_SACH_KY.map((k) => (<option key={k.ma} value={k.ma}>{k.ten}</option>))}
+                </select>
+                <span className="text-slate-500">
+                  {(() => {
+                    const kh = khoangDoDai('DOC_THANH_TIENG', kyCat, 'TRUYEN');
+                    return kh ? `Quy định: ${kh.min}–${kh.max} tiếng (lệch tối đa ±${kh.dungSai})` : '';
+                  })()}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => catDoan(selectedPassageForView)}
@@ -388,7 +408,7 @@ export default function ReadingPassagesPage() {
               {doanCat?.map((d, i) => (
                 <div key={i} className="rounded-lg border border-slate-200 p-3 space-y-1.5">
                   <p className="text-slate-500">
-                    Gợi ý {i + 1}: <strong>{d.soTieng} tiếng</strong>, {d.batDau === 'DAU_BAI' ? 'từ đầu bài' : 'từ giữa bài'}, {TEN_KIEU_NGAT[d.kieuNgat]} (…{d.ketThuc})
+                    Gợi ý {i + 1}: <strong>{d.soTieng} tiếng</strong>{d.trongKhoang ? '' : ' (trong dung sai)'}, {d.batDau === 'DAU_BAI' ? 'từ đầu bài' : 'từ giữa bài'}, {TEN_KIEU_NGAT[d.kieuNgat]} (…{d.ketThuc})
                   </p>
                   <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-200 leading-relaxed">{d.doan}</p>
                   <button type="button" onClick={() => chepDoan(i, d.doan)} className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold">

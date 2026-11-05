@@ -62,4 +62,15 @@ describe('cắt đoạn đọc thành tiếng', () => {
     const c = catDoanTotNhat(`${dong1}\n- ${cau(10)}`, { min: 80, max: 85 })!;
     expect(c.kieuNgat).toBe('DAU_PHAY');
   });
+
+  it('dùng dung sai khi chỉ có chỗ ngắt đẹp nằm ngoài khoảng một chút', () => {
+    // Câu thứ nhất 78 tiếng (ngoài 80–85 nhưng trong dung sai ±5), câu thứ hai dài.
+    const vb = `${cau(78)} ${Array.from({ length: 40 }, (_, i) => `x${i}`).join(' ')}`;
+    const khongDungSai = catDoanTotNhat(vb, { min: 80, max: 85 })!;
+    expect(khongDungSai.kieuNgat).toBe('GIUA_CAU');
+    const coDungSai = catDoanTotNhat(vb, { min: 80, max: 85, dungSai: 5 })!;
+    expect(coDungSai.kieuNgat).toBe('CUOI_CAU');
+    expect(coDungSai.soTieng).toBe(78);
+    expect(coDungSai.trongKhoang).toBe(false);
+  });
 });
