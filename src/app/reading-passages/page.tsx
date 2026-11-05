@@ -24,8 +24,9 @@ import {
 } from '@/types/reading-passage';
 import { PassageFormModal } from '@/components/reading-passages/PassageFormModal';
 import { EmptyPassagesState } from '@/components/reading-passages/EmptyPassagesState';
-import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, TEN_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { goiYCatDoan, type DoanCat } from '@/core/reading-passages/cat-doan';
+import { danhGiaDoDai } from '@/core/reading-passages/do-dai';
 
 const TEN_TRANG_THAI: Record<string, string> = { DRAFT: 'Nháp', PENDING_REVIEW: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
 const TEN_KIEU_NGAT: Record<string, string> = { CUOI_CAU: 'ngắt cuối câu', CUOI_DONG: 'ngắt cuối dòng', DAU_PHAY: 'ngắt ở dấu phẩy', GIUA_CAU: 'ngắt giữa câu' };
@@ -46,11 +47,24 @@ export default function ReadingPassagesPage() {
   const [doanCat, setDoanCat] = useState<DoanCat[] | null>(null);
   const [daChep, setDaChep] = useState<number | null>(null);
   const [kyCat, setKyCat] = useState<KyKiemTraBaiDoc>('GIUA_HK1');
+  // Lọc theo quy định độ dài của kì kiểm tra (để trống = không lọc theo quy định)
+  const [quyKy, setQuyKy] = useState<KyKiemTraBaiDoc | ''>('');
+  const [quyLoai, setQuyLoai] = useState<LoaiBaiDoc>('DOC_HIEU');
+  const [quyTheLoai, setQuyTheLoai] = useState<TheLoaiBaiDoc>('TRUYEN');
+
+  const quyDinh = useMemo(() => (quyKy ? khoangDoDai(quyLoai, quyKy, quyTheLoai) : null), [quyKy, quyLoai, quyTheLoai]);
+
+  /** Đánh giá số tiếng của bài theo quy định của kì đang chọn. */
+  const danhGia = (p: ReadingPassage) => (quyKy ? danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai) : null);
 
   const danhSachHienThi = useMemo(() => {
     const tu = tuTieng.trim() ? Number(tuTieng) : null;
     const den = denTieng.trim() ? Number(denTieng) : null;
     return passages.filter((p) => {
+      if (quyKy && quyDinh) {
+        if (!danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai)?.dungDuoc) return false;
+        if (quyLoai === 'DOC_HIEU' && p.literaryForm && p.literaryForm !== quyTheLoai) return false;
+      }
       if (locKy !== 'ALL' && (locKy === 'CHUA_CO' ? !!p.assessmentPeriod : p.assessmentPeriod !== locKy)) return false;
       if (locChuDiem !== 'ALL' && (locChuDiem === 'CHUA_CO' ? !!p.theme : p.theme !== locChuDiem)) return false;
       if (locTrangThai !== 'ALL' && p.status !== locTrangThai) return false;
@@ -58,7 +72,7 @@ export default function ReadingPassagesPage() {
       if (den !== null && !Number.isNaN(den) && p.wordCount > den) return false;
       return true;
     });
-  }, [passages, locKy, locChuDiem, locTrangThai, tuTieng, denTieng]);
+  }, [passages, locKy, locChuDiem, locTrangThai, tuTieng, denTieng, quyDinh, quyKy, quyLoai, quyTheLoai]);
 
   const moXem = (p: ReadingPassage | null) => {
     setSelectedPassageForView(p);
@@ -240,6 +254,36 @@ export default function ReadingPassagesPage() {
           <span className="font-semibold text-slate-600 dark:text-slate-300">đến</span>
           <input type="number" min={0} value={denTieng} onChange={(e) => setDenTieng(e.target.value)} className="block w-24 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950" />
         </label>
+        <div className="flex flex-wrap items-end gap-3 border-l border-slate-200 pl-3">
+          <label className="space-y-1">
+            <span className="font-semibold text-slate-600 dark:text-slate-300">Theo quy định độ dài của kì</span>
+            <select value={quyKy} onChange={(e) => setQuyKy(e.target.value as KyKiemTraBaiDoc | '')} className="block px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950">
+              <option value="">Không lọc</option>
+              {DANH_SACH_KY.map((k) => (<option key={k.ma} value={k.ma}>{k.ten}</option>))}
+            </select>
+          </label>
+          {quyKy && (
+            <>
+              <label className="space-y-1">
+                <span className="font-semibold text-slate-600 dark:text-slate-300">Dùng cho</span>
+                <select value={quyLoai} onChange={(e) => setQuyLoai(e.target.value as LoaiBaiDoc)} className="block px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950">
+                  {(Object.keys(TEN_LOAI) as LoaiBaiDoc[]).map((l) => (<option key={l} value={l}>{TEN_LOAI[l]}</option>))}
+                </select>
+              </label>
+              {quyLoai === 'DOC_HIEU' && (
+                <label className="space-y-1">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">Thể loại</span>
+                  <select value={quyTheLoai} onChange={(e) => setQuyTheLoai(e.target.value as TheLoaiBaiDoc)} className="block px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950">
+                    {(['TRUYEN', 'MIEU_TA', 'THO', 'VAN_BAN_THONG_TIN'] as TheLoaiBaiDoc[]).map((t) => (<option key={t} value={t}>{TEN_THE_LOAI[t]}</option>))}
+                  </select>
+                </label>
+              )}
+              <p className="text-slate-500 pb-1.5">
+                {quyDinh ? `Quy định: ${quyDinh.min}–${quyDinh.max} tiếng, lệch tối đa ±${quyDinh.dungSai}` : 'Tổ chưa quy định độ dài cho thể loại này'}
+              </p>
+            </>
+          )}
+        </div>
         <p className="text-slate-500 pb-1.5">Hiện {danhSachHienThi.length}/{passages.length} bài</p>
       </div>
 
@@ -259,6 +303,7 @@ export default function ReadingPassagesPage() {
             const config = READING_PASSAGE_CONFIG[p.passageType] || READING_PASSAGE_CONFIG.ORAL_READING;
             const isExact = p.toleranceStatus === 'EXACT';
             const isInRange = p.toleranceStatus === 'IN_RANGE';
+            const dg = danhGia(p);
 
             return (
               <div
@@ -272,14 +317,20 @@ export default function ReadingPassagesPage() {
                     </span>
                     <span
                       className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                        isExact
+                        dg
+                          ? dg.mau === 'xanh'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : dg.mau === 'vang'
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : 'bg-rose-100 text-rose-800 border-rose-300'
+                          : isExact
                           ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
                           : isInRange
                           ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300'
                           : 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
                       }`}
                     >
-                      {p.wordCount} tiếng ({isExact ? 'Chuẩn' : isInRange ? 'Trong dung sai' : 'Lệch chuẩn'})
+                      {p.wordCount} tiếng ({dg ? dg.nhan : isExact ? 'Chuẩn' : isInRange ? 'Trong dung sai' : 'Lệch chuẩn'})
                     </span>
                   </div>
 
@@ -313,7 +364,7 @@ export default function ReadingPassagesPage() {
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                   <span className="text-[11px] text-slate-400">
-                    Khung: {p.targetWordCountMin}–{p.targetWordCountMax} tiếng
+                    {quyDinh ? `Quy định kì: ${quyDinh.min}–${quyDinh.max} tiếng` : `Khung: ${p.targetWordCountMin}–${p.targetWordCountMax} tiếng`}
                   </span>
 
                   <div className="flex items-center gap-1.5">
