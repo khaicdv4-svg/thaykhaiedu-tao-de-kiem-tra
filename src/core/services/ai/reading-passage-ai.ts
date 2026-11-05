@@ -32,6 +32,7 @@ export interface BaiDocAIDeXuat {
 
 export interface IAIBaiDoc {
   timBaiDoc(tieuChi: TieuChiTimBaiDoc): Promise<BaiDocAIDeXuat[]>;
+  timBaiDocChiTiet(tieuChi: TieuChiTimBaiDoc): Promise<KetQuaTimBaiDoc>;
 }
 
 /** Hàm gọi AI do máy chủ cung cấp (đã chọn model và khóa theo Cài đặt AI). */
@@ -46,34 +47,64 @@ function chuoi(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
 }
 
-/** Đổi câu trả lời của AI thành danh sách bài đề xuất (bỏ bài thiếu tiêu đề hoặc nội dung). */
-export function docDeXuatBaiDoc(traLoi: string, tieuChi: TieuChiTimBaiDoc, daTimWeb: boolean): BaiDocAIDeXuat[] {
+/** Thông tin giúp biết vì sao AI đề xuất ít bài hoặc không có bài nào. */
+export interface ChanDoanAI {
+  daTimWeb: boolean;
+  doDaiTraLoi: number;
+  soAIGui: number;
+  biLoai: { tieuDe: string; lyDo: string }[];
+  trichDau: string;
+}
+
+export interface KetQuaTimBaiDoc {
+  baiDoc: BaiDocAIDeXuat[];
+  chanDoan: ChanDoanAI;
+}
+
+/** Đổi câu trả lời của AI thành danh sách bài đề xuất, kèm chẩn đoán những bài bị loại. */
+export function phanTichTraLoiAI(traLoi: string, tieuChi: TieuChiTimBaiDoc, daTimWeb: boolean): KetQuaTimBaiDoc {
   const mang = docMangJson<Record<string, unknown>>(traLoi);
   const theLoaiHopLe = Object.keys(TEN_THE_LOAI) as TheLoaiBaiDoc[];
-  return mang
-    .map((x) => {
-      const tl = chuoi(x.theLoai) as TheLoaiBaiDoc;
-      const ghiChuWeb = daTimWeb ? '' : ' (AI không tìm web được: kiểm tra kỹ tác giả và nguồn)';
-      return {
-        tieuDe: chuoi(x.tieuDe),
-        noiDung: chuoi(x.noiDung),
-        tacGia: chuoi(x.tacGia),
-        nguon: chuoi(x.nguon),
-        nguonUrl: chuoi(x.nguonUrl),
-        theLoai: theLoaiHopLe.includes(tl) ? tl : tieuChi.theLoai,
-        chuDiem: chuoi(x.chuDiem) || tieuChi.chuDiem,
-        lyDoPhuHop: `AI: ${chuoi(x.lyDoPhuHop) || 'không ghi lí do'}${ghiChuWeb}`,
-      };
-    })
-    .filter((b) => b.tieuDe && b.noiDung)
-    .slice(0, tieuChi.soBai);
+  const ghiChuWeb = daTimWeb ? '' : ' (AI không tìm web được: kiểm tra kỹ tác giả và nguồn)';
+  const biLoai: ChanDoanAI['biLoai'] = [];
+  const hopLe: BaiDocAIDeXuat[] = [];
+  for (const x of mang) {
+    const tl = chuoi(x.theLoai) as TheLoaiBaiDoc;
+    const bai: BaiDocAIDeXuat = {
+      tieuDe: chuoi(x.tieuDe),
+      noiDung: chuoi(x.noiDung),
+      tacGia: chuoi(x.tacGia),
+      nguon: chuoi(x.nguon),
+      nguonUrl: chuoi(x.nguonUrl),
+      theLoai: theLoaiHopLe.includes(tl) ? tl : tieuChi.theLoai,
+      chuDiem: chuoi(x.chuDiem) || tieuChi.chuDiem,
+      lyDoPhuHop: `AI: ${chuoi(x.lyDoPhuHop) || 'không ghi lí do'}${ghiChuWeb}`,
+    };
+    if (!bai.tieuDe) biLoai.push({ tieuDe: '(không có tiêu đề)', lyDo: 'Thiếu tiêu đề' });
+    else if (!bai.noiDung) biLoai.push({ tieuDe: bai.tieuDe, lyDo: 'Thiếu nội dung bài' });
+    else hopLe.push(bai);
+  }
+  for (const b of hopLe.slice(tieuChi.soBai)) biLoai.push({ tieuDe: b.tieuDe, lyDo: `Vượt số bài yêu cầu (${tieuChi.soBai})` });
+  return {
+    baiDoc: hopLe.slice(0, tieuChi.soBai),
+    chanDoan: { daTimWeb, doDaiTraLoi: traLoi.length, soAIGui: mang.length, biLoai, trichDau: traLoi.trim().slice(0, 300) },
+  };
+}
+
+/** Giữ lại để các nơi khác dùng như cũ. */
+export function docDeXuatBaiDoc(traLoi: string, tieuChi: TieuChiTimBaiDoc, daTimWeb: boolean): BaiDocAIDeXuat[] {
+  return phanTichTraLoiAI(traLoi, tieuChi, daTimWeb).baiDoc;
 }
 
 export function taoAIBaiDoc(goi: HamGoiAI): IAIBaiDoc {
+  const chiTiet = async (tieuChi: TieuChiTimBaiDoc): Promise<KetQuaTimBaiDoc> => {
+    const kq = await goi({ heThong: HE_THONG_TIM_BAI_DOC, noiDung: loiNhacTimBaiDoc(tieuChi), toiDaToken: 8000, timWeb: true });
+    return phanTichTraLoiAI(kq.traLoi, tieuChi, kq.daTimWeb);
+  };
   return {
+    timBaiDocChiTiet: chiTiet,
     async timBaiDoc(tieuChi) {
-      const kq = await goi({ heThong: HE_THONG_TIM_BAI_DOC, noiDung: loiNhacTimBaiDoc(tieuChi), toiDaToken: 8000, timWeb: true });
-      return docDeXuatBaiDoc(kq.traLoi, tieuChi, kq.daTimWeb);
+      return (await chiTiet(tieuChi)).baiDoc;
     },
   };
 }

@@ -94,7 +94,15 @@ export default function NhapKhoBaiDocPage() {
       const r = await fetch('/api/reading-passages/ai-tim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tieuChi) }).then((x) => x.json());
       if (r.error) throw new Error(r.error);
       napKetQua(r.baiDoc, 'AI_TIM');
-      setThongBao({ loai: 'ok', text: `AI đề xuất ${r.baiDoc.length} bài. Kiểm tra link từng bài trước khi gửi duyệt.` });
+      if (r.baiDoc.length === 0) {
+        const cd = r.chanDoan as { daTimWeb: boolean; doDaiTraLoi: number; soAIGui: number; biLoai: { tieuDe: string; lyDo: string }[]; trichDau: string } | undefined;
+        const chiTiet = cd
+          ? ` AI gửi về ${cd.soAIGui} bài${cd.biLoai.length ? `, bị loại: ${cd.biLoai.map((b) => `${b.tieuDe} (${b.lyDo})`).join('; ')}` : ''}. ${cd.daTimWeb ? 'AI đã tìm web.' : 'AI không tìm được web (model hoặc cổng không hỗ trợ).'}${cd.soAIGui === 0 && cd.trichDau ? ` Phản hồi của AI: ${cd.trichDau}` : ''}`
+          : '';
+        setThongBao({ loai: 'loi', text: `AI không đề xuất được bài nào.${chiTiet} Thử đổi chủ điểm, thể loại hoặc model khác.` });
+      } else {
+        setThongBao({ loai: 'ok', text: `AI đề xuất ${r.baiDoc.length} bài. Kiểm tra link từng bài trước khi gửi duyệt.` });
+      }
     } catch (e) {
       setThongBao({ loai: 'loi', text: e instanceof Error ? e.message : String(e) });
     } finally {

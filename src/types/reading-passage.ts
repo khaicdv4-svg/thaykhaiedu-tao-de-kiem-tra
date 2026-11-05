@@ -82,6 +82,12 @@ export interface ReadingPassage {
   genre?: string;
   theme?: string;
   status: PassageReviewStatus;
+  /** Kì kiểm tra: GIUA_HK1, CUOI_HK1, GIUA_HK2, CUOI_NAM. */
+  assessmentPeriod?: string | null;
+  /** DOC_THANH_TIENG hoặc DOC_HIEU. */
+  readingUse?: string | null;
+  /** TRUYEN, MIEU_TA, THO, VAN_BAN_THONG_TIN, KICH, KHAC. */
+  literaryForm?: string | null;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;

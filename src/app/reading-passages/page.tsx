@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Plus,
@@ -24,6 +24,12 @@ import {
 } from '@/types/reading-passage';
 import { PassageFormModal } from '@/components/reading-passages/PassageFormModal';
 import { EmptyPassagesState } from '@/components/reading-passages/EmptyPassagesState';
+import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { goiYCatDoan, type DoanCat } from '@/core/reading-passages/cat-doan';
+
+const TEN_TRANG_THAI: Record<string, string> = { DRAFT: 'Nháp', PENDING_REVIEW: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
+const TEN_KIEU_NGAT: Record<string, string> = { CUOI_CAU: 'ngắt cuối câu', CUOI_DONG: 'ngắt cuối dòng', DAU_PHAY: 'ngắt ở dấu phẩy', GIUA_CAU: 'ngắt giữa câu' };
+const TAT_CA_CHU_DIEM = Object.values(CHU_DIEM_THEO_KY).flat();
 
 export default function ReadingPassagesPage() {
   const [passages, setPassages] = useState<ReadingPassage[]>([]);
@@ -32,6 +38,48 @@ export default function ReadingPassagesPage() {
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedPassageForView, setSelectedPassageForView] = useState<ReadingPassage | null>(null);
+  const [locKy, setLocKy] = useState('ALL');
+  const [locChuDiem, setLocChuDiem] = useState('ALL');
+  const [locTrangThai, setLocTrangThai] = useState('ALL');
+  const [tuTieng, setTuTieng] = useState('');
+  const [denTieng, setDenTieng] = useState('');
+  const [doanCat, setDoanCat] = useState<DoanCat[] | null>(null);
+  const [daChep, setDaChep] = useState<number | null>(null);
+
+  const danhSachHienThi = useMemo(() => {
+    const tu = tuTieng.trim() ? Number(tuTieng) : null;
+    const den = denTieng.trim() ? Number(denTieng) : null;
+    return passages.filter((p) => {
+      if (locKy !== 'ALL' && (locKy === 'CHUA_CO' ? !!p.assessmentPeriod : p.assessmentPeriod !== locKy)) return false;
+      if (locChuDiem !== 'ALL' && (locChuDiem === 'CHUA_CO' ? !!p.theme : p.theme !== locChuDiem)) return false;
+      if (locTrangThai !== 'ALL' && p.status !== locTrangThai) return false;
+      if (tu !== null && !Number.isNaN(tu) && p.wordCount < tu) return false;
+      if (den !== null && !Number.isNaN(den) && p.wordCount > den) return false;
+      return true;
+    });
+  }, [passages, locKy, locChuDiem, locTrangThai, tuTieng, denTieng]);
+
+  const moXem = (p: ReadingPassage | null) => {
+    setSelectedPassageForView(p);
+    setDoanCat(null);
+    setDaChep(null);
+  };
+
+  const catDoan = (p: ReadingPassage) => {
+    const ky = (p.assessmentPeriod as KyKiemTraBaiDoc | null) ?? 'GIUA_HK1';
+    const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN') ?? { min: 80, max: 85 };
+    setDoanCat(goiYCatDoan(p.content, { min: kh.min, max: kh.max }));
+    setDaChep(null);
+  };
+
+  const chepDoan = async (i: number, noiDung: string) => {
+    try {
+      await navigator.clipboard.writeText(noiDung);
+      setDaChep(i);
+    } catch {
+      alert('Không sao chép được, thầy bôi đen đoạn văn rồi sao chép thủ công.');
+    }
+  };
 
   const fetchPassages = async () => {
     setIsLoading(true);
@@ -158,6 +206,42 @@ export default function ReadingPassagesPage() {
         </div>
       </div>
 
+      {/* Bộ lọc chọn bài theo kì, chủ điểm, trạng thái, số tiếng */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs flex flex-wrap items-end gap-3 text-xs">
+        <label className="space-y-1">
+          <span className="font-semibold text-slate-600 dark:text-slate-300">Kì kiểm tra</span>
+          <select value={locKy} onChange={(e) => setLocKy(e.target.value)} className="block px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950">
+            <option value="ALL">Tất cả</option>
+            {DANH_SACH_KY.map((k) => (<option key={k.ma} value={k.ma}>{k.ten}</option>))}
+            <option value="CHUA_CO">Chưa xếp kì</option>
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="font-semibold text-slate-600 dark:text-slate-300">Chủ điểm</span>
+          <select value={locChuDiem} onChange={(e) => setLocChuDiem(e.target.value)} className="block px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950">
+            <option value="ALL">Tất cả</option>
+            {TAT_CA_CHU_DIEM.map((c) => (<option key={c} value={c}>{c}</option>))}
+            <option value="CHUA_CO">Chưa xếp chủ điểm</option>
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="font-semibold text-slate-600 dark:text-slate-300">Trạng thái</span>
+          <select value={locTrangThai} onChange={(e) => setLocTrangThai(e.target.value)} className="block px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950">
+            <option value="ALL">Tất cả</option>
+            {Object.entries(TEN_TRANG_THAI).map(([ma, ten]) => (<option key={ma} value={ma}>{ten}</option>))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="font-semibold text-slate-600 dark:text-slate-300">Số tiếng từ</span>
+          <input type="number" min={0} value={tuTieng} onChange={(e) => setTuTieng(e.target.value)} className="block w-24 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950" />
+        </label>
+        <label className="space-y-1">
+          <span className="font-semibold text-slate-600 dark:text-slate-300">đến</span>
+          <input type="number" min={0} value={denTieng} onChange={(e) => setDenTieng(e.target.value)} className="block w-24 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950" />
+        </label>
+        <p className="text-slate-500 pb-1.5">Hiện {danhSachHienThi.length}/{passages.length} bài</p>
+      </div>
+
       {/* DANH SÁCH NGỮ LIỆU */}
       {isLoading ? (
         <div className="p-12 text-center text-xs text-slate-500">
@@ -166,9 +250,11 @@ export default function ReadingPassagesPage() {
         </div>
       ) : passages.length === 0 ? (
         <EmptyPassagesState onAddNew={() => setIsModalOpen(true)} />
+      ) : danhSachHienThi.length === 0 ? (
+        <div className="p-10 text-center text-xs text-slate-500 bg-white dark:bg-slate-900 border border-dashed border-slate-300 rounded-xl">Không có bài nào khớp bộ lọc. Thử nới khoảng số tiếng hoặc chọn "Tất cả".</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {passages.map((p) => {
+          {danhSachHienThi.map((p) => {
             const config = READING_PASSAGE_CONFIG[p.passageType] || READING_PASSAGE_CONFIG.ORAL_READING;
             const isExact = p.toleranceStatus === 'EXACT';
             const isInRange = p.toleranceStatus === 'IN_RANGE';
@@ -213,6 +299,11 @@ export default function ReadingPassagesPage() {
                       </p>
                     )}
                   </div>
+                  <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">{TEN_TRANG_THAI[p.status] ?? p.status}</span>
+                    {p.assessmentPeriod && <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{DANH_SACH_KY.find((k) => k.ma === p.assessmentPeriod)?.ten ?? p.assessmentPeriod}</span>}
+                    {p.literaryForm && <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{TEN_THE_LOAI[p.literaryForm as TheLoaiBaiDoc] ?? p.literaryForm}</span>}
+                  </div>
 
                   <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed bg-slate-50 dark:bg-slate-950 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
                     {p.content}
@@ -227,7 +318,7 @@ export default function ReadingPassagesPage() {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setSelectedPassageForView(p)}
+                      onClick={() => moXem(p)}
                       className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                       title="Xem toàn văn"
                     >
@@ -266,7 +357,7 @@ export default function ReadingPassagesPage() {
               </h3>
               <button
                 type="button"
-                onClick={() => setSelectedPassageForView(null)}
+                onClick={() => moXem(null)}
                 className="p-1 rounded hover:bg-slate-100 text-slate-400"
               >
                 ✕
@@ -283,10 +374,34 @@ export default function ReadingPassagesPage() {
               {selectedPassageForView.content}
             </div>
 
+            <div className="space-y-2 border-t pt-3">
+              <button
+                type="button"
+                onClick={() => catDoan(selectedPassageForView)}
+                className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold"
+              >
+                Cắt đoạn đọc thành tiếng
+              </button>
+              {doanCat && doanCat.length === 0 && (
+                <p className="text-amber-700">Bài này chưa đủ số tiếng để cắt đoạn đọc thành tiếng.</p>
+              )}
+              {doanCat?.map((d, i) => (
+                <div key={i} className="rounded-lg border border-slate-200 p-3 space-y-1.5">
+                  <p className="text-slate-500">
+                    Gợi ý {i + 1}: <strong>{d.soTieng} tiếng</strong>, {d.batDau === 'DAU_BAI' ? 'từ đầu bài' : 'từ giữa bài'}, {TEN_KIEU_NGAT[d.kieuNgat]} (…{d.ketThuc})
+                  </p>
+                  <p className="whitespace-pre-wrap text-slate-800 dark:text-slate-200 leading-relaxed">{d.doan}</p>
+                  <button type="button" onClick={() => chepDoan(i, d.doan)} className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold">
+                    {daChep === i ? 'Đã sao chép' : 'Sao chép đoạn này'}
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <div className="flex justify-end pt-2">
               <button
                 type="button"
-                onClick={() => setSelectedPassageForView(null)}
+                onClick={() => moXem(null)}
                 className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold"
               >
                 Đóng

@@ -26,13 +26,13 @@ export async function POST(req: NextRequest) {
   try {
     const ai = taoAIBaiDoc((y) => goiAITheoViec('TIM_BAI_DOC', { ...y, choToiDa: 240_000 }));
     const sgk = await layVanBanSgkTiengViet().catch(() => []);
-    const deXuat = await ai.timBaiDoc({ ...tieuChi, soBai: Math.min(Math.max(tieuChi.soBai || 3, 1), 8) });
+    const { baiDoc: deXuat, chanDoan } = await ai.timBaiDocChiTiet({ ...tieuChi, soBai: Math.min(Math.max(tieuChi.soBai || 3, 1), 8) });
     const baiDoc = deXuat.map((d) => {
       const pt = phanTichBaiDoc(d, { loai: tieuChi.loai, ky: tieuChi.ky });
       const bai = { ...pt, theLoai: d.theLoai || pt.theLoai, chuDiem: (d.chuDiem as typeof pt.chuDiem) || pt.chuDiem, ghiChu: [d.lyDoPhuHop, ...pt.ghiChu] };
       return { ...bai, kiemTra: kiemTraBaiDoc(bai, sgk) };
     });
-    return NextResponse.json({ success: true, baiDoc, model: tt.model });
+    return NextResponse.json({ success: true, baiDoc, model: tt.model, chanDoan });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }

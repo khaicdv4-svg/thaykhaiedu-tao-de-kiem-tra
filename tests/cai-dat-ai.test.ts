@@ -16,7 +16,7 @@ import {
 } from '../src/core/services/ai/cau-hinh-ai';
 import { giaiMaKhoa, maHoaKhoa } from '../src/lib/ai/ma-hoa-khoa';
 import { goiModel, thuModel } from '../src/lib/ai/goi-ai';
-import { docDeXuatBaiDoc, taoAIBaiDoc, type TieuChiTimBaiDoc } from '../src/core/services/ai/reading-passage-ai';
+import { docDeXuatBaiDoc, phanTichTraLoiAI, taoAIBaiDoc, type TieuChiTimBaiDoc } from '../src/core/services/ai/reading-passage-ai';
 
 const HAIKU = MODEL_MAU_APILIT[0];
 const SONNET = MODEL_MAU_APILIT[1];
@@ -152,6 +152,30 @@ describe('AI tìm bài đọc', () => {
     expect(ds[0]).toMatchObject({ theLoai: 'TRUYEN', chuDiem: 'Niềm vui sáng tạo' });
     expect(ds[1].theLoai).toBe('MIEU_TA');
     expect(ds[0].lyDoPhuHop).toContain('không tìm web được');
+  });
+  it('chẩn đoán: nói rõ AI gửi mấy bài và vì sao bị loại', () => {
+    const traLoi = JSON.stringify([
+      { tieuDe: 'Bài 1', noiDung: 'Nội dung 1' },
+      { tieuDe: 'Bài 2', noiDung: '' },
+      { noiDung: 'Không có tiêu đề' },
+      { tieuDe: 'Bài 4', noiDung: 'Nội dung 4' },
+      { tieuDe: 'Bài 5', noiDung: 'Nội dung 5' },
+    ]);
+    const { baiDoc, chanDoan } = phanTichTraLoiAI(traLoi, tc, true);
+    expect(baiDoc.map((b) => b.tieuDe)).toEqual(['Bài 1', 'Bài 4']);
+    expect(chanDoan.soAIGui).toBe(5);
+    expect(chanDoan.daTimWeb).toBe(true);
+    expect(chanDoan.biLoai).toEqual([
+      { tieuDe: 'Bài 2', lyDo: 'Thiếu nội dung bài' },
+      { tieuDe: '(không có tiêu đề)', lyDo: 'Thiếu tiêu đề' },
+      { tieuDe: 'Bài 5', lyDo: 'Vượt số bài yêu cầu (2)' },
+    ]);
+  });
+  it('chẩn đoán: AI trả mảng rỗng thì có trích phản hồi', () => {
+    const { baiDoc, chanDoan } = phanTichTraLoiAI('Không tìm được bài phù hợp. []', tc, true);
+    expect(baiDoc).toEqual([]);
+    expect(chanDoan.soAIGui).toBe(0);
+    expect(chanDoan.trichDau).toContain('Không tìm được');
   });
   it('gửi lời nhắc của tổ, bật tìm web', async () => {
     const goi = vi.fn(async (_y: unknown) => ({ traLoi: '[]', daTimWeb: true }));
