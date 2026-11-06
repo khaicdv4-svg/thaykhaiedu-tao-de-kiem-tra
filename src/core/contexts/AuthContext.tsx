@@ -69,7 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Proxy đã xác minh phiên ở máy chủ; ở trình duyệt chỉ cần đọc phiên đã lưu (không tốn lượt gọi mạng).
+      // Dữ liệu vẫn được bảo vệ bằng RLS phía cơ sở dữ liệu.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
       if (!user) {
         setIsLoggedIn(false);
@@ -80,24 +83,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setIsLoggedIn(true);
 
-      // Fetch user profile from public.profiles
+      // Lấy hồ sơ kèm tên trường trong một truy vấn (trước đây là 2 truy vấn nối đuôi)
       const { data: profileRow } = await supabase
         .from('profiles')
-        .select('id, full_name, email, role, department, organization_id, is_active')
+        .select('id, full_name, email, role, department, organization_id, is_active, organizations(name)')
         .eq('id', user.id)
         .single();
 
-      let orgName = 'Trường TH Trần Văn Ơn';
-      if (profileRow?.organization_id) {
-        const { data: orgRow } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', profileRow.organization_id)
-          .single();
-        if (orgRow?.name) {
-          orgName = orgRow.name;
-        }
-      }
+      const orgRel = profileRow?.organizations as { name?: string } | { name?: string }[] | null | undefined;
+      const orgName = (Array.isArray(orgRel) ? orgRel[0]?.name : orgRel?.name) || 'Trường TH Trần Văn Ơn';
 
       const role = (profileRow?.role as UserRole) || 'TEACHER';
       const loadedProfile: UserProfileData = {
@@ -126,9 +120,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
     if (!supabase) return;
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION đã được fetchProfile() ở trên xử lý; TOKEN_REFRESHED không đổi hồ sơ.
+      // Chỉ nạp lại khi thật sự đăng nhập hoặc đổi thông tin, tránh gọi trùng làm chậm trang.
       if (session?.user) {
-        fetchProfile();
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') fetchProfile();
       } else {
         setIsLoggedIn(false);
         setProfile(defaultProfile);

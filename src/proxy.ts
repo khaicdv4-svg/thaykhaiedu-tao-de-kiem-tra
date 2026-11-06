@@ -31,10 +31,11 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Kiểm tra phiên đăng nhập an toàn bằng getUser()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Kiểm tra phiên đăng nhập bằng getClaims(): xác minh chữ ký JWT ngay tại máy chủ
+  // (khóa ký bất đối xứng), không phải gọi sang máy chủ Auth ở mỗi lần chuyển trang.
+  // Nếu project còn dùng khóa đối xứng, thư viện tự quay về gọi getUser() như cũ.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims?.sub ? claimsData.claims : null;
 
   const pathname = request.nextUrl.pathname;
   const isLoginPage = pathname === '/login';
