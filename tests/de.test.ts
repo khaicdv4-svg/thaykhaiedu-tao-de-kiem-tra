@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
-import { cauDaXong, dungLaiDe, kiemDinhDe, layNoiDung, taoDeTuDacTa, tienDoDe, trangThaiDeSauKhiSua, trangThaiDeSauKiemDinh, type DeKiemTra } from '../src/core/de/de';
+import { TRANG_THAI_CHI_DO_DUYET, cauDaXong, dungLaiDe, kiemDinhDe, layNoiDung, taoDeTuDacTa, tienDoDe, trangThaiDeSauKhiSua, trangThaiDeSauKiemDinh, type DeKiemTra } from '../src/core/de/de';
 import type { MaTranChung, MaTranRieng } from '../src/types/matrix-template';
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -143,5 +143,11 @@ describe('Trạng thái đề', () => {
     expect(trangThaiDeSauKiemDinh('BAN_NHAP', { hopLe: false, loi: ['x'], canhBao: [] })).toBe('CO_LOI');
     expect(trangThaiDeSauKhiSua('SAN_SANG_DUYET')).toBe('CAN_KIEM_TRA_LAI');
     expect(trangThaiDeSauKhiSua('CAN_KIEM_TRA')).toBe('BAN_NHAP');
+  });
+
+  it('đề đã duyệt mà sửa thì phải kiểm tra lại; trạng thái duyệt không do trình duyệt tự đặt', () => {
+    expect(trangThaiDeSauKhiSua('DA_DUYET')).toBe('CAN_KIEM_TRA_LAI');
+    expect(trangThaiDeSauKiemDinh('DA_DUYET', { hopLe: false, loi: ['x'], canhBao: [] })).toBe('DA_DUYET');
+    expect(TRANG_THAI_CHI_DO_DUYET).toEqual(['DA_DUYET', 'TRA_LAI']);
   });
 });

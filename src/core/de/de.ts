@@ -13,7 +13,10 @@ import type { DacTa } from '@/core/dac-ta/dac-ta';
 import { kiemDinhTiengViet, taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 
-export type TrangThaiDe = 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'SAN_SANG_DUYET' | 'CAN_KIEM_TRA_LAI';
+export type TrangThaiDe = 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'SAN_SANG_DUYET' | 'CAN_KIEM_TRA_LAI' | 'DA_DUYET' | 'TRA_LAI';
+
+/** Trạng thái chỉ đặt qua thao tác duyệt, không cho trình duyệt tự gửi lên khi lưu. */
+export const TRANG_THAI_CHI_DO_DUYET: TrangThaiDe[] = ['DA_DUYET', 'TRA_LAI'];
 
 export const NHAN_LUA_CHON = ['A', 'B', 'C', 'D'] as const;
 
@@ -219,11 +222,11 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
 }
 
 export function trangThaiDeSauKiemDinh(hienTai: TrangThaiDe, kq: KetQuaKiemDinhDe): TrangThaiDe {
-  if (hienTai === 'SAN_SANG_DUYET') return hienTai;
+  if (hienTai === 'SAN_SANG_DUYET' || hienTai === 'DA_DUYET') return hienTai;
   return kq.hopLe ? 'CAN_KIEM_TRA' : 'CO_LOI';
 }
 
 /** Sửa nội dung đề sau khi đã sẵn sàng duyệt thì phải kiểm tra lại. */
 export function trangThaiDeSauKhiSua(hienTai: TrangThaiDe): TrangThaiDe {
-  return hienTai === 'SAN_SANG_DUYET' ? 'CAN_KIEM_TRA_LAI' : 'BAN_NHAP';
+  return hienTai === 'SAN_SANG_DUYET' || hienTai === 'DA_DUYET' ? 'CAN_KIEM_TRA_LAI' : 'BAN_NHAP';
 }

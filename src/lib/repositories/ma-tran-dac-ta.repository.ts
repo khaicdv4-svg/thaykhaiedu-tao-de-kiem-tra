@@ -10,7 +10,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { dsYccd } from '@/lib/repositories/chuong-trinh.repository';
 import { kiemDinhMaTranChung, kiemDinhMaTranRieng } from '@/core/matrix/matrix-template';
 import { kiemDinhDacTa, type DacTa, type TrangThaiDacTa } from '@/core/dac-ta/dac-ta';
-import { kiemDinhDe, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
+import { TRANG_THAI_CHI_DO_DUYET, kiemDinhDe, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
 import type { KyKiemTra, MaTranChung, MaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 
 const KHOI = 4;
@@ -264,11 +264,13 @@ export interface BanDe {
   phienBanDacTa: number;
   capNhatLuc: string;
   duLieu: DeKiemTra;
+  duyetLuc: string | null;
+  ghiChuDuyet: string | null;
 }
 
-const COT_DE = 'id, trang_thai, dac_ta_id, phien_ban_dac_ta, updated_at, du_lieu';
+const COT_DE = 'id, trang_thai, dac_ta_id, phien_ban_dac_ta, updated_at, du_lieu, duyet_luc, ghi_chu_duyet';
 const sangDe = (r: any): BanDe => ({
-  id: r.id, trangThai: r.trang_thai, dacTaId: r.dac_ta_id, phienBanDacTa: r.phien_ban_dac_ta, capNhatLuc: r.updated_at, duLieu: r.du_lieu,
+  id: r.id, trangThai: r.trang_thai, dacTaId: r.dac_ta_id, phienBanDacTa: r.phien_ban_dac_ta, capNhatLuc: r.updated_at, duLieu: r.du_lieu, duyetLuc: r.duyet_luc ?? null, ghiChuDuyet: r.ghi_chu_duyet ?? null,
 });
 
 function loiDe(viec: string, msg: string): Error {
@@ -303,6 +305,7 @@ export async function luuDe(maMon: string, ky: string, dacTaId: string, de: DeKi
   const { supabase, user, orgId, role } = await layNguoiDung();
   canQuyenGhi(role);
   if (de.ma_mon !== maMon || de.ky_kiem_tra !== ky) throw new Error('Đề không đúng môn hoặc kì đã chọn.');
+  if (TRANG_THAI_CHI_DO_DUYET.includes(trangThai)) throw new Error('Trạng thái đã duyệt hoặc trả lại chỉ đặt qua thao tác duyệt đề.');
   const { chon, moiNhat } = await layDacTaDeKeThua(supabase, orgId, maMon, ky, dacTaId);
   if (chon.phienBan !== de.phien_ban_dac_ta) throw new Error('Số phiên bản đặc tả ghi trong đề không đúng.');
 
@@ -312,11 +315,99 @@ export async function luuDe(maMon: string, ky: string, dacTaId: string, de: DeKi
   if (trangThai === 'SAN_SANG_DUYET' && !kiemDinh.hopLe) throw new Error(`Đề còn lỗi, chưa chuyển sang duyệt được: ${kiemDinh.loi[0]}`);
   if (trangThai === 'CAN_KIEM_TRA' && !kiemDinh.hopLe) tt = 'CO_LOI';
 
-  const hang = { du_lieu: de, trang_thai: tt, dac_ta_id: dacTaId, phien_ban_dac_ta: de.phien_ban_dac_ta, updated_by: user.id };
-  const { data: cu } = await supabase.from('de_kiem_tra').select('id').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  const { data: cu } = await supabase.from('de_kiem_tra').select('id, trang_thai, du_lieu, dac_ta_id').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  // Đề đã duyệt: lưu lại nội dung y nguyên thì giữ "Đã duyệt"; có sửa thì phải kiểm tra và duyệt lại
+  let xoaDuyet = false;
+  if (cu && (cu.trang_thai === 'DA_DUYET' || cu.trang_thai === 'TRA_LAI')) {
+    const giong = cu.dac_ta_id === dacTaId && JSON.stringify(cu.du_lieu) === JSON.stringify(de);
+    if (cu.trang_thai === 'DA_DUYET' && giong) tt = 'DA_DUYET';
+    else if (cu.trang_thai === 'DA_DUYET') { tt = trangThai === 'SAN_SANG_DUYET' ? 'SAN_SANG_DUYET' : 'CAN_KIEM_TRA_LAI'; xoaDuyet = true; }
+  }
+  const hang = { du_lieu: de, trang_thai: tt, dac_ta_id: dacTaId, phien_ban_dac_ta: de.phien_ban_dac_ta, updated_by: user.id, ...(xoaDuyet ? { duyet_boi: null, duyet_luc: null, ghi_chu_duyet: null } : {}) };
   const { data, error } = cu
     ? await supabase.from('de_kiem_tra').update(hang).eq('id', cu.id).select(COT_DE).single()
     : await supabase.from('de_kiem_tra').insert({ ...hang, organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, created_by: user.id }).select(COT_DE).single();
   if (error) throw loiDe('Không lưu được đề kiểm tra', error.message);
   return { ban: sangDe(data), kiemDinh };
+}
+
+// ---------------------------------------------------------------------------
+// Duyệt đề và kho đề đã duyệt (bước 5)
+// ---------------------------------------------------------------------------
+
+export interface DongKhoDe {
+  maMon: string;
+  ky: string;
+  trangThai: TrangThaiDe;
+  phienBanDacTa: number;
+  capNhatLuc: string;
+  duyetLuc: string | null;
+  phienBanDaDuyetMoiNhat: number | null;
+}
+
+/** Danh sách đề của trường (không kèm nội dung câu hỏi) và phiên bản đã duyệt mới nhất của từng đề. */
+export async function danhSachDe(): Promise<DongKhoDe[]> {
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase.from('de_kiem_tra').select('ma_mon, ky_kiem_tra, trang_thai, phien_ban_dac_ta, updated_at, duyet_luc').eq('organization_id', orgId).eq('khoi', KHOI).order('updated_at', { ascending: false });
+  if (error) throw loiDe('Không đọc được kho đề', error.message);
+  const { data: dd } = await supabase.from('de_da_duyet').select('ma_mon, ky_kiem_tra, phien_ban').eq('organization_id', orgId).eq('khoi', KHOI).order('phien_ban', { ascending: false });
+  const moiNhat = new Map<string, number>();
+  for (const r of (dd ?? []) as any[]) { const k = `${r.ma_mon}|${r.ky_kiem_tra}`; if (!moiNhat.has(k)) moiNhat.set(k, r.phien_ban); }
+  return ((data ?? []) as any[]).map((r) => ({
+    maMon: r.ma_mon, ky: r.ky_kiem_tra, trangThai: r.trang_thai, phienBanDacTa: r.phien_ban_dac_ta, capNhatLuc: r.updated_at, duyetLuc: r.duyet_luc ?? null,
+    phienBanDaDuyetMoiNhat: moiNhat.get(`${r.ma_mon}|${r.ky_kiem_tra}`) ?? null,
+  }));
+}
+
+export interface PhienBanDeDaDuyet { phienBan: number; phienBanDacTa: number; duyetLuc: string; ghiChu: string | null }
+
+export async function phienBanDeDaDuyet(maMon: string, ky: string): Promise<PhienBanDeDaDuyet[]> {
+  kiemMonKy(maMon, ky);
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase.from('de_da_duyet').select('phien_ban, phien_ban_dac_ta, duyet_luc, ghi_chu').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).order('phien_ban', { ascending: false });
+  if (error) throw loiDe('Không đọc được các phiên bản đề đã duyệt', error.message);
+  return ((data ?? []) as any[]).map((r) => ({ phienBan: r.phien_ban, phienBanDacTa: r.phien_ban_dac_ta, duyetLuc: r.duyet_luc, ghiChu: r.ghi_chu }));
+}
+
+/**
+ * Duyệt hoặc trả lại đề đang soạn. Duyệt: đề phải ở trạng thái "Sẵn sàng duyệt", kế thừa đặc tả mới nhất và qua kiểm định lại ở máy chủ;
+ * lưu thành một phiên bản đề đã duyệt (không sửa được). Trả lại: bắt buộc ghi lý do.
+ */
+export async function duyetDe(maMon: string, ky: string, hanhDong: 'DUYET' | 'TRA_LAI', ghiChu: string): Promise<{ ban: BanDe; phienBan: number | null; taoPhienBanMoi: boolean }> {
+  kiemMonKy(maMon, ky);
+  const { supabase, user, orgId, role } = await layNguoiDung();
+  canQuyenGhi(role);
+  const { data: cu, error: e0 } = await supabase.from('de_kiem_tra').select(COT_DE).eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  if (e0) throw loiDe('Không đọc được đề kiểm tra', e0.message);
+  if (!cu) throw new Error('Chưa có đề để duyệt.');
+  const ban = sangDe(cu);
+  if (ban.trangThai !== 'SAN_SANG_DUYET') throw new Error('Chỉ duyệt hoặc trả lại đề đang ở trạng thái "Sẵn sàng duyệt".');
+  const note = ghiChu.trim().slice(0, 1000);
+
+  if (hanhDong === 'TRA_LAI') {
+    if (!note) throw new Error('Cần ghi lý do trả lại để người soạn biết sửa gì.');
+    const { data, error } = await supabase.from('de_kiem_tra').update({ trang_thai: 'TRA_LAI', duyet_boi: user.id, duyet_luc: new Date().toISOString(), ghi_chu_duyet: note, updated_by: user.id }).eq('id', ban.id).select(COT_DE).single();
+    if (error) throw loiDe('Không trả lại được đề', error.message);
+    return { ban: sangDe(data), phienBan: null, taoPhienBanMoi: false };
+  }
+
+  const { chon, moiNhat } = await layDacTaDeKeThua(supabase, orgId, maMon, ky, ban.dacTaId);
+  const kq = kiemDinhDe(chon.duLieu, ban.duLieu, { phienBanDacTaMoiNhat: moiNhat.phienBan ?? undefined });
+  if (!kq.hopLe) throw new Error(`Đề còn lỗi, chưa duyệt được: ${kq.loi[0]}`);
+
+  const { data: ds } = await supabase.from('de_da_duyet').select('id, phien_ban, du_lieu, dac_ta_id').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).order('phien_ban', { ascending: false }).limit(1);
+  const truoc = (ds ?? [])[0] as any;
+  const giong = !!truoc && truoc.dac_ta_id === ban.dacTaId && JSON.stringify(truoc.du_lieu) === JSON.stringify(ban.duLieu);
+  let phienBan: number = truoc?.phien_ban ?? 0;
+  if (!giong) {
+    phienBan += 1;
+    const { error } = await supabase.from('de_da_duyet').insert({
+      organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, phien_ban: phienBan, dac_ta_id: ban.dacTaId, phien_ban_dac_ta: ban.phienBanDacTa,
+      du_lieu: ban.duLieu, duyet_boi: user.id, duyet_luc: new Date().toISOString(), ghi_chu: note || null,
+    });
+    if (error) throw loiDe('Không lưu được phiên bản đề đã duyệt', error.message);
+  }
+  const { data, error } = await supabase.from('de_kiem_tra').update({ trang_thai: 'DA_DUYET', duyet_boi: user.id, duyet_luc: new Date().toISOString(), ghi_chu_duyet: note || null, updated_by: user.id }).eq('id', ban.id).select(COT_DE).single();
+  if (error) throw loiDe('Không cập nhật được trạng thái đề', error.message);
+  return { ban: sangDe(data), phienBan, taoPhienBanMoi: !giong };
 }

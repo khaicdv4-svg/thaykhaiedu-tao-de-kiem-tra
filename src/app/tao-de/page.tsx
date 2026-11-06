@@ -43,6 +43,8 @@ const NHAN_TRANG_THAI: Record<TrangThaiDe, { ten: string; mau: string }> = {
   CO_LOI: { ten: 'Có lỗi cần sửa', mau: 'bg-red-50 text-red-700 border-red-200' },
   SAN_SANG_DUYET: { ten: 'Sẵn sàng duyệt', mau: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   CAN_KIEM_TRA_LAI: { ten: 'Cần kiểm tra lại', mau: 'bg-amber-50 text-amber-800 border-amber-200' },
+  DA_DUYET: { ten: 'Đã duyệt', mau: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  TRA_LAI: { ten: 'Bị trả lại, cần sửa', mau: 'bg-red-50 text-red-700 border-red-200' },
 };
 
 const nutChinh = 'nut-tke text-sm';
@@ -79,6 +81,11 @@ export default function TaoDePage() {
   const [dangXuat, setDangXuat] = useState(false);
 
   useEffect(() => {
+    try {
+      setTruong(localStorage.getItem('tke.truong') || 'TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN');
+      setNamHoc(localStorage.getItem('tke.namHoc') || '2026 - 2027');
+      setPhut(Number(localStorage.getItem('tke.phut')) || 35);
+    } catch { /* không có localStorage */ }
     const p = new URLSearchParams(window.location.search);
     const m = p.get('mon');
     const k = p.get('ky');
@@ -179,6 +186,7 @@ export default function TaoDePage() {
   const xuatWord = async () => {
     setDangXuat(true);
     try {
+      try { localStorage.setItem('tke.truong', truong); localStorage.setItem('tke.namHoc', namHoc); localStorage.setItem('tke.phut', String(phut)); } catch { /* bỏ qua */ }
       const q = new URLSearchParams({ mon: maMon, ky, truong, namHoc, phut: String(phut) });
       const r = await fetch(`/api/de-kiem-tra/xuat?${q}`);
       if (!r.ok) {
@@ -355,7 +363,7 @@ export default function TaoDePage() {
           {trangThai === 'SAN_SANG_DUYET' && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-emerald-900">
               <span>Đề đã chuyển sang bước duyệt. Sửa bất kì câu nào, đề sẽ chuyển sang &quot;Cần kiểm tra lại&quot;.</span>
-              <Link href="/tests" className={nutChinh}>Sang bước 5: Duyệt đề</Link>
+              <Link href={`/tests?mon=${maMon}&ky=${ky}`} className={nutChinh}>Sang bước 5: Duyệt đề</Link>
             </div>
           )}
 
