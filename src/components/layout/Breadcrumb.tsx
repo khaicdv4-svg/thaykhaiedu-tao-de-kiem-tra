@@ -15,6 +15,7 @@ const ROUTE_NAME_MAP: Record<string, string> = {
   sources: 'Phân phối chương trình',
   matrices: 'Ma trận riêng',
   'dac-ta': 'Bản đặc tả',
+  'tao-de': 'Tạo đề',
   'ma-tran-chung': 'Ma trận chung',
   'ma-tran-ca-nam': 'Ma trận nội dung cả năm',
   questions: 'Ngân hàng câu hỏi',

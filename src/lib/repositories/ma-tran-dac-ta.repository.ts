@@ -10,6 +10,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { dsYccd } from '@/lib/repositories/chuong-trinh.repository';
 import { kiemDinhMaTranChung, kiemDinhMaTranRieng } from '@/core/matrix/matrix-template';
 import { kiemDinhDacTa, type DacTa, type TrangThaiDacTa } from '@/core/dac-ta/dac-ta';
+import { kiemDinhDe, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
 import type { KyKiemTra, MaTranChung, MaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 
 const KHOI = 4;
@@ -250,4 +251,72 @@ export async function xacNhanDacTa(maMon: string, ky: string, maTranRiengId: str
   if (nhap) await supabase.from('dac_ta').update(hangNhap).eq('id', nhap.id);
   else await supabase.from('dac_ta').insert({ ...hangNhap, organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, la_ban_nhap: true, created_by: user.id });
   return { ban, taoPhienBanMoi: !giongCu };
+}
+
+// ---------------------------------------------------------------------------
+// Đề kiểm tra (bước 4)
+// ---------------------------------------------------------------------------
+
+export interface BanDe {
+  id: string;
+  trangThai: TrangThaiDe;
+  dacTaId: string;
+  phienBanDacTa: number;
+  capNhatLuc: string;
+  duLieu: DeKiemTra;
+}
+
+const COT_DE = 'id, trang_thai, dac_ta_id, phien_ban_dac_ta, updated_at, du_lieu';
+const sangDe = (r: any): BanDe => ({
+  id: r.id, trangThai: r.trang_thai, dacTaId: r.dac_ta_id, phienBanDacTa: r.phien_ban_dac_ta, capNhatLuc: r.updated_at, duLieu: r.du_lieu,
+});
+
+function loiDe(viec: string, msg: string): Error {
+  if (/de_kiem_tra/.test(msg) && /(does not exist|schema cache|Could not find)/i.test(msg)) {
+    return new Error('Cơ sở dữ liệu chưa có bảng đề kiểm tra. Cần chạy migration 20261106210000_de_kiem_tra.sql trên Supabase.');
+  }
+  return new Error(`${viec}: ${msg}`);
+}
+
+/** Đề đang soạn của môn, kì (nếu có). */
+export async function layDe(maMon: string, ky: string): Promise<{ de: BanDe | null }> {
+  kiemMonKy(maMon, ky);
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase.from('de_kiem_tra').select(COT_DE).eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  if (error) throw loiDe('Không đọc được đề kiểm tra', error.message);
+  return { de: data ? sangDe(data) : null };
+}
+
+/** Đặc tả đã xác nhận mà đề kế thừa phải đúng phiên bản và là bản mới nhất khi lưu (cũ hơn vẫn lưu được nhưng báo lỗi lúc kiểm định). */
+async function layDacTaDeKeThua(supabase: any, orgId: string, maMon: string, ky: string, id: string) {
+  const { data, error } = await supabase.from('dac_ta').select(COT_DT).eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('la_ban_nhap', false).order('phien_ban', { ascending: false });
+  if (error) throw loiDacTa('Không đọc được đặc tả', error.message);
+  const ds = ((data ?? []) as any[]).map(sangDt);
+  if (!ds.length) throw new Error('Môn này chưa có đặc tả đã xác nhận. Hãy xác nhận đặc tả ở bước 3 trước.');
+  const chon = ds.find((b) => b.id === id);
+  if (!chon) throw new Error('Không tìm thấy phiên bản đặc tả mà đề kế thừa.');
+  return { chon, moiNhat: ds[0] };
+}
+
+export async function luuDe(maMon: string, ky: string, dacTaId: string, de: DeKiemTra, trangThai: TrangThaiDe): Promise<{ ban: BanDe; kiemDinh: KetQuaKiemDinhDe }> {
+  kiemMonKy(maMon, ky);
+  const { supabase, user, orgId, role } = await layNguoiDung();
+  canQuyenGhi(role);
+  if (de.ma_mon !== maMon || de.ky_kiem_tra !== ky) throw new Error('Đề không đúng môn hoặc kì đã chọn.');
+  const { chon, moiNhat } = await layDacTaDeKeThua(supabase, orgId, maMon, ky, dacTaId);
+  if (chon.phienBan !== de.phien_ban_dac_ta) throw new Error('Số phiên bản đặc tả ghi trong đề không đúng.');
+
+  // Máy chủ kiểm định lại: không tin trạng thái do trình duyệt gửi lên
+  const kiemDinh = kiemDinhDe(chon.duLieu, de, { phienBanDacTaMoiNhat: moiNhat.phienBan ?? undefined });
+  let tt: TrangThaiDe = trangThai;
+  if (trangThai === 'SAN_SANG_DUYET' && !kiemDinh.hopLe) throw new Error(`Đề còn lỗi, chưa chuyển sang duyệt được: ${kiemDinh.loi[0]}`);
+  if (trangThai === 'CAN_KIEM_TRA' && !kiemDinh.hopLe) tt = 'CO_LOI';
+
+  const hang = { du_lieu: de, trang_thai: tt, dac_ta_id: dacTaId, phien_ban_dac_ta: de.phien_ban_dac_ta, updated_by: user.id };
+  const { data: cu } = await supabase.from('de_kiem_tra').select('id').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  const { data, error } = cu
+    ? await supabase.from('de_kiem_tra').update(hang).eq('id', cu.id).select(COT_DE).single()
+    : await supabase.from('de_kiem_tra').insert({ ...hang, organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, created_by: user.id }).select(COT_DE).single();
+  if (error) throw loiDe('Không lưu được đề kiểm tra', error.message);
+  return { ban: sangDe(data), kiemDinh };
 }

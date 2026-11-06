@@ -365,7 +365,7 @@ export default function DacTaPage() {
           {daXacNhan && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-emerald-900">
               <span>Đặc tả đã xác nhận (phiên bản {phienBanXacNhan}). Sửa bất kì ô nào, đặc tả sẽ chuyển sang &quot;Cần xác nhận lại&quot; và tạo phiên bản mới khi xác nhận.</span>
-              <Link href="/test-builder" className={nutChinh}>Sang bước 4: Tạo đề</Link>
+              <Link href={`/tao-de?mon=${maMon}&ky=${ky}`} className={nutChinh}>Sang bước 4: Tạo đề</Link>
             </div>
           )}
 
