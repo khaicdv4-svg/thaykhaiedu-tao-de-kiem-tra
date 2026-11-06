@@ -18,6 +18,7 @@ describe('Giai đoạn 1 - Nền tảng & Giao diện (Platform & UI Tests)', ()
 
     // Teachers DO NOT have direct access to matrix management or template configuration
     expect(hrefs).not.toContain('/matrices');
+    expect(hrefs).not.toContain('/dac-ta');
     expect(hrefs).not.toContain('/templates');
     expect(hrefs).not.toContain('/ai-settings');
     expect(hrefs).toContain('/ma-tran-chung');
@@ -29,21 +30,22 @@ describe('Giai đoạn 1 - Nền tảng & Giao diện (Platform & UI Tests)', ()
     const leaderNav = getNavigationForRole('GROUP_LEADER');
     const hrefs = leaderNav.map((n) => n.href);
 
-    // Tổ trưởng thấy đủ 11 mục, gồm ma trận, mẫu đề và Cài đặt AI
+    // Tổ trưởng thấy đủ 11 mục, gồm ma trận, đặc tả, mẫu đề và Cài đặt AI
     expect(hrefs).toContain('/matrices');
+    expect(hrefs).toContain('/dac-ta');
     expect(hrefs).toContain('/ai-settings');
     expect(hrefs).toContain('/templates');
     expect(hrefs).toContain('/dashboard');
     expect(hrefs).toContain('/test-builder');
-    expect(leaderNav.length).toBe(15);
+    expect(leaderNav.length).toBe(16);
   });
 
   it('correctly provides full menu for SCHOOL_ADMIN and SYSTEM_ADMIN', () => {
     const adminNav = getNavigationForRole('SCHOOL_ADMIN');
-    expect(adminNav.length).toBe(15);
+    expect(adminNav.length).toBe(16);
 
     const sysAdminNav = getNavigationForRole('SYSTEM_ADMIN');
-    expect(sysAdminNav.length).toBe(15);
+    expect(sysAdminNav.length).toBe(16);
   });
 
   it('ensures each navigation item has valid title, href, and icon definition', () => {

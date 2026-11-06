@@ -6,12 +6,13 @@
  * 1. Chọn môn → 2. Xem ma trận chung của tổ → 3. Lập ma trận riêng → 4. Xem trước và xác nhận.
  * Mẫu ma trận chung: src/core/matrix/templates (nguồn: docs/mau-ma-tran).
  *
- * Lưu ý: ma trận riêng hiện lưu bản nháp trên trình duyệt (localStorage).
- * Lưu vào cơ sở dữ liệu cần thêm bảng mới, chờ chủ dự án duyệt.
+ * Lưu: tổ trưởng, tổ phó, quản trị lưu bản nháp và xác nhận phiên bản lên hệ thống (bảng ma_tran_rieng).
+ * Tài khoản khác, hoặc khi chưa kết nối được, chỉ lưu bản nháp trên trình duyệt (localStorage).
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import {
   apDungSuaCau,
@@ -181,6 +182,9 @@ export default function MatricesPage() {
   const [dangDung, setDangDung] = useState(false);
   const [kyDung, setKyDung] = useState<KyDung>('CUOI_HK1');
   const [khungDung, setKhungDung] = useState<MaTranChung | null>(null);
+  /** Số phiên bản ma trận riêng đã xác nhận trên hệ thống (null: chưa có). */
+  const [phienBanXacNhan, setPhienBanXacNhan] = useState<number | null>(null);
+  const [dangLuuHeThong, setDangLuuHeThong] = useState(false);
 
   const mtc = useMemo(
     () => (cachLap === 'CHUONG_TRINH' ? khungDung : MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? null),
@@ -200,6 +204,24 @@ export default function MatricesPage() {
     setKetQua(null);
     setDaXemTruoc(false);
     setThongBao(nhap ? 'Đã mở lại bản nháp ma trận riêng đã lưu.' : null);
+    setPhienBanXacNhan(null);
+
+    // Bản lưu trên hệ thống (cả tổ cùng thấy) được ưu tiên hơn bản lưu trên máy
+    let huy = false;
+    fetch(`/api/ma-tran-rieng?mon=${mtc.ma_mon}&ky=${mtc.ky_kiem_tra}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { banNhap?: { duLieu?: { ma_tran_chung?: MaTranChung; ma_tran_rieng?: MaTranRieng }; capNhatLuc?: string } | null; moiNhat?: { phienBan?: number | null } | null } | null) => {
+        if (huy || !j) return;
+        setPhienBanXacNhan(j.moiNhat?.phienBan ?? null);
+        const d = j.banNhap?.duLieu;
+        // Chỉ dùng khi đúng cùng ma trận chung (khung dựng từ chương trình có thể đã khác)
+        if (d?.ma_tran_rieng && d.ma_tran_chung && JSON.stringify(d.ma_tran_chung) === JSON.stringify(mtc)) {
+          setMtr(ganSanYccdDuyNhat(mtc, d.ma_tran_rieng));
+          setThongBao(`Đã mở bản nháp ma trận riêng lưu trên hệ thống${j.moiNhat?.phienBan ? ` (đã xác nhận đến phiên bản ${j.moiNhat.phienBan})` : ''}.`);
+        }
+      })
+      .catch(() => { /* không có mạng hoặc chưa đăng nhập: dùng bản trên máy */ });
+    return () => { huy = true; };
   }, [mtc]);
 
   // Khi chọn nguồn Chương trình: lấy YCCĐ đã duyệt của môn, lớp này trong Kho chương trình
@@ -279,19 +301,54 @@ export default function MatricesPage() {
     return kq;
   };
 
-  const luuNhap = () => {
-    if (!mtc || !mtr) return;
-    setThongBao(ghiBanNhap(mtc, mtr) ? 'Đã lưu bản nháp trên máy này.' : 'Không lưu được bản nháp trên trình duyệt này.');
+  /** Gửi lên hệ thống. Trả về: 'OK', 'KHONG_QUYEN' (chỉ lưu được trên máy), hoặc thông báo lỗi. */
+  const guiHeThong = async (hanhDong: 'LUU_NHAP' | 'XAC_NHAN', m: MaTranRieng): Promise<{ ket: 'OK' | 'KHONG_QUYEN' | 'LOI'; thongBao?: string; phienBan?: number | null; taoMoi?: boolean }> => {
+    if (!mtc) return { ket: 'LOI' };
+    try {
+      const r = await fetch('/api/ma-tran-rieng', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hanhDong, mon: mtc.ma_mon, ky: mtc.ky_kiem_tra, duLieu: { ma_tran_chung: mtc, ma_tran_rieng: m } }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { error?: string; ban?: { phienBan?: number | null }; taoPhienBanMoi?: boolean };
+      if (r.ok) return { ket: 'OK', phienBan: j.ban?.phienBan ?? null, taoMoi: j.taoPhienBanMoi };
+      if (r.status === 403) return { ket: 'KHONG_QUYEN', thongBao: j.error };
+      return { ket: 'LOI', thongBao: j.error ?? `Lỗi ${r.status}` };
+    } catch {
+      return { ket: 'KHONG_QUYEN', thongBao: 'Không kết nối được hệ thống.' };
+    }
   };
 
-  const xacNhan = () => {
+  const luuNhap = async () => {
+    if (!mtc || !mtr) return;
+    setDangLuuHeThong(true);
+    const kq = await guiHeThong('LUU_NHAP', mtr);
+    setDangLuuHeThong(false);
+    if (kq.ket === 'OK') { ghiBanNhap(mtc, mtr); setThongBao('Đã lưu bản nháp lên hệ thống. Cả tổ cùng thấy bản này.'); return; }
+    if (kq.ket === 'LOI') { setThongBao(`Chưa lưu lên hệ thống: ${kq.thongBao}`); return; }
+    setThongBao(ghiBanNhap(mtc, mtr) ? `Đã lưu bản nháp trên máy này (${kq.thongBao ?? 'tài khoản chưa được lưu lên hệ thống'}).` : 'Không lưu được bản nháp trên trình duyệt này.');
+  };
+
+  const xacNhan = async () => {
     if (!mtc || !mtr) return;
     const kq = kiemDinhMaTranRieng(mtc, mtr, dsYccdCT);
     setKetQua(kq);
     if (!kq.hopLe || !daXemTruoc) return;
     const daXacNhan: MaTranRieng = { ...mtr, trang_thai: 'DA_XAC_NHAN' };
+    setDangLuuHeThong(true);
+    const gui = await guiHeThong('XAC_NHAN', mtr);
+    setDangLuuHeThong(false);
+    if (gui.ket === 'LOI') { setThongBao(`Chưa xác nhận được: ${gui.thongBao}`); return; }
     setMtr(daXacNhan);
-    setThongBao(ghiBanNhap(mtc, daXacNhan) ? 'Đã xác nhận ma trận riêng. Bước tiếp theo: bản đặc tả.' : 'Đã xác nhận, nhưng chưa lưu được trên trình duyệt này.');
+    ghiBanNhap(mtc, daXacNhan);
+    if (gui.ket === 'OK') {
+      setPhienBanXacNhan(gui.phienBan ?? null);
+      setThongBao(gui.taoMoi === false
+        ? `Nội dung không đổi so với phiên bản ${gui.phienBan}, giữ nguyên phiên bản đó. Bước tiếp theo: bản đặc tả.`
+        : `Đã xác nhận ma trận riêng, phiên bản ${gui.phienBan}. Bước tiếp theo: bản đặc tả.`);
+    } else {
+      setThongBao(`Đã xác nhận trên máy này. Chưa lưu lên hệ thống nên chưa lập được bản đặc tả: ${gui.thongBao ?? 'cần tài khoản tổ trưởng, tổ phó hoặc quản trị'}.`);
+    }
   };
 
   const cauList = useMemo(() => (mtc && mtr ? danhSachCau(apDungSuaCau(mtc, mtr.sua_cau), mtr.lua_chon_da_dung) : []), [mtc, mtr]);
@@ -569,7 +626,7 @@ export default function MatricesPage() {
           <div className="flex flex-wrap justify-between gap-2">
             <button type="button" className={nutPhu} onClick={() => setBuoc(1)}><ArrowLeft className="w-4 h-4" /> Quay lại</button>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} onClick={luuNhap}><Save className="w-4 h-4" /> Lưu bản nháp</button>
+              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void luuNhap()}><Save className="w-4 h-4" /> Lưu bản nháp</button>
               <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>
               <button
                 type="button"
@@ -600,10 +657,16 @@ export default function MatricesPage() {
           <div className="flex flex-wrap justify-between gap-2">
             <button type="button" className={nutPhu} onClick={() => setBuoc(2)}><ArrowLeft className="w-4 h-4" /> Chỉnh sửa ma trận</button>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} onClick={luuNhap}><Save className="w-4 h-4" /> Lưu bản nháp</button>
-              <button type="button" className={nutChinh} disabled={!daXemTruoc || mtr.trang_thai === 'DA_XAC_NHAN'} onClick={xacNhan}>
-                <CheckCircle2 className="w-4 h-4" /> {mtr.trang_thai === 'DA_XAC_NHAN' ? 'Đã xác nhận' : 'Xác nhận ma trận'}
-              </button>
+              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void luuNhap()}><Save className="w-4 h-4" /> Lưu bản nháp</button>
+              {mtr.trang_thai === 'DA_XAC_NHAN' && phienBanXacNhan !== null ? (
+                <Link href={`/dac-ta?mon=${mtc.ma_mon}&ky=${mtc.ky_kiem_tra}`} className={nutChinh}>
+                  <ListChecks className="w-4 h-4" /> Sang bước 3: Đặc tả
+                </Link>
+              ) : (
+                <button type="button" className={nutChinh} disabled={!daXemTruoc || mtr.trang_thai === 'DA_XAC_NHAN' || dangLuuHeThong} onClick={() => void xacNhan()}>
+                  <CheckCircle2 className="w-4 h-4" /> {mtr.trang_thai === 'DA_XAC_NHAN' ? 'Đã xác nhận' : 'Xác nhận ma trận'}
+                </button>
+              )}
             </div>
           </div>
         </div>

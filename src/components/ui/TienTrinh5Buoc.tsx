@@ -13,7 +13,7 @@ import { Check, ChevronRight, ClipboardCheck, Grid3x3, ListChecks, Settings2, Sp
 export const NAM_BUOC = [
   { so: 1, ten: 'Thiết lập', href: '/test-builder', icon: Settings2 },
   { so: 2, ten: 'Ma trận', href: '/matrices', icon: Grid3x3 },
-  { so: 3, ten: 'Đặc tả', href: '/matrices', icon: ListChecks },
+  { so: 3, ten: 'Đặc tả', href: '/dac-ta', icon: ListChecks },
   { so: 4, ten: 'Tạo đề', href: '/test-builder', icon: Sparkles },
   { so: 5, ten: 'Duyệt đề', href: '/tests', icon: ClipboardCheck },
 ] as const;

@@ -19,6 +19,7 @@ import {
   CalendarRange,
   Table2,
   Library,
+  ListChecks,
 } from 'lucide-react';
 import { UserRole } from '@/types/permissions';
 
@@ -81,11 +82,20 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'matrices',
-    title: 'Ma trận riêng & Đặc tả',
+    title: 'Ma trận riêng',
     href: '/matrices',
     iconName: 'Grid',
     icon: Grid,
-    description: 'Thiết lập ma trận khung 3 mức độ nhận thức và đặc tả đề kiểm tra',
+    description: 'Bước 2: lập ma trận riêng từ ma trận chung của tổ, kiểm tra và xác nhận',
+    allowedRoles: ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+  },
+  {
+    id: 'dac-ta',
+    title: 'Bản đặc tả',
+    href: '/dac-ta',
+    iconName: 'ListChecks',
+    icon: ListChecks,
+    description: 'Bước 3: bản đặc tả từng câu (YCCĐ, mức, bài, tuần, trang SGK) kế thừa ma trận riêng đã xác nhận',
     allowedRoles: ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {

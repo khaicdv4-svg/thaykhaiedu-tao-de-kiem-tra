@@ -330,7 +330,7 @@ export function kiemDinhMaTranChung(mtc: MaTranChung): KetQuaKiemDinh {
 // ---------------------------------------------------------------------------
 
 /** Câu bài viết đánh giá cả bài theo mọi YCCĐ của thể loại, không chọn một YCCĐ. */
-const laCauBaiViet = (c: CauTrongMaTran) => c.cau.dang === 'VIET' || c.phan.kieu === 'VIET';
+export const laCauBaiViet = (c: CauTrongMaTran) => c.cau.dang === 'VIET' || c.phan.kieu === 'VIET';
 
 export function taoMaTranRiengRong(mtc: MaTranChung): MaTranRieng {
   return {
