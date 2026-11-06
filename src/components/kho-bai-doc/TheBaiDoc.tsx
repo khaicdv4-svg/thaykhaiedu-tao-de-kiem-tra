@@ -142,8 +142,8 @@ export function TheBaiDoc({
       </div>
 
       <div>
-        <button type="button" className="inline-flex items-center gap-1 text-sm text-blue-700" onClick={() => setMoNoiDung(!moNoiDung)}>
-          {moNoiDung ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />} {moNoiDung ? 'Ẩn nội dung' : 'Xem / sửa nội dung'}
+        <button type="button" className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 shadow-sm hover:bg-blue-100 active:bg-blue-200" onClick={() => setMoNoiDung(!moNoiDung)}>
+          {moNoiDung ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />} {moNoiDung ? 'Ẩn nội dung' : 'Xem / sửa nội dung'}
         </button>
         {moNoiDung && (
           <textarea className={`${o} mt-2 min-h-48 leading-relaxed`} style={{ fontFamily: "'Times New Roman', serif", fontSize: '13pt' }} value={bai.noiDung} disabled={chiXem} onChange={(e) => doi({ noiDung: e.target.value })} />
