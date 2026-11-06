@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { docKhoiTuDocx, xmlWordSangKhoi } from '../src/core/utils/docx-bang';
+import { docKhoiTuDocx, khoiSangVanBan, xmlWordSangKhoi } from '../src/core/utils/docx-bang';
 
 describe('Đọc bảng trong file Word ma trận', () => {
   it('giữ ô gộp ngang, gộp dọc và đoạn canh giữa in đậm', async () => {
@@ -27,5 +27,12 @@ describe('Đọc bảng trong file Word ma trận', () => {
     const khoi = xmlWordSangKhoi(xml);
     expect(khoi[0]).toEqual({ loai: 'doan', chu: 'A' });
     expect(khoi[1]).toEqual({ loai: 'bang', hang: [[{ chu: 'Ngoài\nTrong', cot: 1, hang: 1 }]] });
+  });
+
+  it('dựng lại chữ thuần sau khi sửa trực tiếp', () => {
+    expect(khoiSangVanBan([
+      { loai: 'doan', chu: 'NĂM HỌC 2026 - 2027' },
+      { loai: 'bang', hang: [[{ chu: 'Mức 1', cot: 1, hang: 1 }, { chu: '1 câu\n0,5đ', cot: 2, hang: 1 }]] },
+    ])).toBe('NĂM HỌC 2026 - 2027\nMức 1\n1 câu\n0,5đ');
   });
 });

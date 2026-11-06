@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { danhSachTaiLieu, luuNhieuFile, xoaTaiLieuChuaXacNhan, type FileTaiLen } from '@/lib/repositories/kho-ma-tran.repository';
+import { danhSachTaiLieu, luuNhieuFile, xoaTaiLieu, type FileTaiLen } from '@/lib/repositories/kho-ma-tran.repository';
 
 const loi = (e: unknown, status = 400) => NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status });
 
@@ -27,7 +27,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const id = new URL(req.url).searchParams.get('id');
     if (!id) return loi('Thiếu id.');
-    await xoaTaiLieuChuaXacNhan(id);
+    await xoaTaiLieu(id);
     return NextResponse.json({ success: true });
   } catch (e) {
     return loi(e);

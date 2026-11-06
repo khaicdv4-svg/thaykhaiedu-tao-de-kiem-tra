@@ -26,6 +26,7 @@ export interface TaiLieuMaTran {
   trangThai: 'CHO_XAC_NHAN' | 'DA_XAC_NHAN';
   taiLenLuc: string;
   xacNhanLuc: string | null;
+  ghiChu: string | null;
 }
 
 export interface FileTaiLen {
@@ -38,6 +39,8 @@ export interface FileTaiLen {
   noiDung: string;
   /** Đoạn văn và bảng đọc từ file Word, để xem lại đúng dạng bảng */
   cauTruc?: KhoiVanBan[] | null;
+  /** Ví dụ: "Sửa trực tiếp từ bản 2" */
+  ghiChu?: string;
 }
 
 const CAU_TRUC_TOI_DA = 1_500_000; // ký tự JSON
@@ -57,7 +60,7 @@ async function layNguoiDung() {
   return { supabase, user, orgId: profile.organization_id as string, role: profile.role as string };
 }
 
-const COT = 'id, loai, ma_mon, ky_kiem_tra, phien_ban, ten_file, duong_dan, kich_thuoc, trang_thai, created_at, xac_nhan_luc, so_ky_tu';
+const COT = 'id, loai, ma_mon, ky_kiem_tra, phien_ban, ten_file, duong_dan, kich_thuoc, trang_thai, created_at, xac_nhan_luc, so_ky_tu, ghi_chu';
 
 function sangDoiTuong(r: any): TaiLieuMaTran {
   return {
@@ -73,6 +76,7 @@ function sangDoiTuong(r: any): TaiLieuMaTran {
     trangThai: r.trang_thai,
     taiLenLuc: r.created_at,
     xacNhanLuc: r.xac_nhan_luc,
+    ghiChu: r.ghi_chu ?? null,
   };
 }
 
@@ -151,6 +155,7 @@ export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string;
       kich_thuoc: typeof f.kichThuoc === 'number' ? Math.round(f.kichThuoc) : null,
       noi_dung: f.noiDung,
       cau_truc: cauTruc,
+      ghi_chu: f.ghiChu?.slice(0, 500) || null,
       tai_len_boi: user.id,
     });
     kq.push(error ? { tenFile: f.tenFile, ok: false, loi: error.message } : { tenFile: f.tenFile, ok: true, phienBan });
@@ -172,16 +177,19 @@ export async function xacNhanTaiLieu(id: string): Promise<void> {
   if (!data?.length) throw new Error('File không còn ở trạng thái chờ xác nhận.');
 }
 
-export async function xoaTaiLieuChuaXacNhan(id: string): Promise<void> {
+/**
+ * Xóa một phiên bản. Bản chờ xác nhận: tổ trưởng, tổ phó, quản trị.
+ * Bản đã xác nhận: chỉ tổ trưởng, quản trị (khi phát hiện ma trận sai cần gỡ bỏ).
+ */
+export async function xoaTaiLieu(id: string): Promise<void> {
   const { supabase, orgId, role } = await layNguoiDung();
-  if (!VAI_TRO_TAI.includes(role)) throw new Error('Không có quyền xóa.');
-  const { data, error } = await supabase
-    .from('tai_lieu_ma_tran')
-    .delete()
-    .eq('organization_id', orgId)
-    .eq('id', id)
-    .eq('trang_thai', 'CHO_XAC_NHAN')
-    .select('id');
+  const { data: ban } = await supabase.from('tai_lieu_ma_tran').select('trang_thai').eq('organization_id', orgId).eq('id', id).single();
+  if (!ban) throw new Error('Không tìm thấy file.');
+  const vaiTroDuoc = ban.trang_thai === 'DA_XAC_NHAN' ? VAI_TRO_XAC_NHAN : VAI_TRO_TAI;
+  if (!vaiTroDuoc.includes(role)) {
+    throw new Error(ban.trang_thai === 'DA_XAC_NHAN' ? 'Chỉ tổ trưởng hoặc quản trị mới xóa được bản đã xác nhận.' : 'Không có quyền xóa.');
+  }
+  const { data, error } = await supabase.from('tai_lieu_ma_tran').delete().eq('organization_id', orgId).eq('id', id).select('id');
   if (error) throw new Error(`Không xóa được: ${error.message}`);
-  if (!data?.length) throw new Error('Chỉ xóa được file chưa xác nhận.');
+  if (!data?.length) throw new Error('Không xóa được file này.');
 }

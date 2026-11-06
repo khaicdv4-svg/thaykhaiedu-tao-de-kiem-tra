@@ -158,6 +158,16 @@ export function xmlWordSangKhoi(xml: string): KhoiVanBan[] {
   return khoi.filter((k, i) => !(k.loai === 'doan' && !k.chu.trim() && i > 0 && khoi[i - 1].loai === 'doan' && !(khoi[i - 1] as { chu: string }).chu.trim()));
 }
 
+/** Dựng lại chữ thuần từ các khối (dùng khi sửa trực tiếp trong app): mỗi đoạn, mỗi ô một dòng. */
+export function khoiSangVanBan(khoi: KhoiVanBan[]): string {
+  const dong: string[] = [];
+  for (const k of khoi) {
+    if (k.loai === 'doan') dong.push(k.chu);
+    else for (const h of k.hang) for (const o of h) dong.push(o.chu);
+  }
+  return dong.join('\n').replace(/\n+$/, '');
+}
+
 export async function docKhoiTuDocx(buf: ArrayBuffer): Promise<KhoiVanBan[]> {
   const xml = await docTepTrongZip(buf, 'word/document.xml');
   if (!xml) throw new Error('Không tìm thấy nội dung trong file .docx.');
