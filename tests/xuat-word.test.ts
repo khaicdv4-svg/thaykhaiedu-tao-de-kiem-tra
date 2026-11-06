@@ -4,8 +4,8 @@ import { Packer } from 'docx';
 import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
-import { taoDeTuDacTa } from '../src/core/de/de';
-import { dungTaiLieuDe, xepCauTheoSo } from '../src/core/de/xuat-word';
+import { kiemDinhDe, taoDeTuDacTa } from '../src/core/de/de';
+import { dungTaiLieuDe, dungTaiLieuTiengViet, xepCauTheoSo } from '../src/core/de/xuat-word';
 import { docChuTuDocx } from '../src/core/utils/docx-text';
 
 const mtc = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'LS_DL')!;
@@ -39,5 +39,49 @@ describe('Xuất Word', () => {
   it('xếp câu theo số thứ tự, câu không đánh số để cuối', () => {
     const mau = (cau: string) => ({ ...de.cau[0], cau });
     expect(xepCauTheoSo([mau('Viết'), mau('10'), mau('2'), mau('1')]).map((c) => c.cau)).toEqual(['1', '2', '10', 'Viết']);
+  });
+});
+
+describe('Xuất Word môn Tiếng Việt', () => {
+  const tv = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'TIENG_VIET')!;
+  const lcTv: LuaChon = {};
+  for (const nhom of cacNhomLuaChon(tv)) lcTv[nhom.ma] = nhom.phuong_an[0].ma;
+  const mtrTv = taoMaTranRiengRong(tv);
+  mtrTv.lua_chon_da_dung = lcTv;
+  mtrTv.cau_hoi = danhSachCau(tv, lcTv).filter((c) => c.cau.dang !== 'VIET').map((c) => ({ khoa: c.khoa, yccd: c.dong.yccd[0] }));
+  mtrTv.trang_thai = 'DA_XAC_NHAN';
+  const deTv = taoDeTuDacTa(taoDacTa(tv, mtrTv, 1, { tuanKiemTra: 18 }), 1);
+  const doan = (n: number) => Array.from({ length: n }, (_, i) => `tiếng${i}`).join(' ');
+  deTv.cau = deTv.cau.map((c, i) => ({
+    ...c,
+    deBai: c.dang === 'VIET' ? 'Em hãy kể lại một câu chuyện nói về tình cảm gia đình.' : `Câu hỏi đọc hiểu số ${i + 1} về bài đọc.`,
+    luaChon: c.hinhThuc === 'TN' ? ['Phương án một', 'Phương án hai', 'Phương án ba', 'Phương án bốn'] : [],
+    dapAn: c.hinhThuc === 'TN' ? 'C' : c.dang === 'VIET' ? '' : 'Gợi ý đáp án',
+    huongDanCham: c.hinhThuc === 'TL' ? 'Nêu đúng ý: 0,5 điểm; giải thích hợp lí: 0,5 điểm' : '',
+  }));
+  deTv.tiengViet = {
+    baiDocHieu: { tieuDe: 'Cuộc phiêu lưu của bồ công anh', noiDung: `${doan(60)}\n${doan(60)}`, tacGia: 'Trương Huỳnh Như Trân', nguon: '(Nguồn: sách báo)' },
+    baiDocThanhTieng: [1, 2, 3, 4].map((i) => ({ tieuDe: `Bài số ${i}`, noiDung: doan(82), tacGia: 'Tác giả A', nguon: '(Nguồn: sách)', cauHoi: `Câu hỏi bài ${i}?`, traLoi: `Trả lời bài ${i}.` })),
+  };
+  const ttTv = { tenTruong: 'TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN', tieuDeKy: 'KTĐK CUỐI HKI - NĂM HỌC 2026 - 2027', tenMon: 'TIẾNG VIỆT', thoiGianPhut: 30 };
+
+  it('dựng một tệp gồm đủ các phần của bộ đề', async () => {
+    const buf = await Packer.toBuffer(dungTaiLieuTiengViet(ttTv, deTv));
+    if (process.env.XUAT_TV) writeFileSync(process.env.XUAT_TV, buf);
+    const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+    for (const s of ['MÔN TIẾNG VIỆT (ĐỌC HIỂU) - Lớp 4', 'Bài đọc hiểu:', 'MÔN TIẾNG VIỆT (VIẾT) - Lớp 4', 'MÔN TIẾNG VIỆT (Đọc thành tiếng) - Lớp 4', 'BÀI SỐ 4', 'HƯỚNG DẪN CHẤM MÔN TIẾNG VIỆT - LỚP 4', 'Tiêu chí chấm điểm', 'Trả lời bài 4.']) expect(xml).toContain(s);
+  });
+
+  it('kiểm định: đề đủ thì đạt; thiếu bài đọc, thiếu câu hỏi, bài quá ngắn thì báo lỗi', () => {
+    const dt = taoDacTa(tv, mtrTv, 1, { tuanKiemTra: 18 });
+    expect(kiemDinhDe(dt, deTv).loi.filter((l) => /Bài đọc|bài đọc|tiếng/.test(l))).toEqual([]);
+    const thieu = { ...deTv, tiengViet: undefined };
+    expect(kiemDinhDe(dt, thieu).loi.some((l) => /Chưa có bài đọc hiểu/.test(l))).toBe(true);
+    const ngan = JSON.parse(JSON.stringify(deTv));
+    ngan.tiengViet.baiDocThanhTieng[1].noiDung = doan(50);
+    ngan.tiengViet.baiDocThanhTieng[2].cauHoi = '';
+    const loi = kiemDinhDe(dt, ngan).loi;
+    expect(loi.some((l) => /Bài đọc 2: 50 tiếng/.test(l))).toBe(true);
+    expect(loi.some((l) => /Bài đọc 3: chưa có câu hỏi/.test(l))).toBe(true);
   });
 });

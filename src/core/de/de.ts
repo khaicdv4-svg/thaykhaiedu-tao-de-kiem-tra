@@ -10,6 +10,8 @@
 
 import type { DangCau, HinhThucCau, KyKiemTra, MucDo } from '@/types/matrix-template';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
+import { kiemDinhTiengViet, taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
+import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 export type TrangThaiDe = 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'SAN_SANG_DUYET' | 'CAN_KIEM_TRA_LAI';
 
@@ -45,6 +47,8 @@ export interface DeKiemTra {
   /** Phiên bản đặc tả đã xác nhận mà đề này kế thừa. */
   phien_ban_dac_ta: number;
   cau: CauDe[];
+  /** Chỉ có ở đề Tiếng Việt: bài đọc hiểu và bốn bài đọc thành tiếng. */
+  tiengViet?: NoiDungTiengViet;
 }
 
 export interface KetQuaKiemDinhDe {
@@ -73,8 +77,9 @@ function luaChonMau(dang: DangCau | null, yNho: string[] | null): string[] {
 }
 
 /** Mỗi dòng đặc tả thành một câu trống của đề. Phần nội dung để trống, không tự đoán. */
-export function taoDeTuDacTa(dacTa: DacTa, phienBanDacTa: number, noiDungCu: Record<string, NoiDungCau> = {}): DeKiemTra {
+export function taoDeTuDacTa(dacTa: DacTa, phienBanDacTa: number, noiDungCu: Record<string, NoiDungCau> = {}, tiengVietCu?: NoiDungTiengViet): DeKiemTra {
   return {
+    ...(dacTa.ma_mon === 'TIENG_VIET' ? { tiengViet: tiengVietCu ?? taoNoiDungTiengVietRong() } : {}),
     loai: 'DE',
     ma_mon: dacTa.ma_mon,
     ky_kiem_tra: dacTa.ky_kiem_tra,
@@ -102,7 +107,7 @@ export function layNoiDung(d: DeKiemTra): Record<string, NoiDungCau> {
 /** Dựng lại đề khi đặc tả đổi: giữ nội dung các câu còn nguyên khóa, báo câu mới và câu bị bỏ. */
 export function dungLaiDe(dacTaMoi: DacTa, phienBanMoi: number, cu: DeKiemTra): { de: DeKiemTra; moi: string[]; bo: string[] } {
   const noiDungCu = layNoiDung(cu);
-  const de = taoDeTuDacTa(dacTaMoi, phienBanMoi, noiDungCu);
+  const de = taoDeTuDacTa(dacTaMoi, phienBanMoi, noiDungCu, cu.tiengViet);
   const khoaMoi = new Set(dacTaMoi.dong.map((r) => r.khoa));
   const moi = dacTaMoi.dong.filter((r) => !noiDungCu[r.khoa]).map((r) => r.khoa);
   const bo = cu.cau.filter((c) => !khoaMoi.has(c.khoa)).map((c) => c.khoa);
@@ -187,6 +192,12 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
   if (tong !== 10) loi.push(`Tổng điểm của đề là ${tong}, cần đúng 10.`);
 
   for (const c of de.cau) loi.push(...kiemDinhMotCau(c));
+
+  if (dacTa.ma_mon === 'TIENG_VIET') {
+    const tv = kiemDinhTiengViet(dacTa.ky_kiem_tra as KyKiemTraBaiDoc, de.tiengViet);
+    loi.push(...tv.loi);
+    canhBao.push(...tv.canhBao);
+  }
 
   // Câu trùng đề bài
   const daGap = new Map<string, string>();

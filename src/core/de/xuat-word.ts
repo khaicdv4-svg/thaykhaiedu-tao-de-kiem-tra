@@ -78,7 +78,9 @@ const o2 = (cs: Paragraph[], rong: number, vien: CacVien = CAC_VIEN_KHONG, span 
 // Đầu đề
 // ---------------------------------------------------------------------------
 
-function dauDe(t: ThongTinDe): (Table | Paragraph)[] {
+function dauDe(t: ThongTinDe, tc: { tenMon?: string; phut?: number | null } = {}): (Table | Paragraph)[] {
+  const tenMon = tc.tenMon ?? t.tenMon;
+  const phut = tc.phut === undefined ? t.thoiGianPhut : tc.phut;
   const trai = RONG_TRANG / 2;
   const phai = RONG_TRANG - trai;
   const khung = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
@@ -98,8 +100,8 @@ function dauDe(t: ThongTinDe): (Table | Paragraph)[] {
           ], trai, khung),
           o2([
             doan([tr(t.tieuDeKy, { bold: true })], { align: AlignmentType.CENTER }),
-            doan([tr(`MÔN ${t.tenMon} - Lớp 4`, { bold: true })], { align: AlignmentType.CENTER }),
-            doan(`Thời gian: ${t.thoiGianPhut} phút`, { align: AlignmentType.CENTER }),
+            doan([tr(`MÔN ${tenMon} - Lớp 4`, { bold: true })], { align: AlignmentType.CENTER }),
+            ...(phut ? [doan(`Thời gian: ${phut} phút`, { align: AlignmentType.CENTER })] : []),
             doan([tr('GV coi KT1            GV coi KT2            Số thứ tự')], { align: AlignmentType.CENTER, truoc: 60 }),
           ], phai, khung),
         ],
@@ -136,12 +138,12 @@ function soDongCham(c: CauDe): number {
   return Math.max(2, Math.min(6, Math.ceil(c.diem * 3)));
 }
 
-function noiDungCau(c: CauDe): Paragraph[] {
+function noiDungCau(c: CauDe, inDam = false): Paragraph[] {
   const kq: Paragraph[] = [];
   const dongDau = c.deBai.split(/\n+/).filter((x) => x.trim());
   kq.push(
-    doan([tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true }), tr(dongDau[0] ?? '')]),
-    ...dongDau.slice(1).map((d) => doan(d)),
+    doan([tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true }), tr(dongDau[0] ?? '', { bold: inDam })]),
+    ...dongDau.slice(1).map((d) => doan([tr(d, { bold: inDam })])),
   );
   if (c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
 
@@ -166,12 +168,12 @@ function noiDungCau(c: CauDe): Paragraph[] {
 }
 
 /** Mỗi câu một hàng: điểm bên trái, nội dung bên phải, một đường kẻ dọc giữa hai cột, hàng không bị cắt ngang trang. */
-function bangCau(cau: CauDe[]): Table {
+function bangCau(cau: CauDe[], inDam = false): Table {
   const rows = cau.map((c) => new TableRow({
     cantSplit: true,
     children: [
       o2([doan([tr(`…/${fmtDiem(c.diem)}đ`)], { align: AlignmentType.LEFT })], RONG_DIEM, { ...CAC_VIEN_KHONG, right: VIEN_DEN }),
-      o2(noiDungCau(c), RONG_NOI_DUNG),
+      o2(noiDungCau(c, inDam), RONG_NOI_DUNG),
     ],
   }));
   return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: [RONG_DIEM, RONG_NOI_DUNG], layout: TableLayoutType.FIXED, rows });
@@ -191,7 +193,7 @@ function dapAnHienThi(c: CauDe): string {
   return c.dapAn;
 }
 
-function huongDanCham(t: ThongTinDe, de: DeKiemTra): (Table | Paragraph)[] {
+function bangDapAn(cau: CauDe[]): Table {
   const w = [1300, RONG_TRANG - 1300 - 1300, 1300];
   const vien = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
   const hang = (a: string, b: Paragraph[], d: string, dam = false) => new TableRow({
@@ -203,7 +205,7 @@ function huongDanCham(t: ThongTinDe, de: DeKiemTra): (Table | Paragraph)[] {
     ],
   });
   const rows = [hang('Câu', [doan([tr('Đáp án, hướng dẫn chấm', { bold: true })], { align: AlignmentType.CENTER })], 'Điểm', true)];
-  for (const c of de.cau) {
+  for (const c of cau) {
     const ps: Paragraph[] = [];
     const dapAn = dapAnHienThi(c).trim();
     if (dapAn) ps.push(doan(dapAn));
@@ -211,14 +213,17 @@ function huongDanCham(t: ThongTinDe, de: DeKiemTra): (Table | Paragraph)[] {
     if (!ps.length) ps.push(doan(''));
     rows.push(hang(nhanCau(c).replace(/^Câu /, ''), ps, fmtDiem(c.diem)));
   }
-  const tong = Math.round(de.cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
+  const tong = Math.round(cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
   rows.push(hang('', [doan([tr('Tổng', { bold: true })], { align: AlignmentType.RIGHT })], fmtDiem(tong), true));
+  return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows });
+}
 
+function huongDanCham(t: ThongTinDe, de: DeKiemTra): (Table | Paragraph)[] {
   return [
     doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`HƯỚNG DẪN CHẤM MÔN ${t.tenMon} - LỚP 4`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(t.tieuDeKy, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
-    new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows }),
+    bangDapAn(de.cau),
   ];
 }
 
@@ -248,5 +253,204 @@ export function dungTaiLieuDe(t: ThongTinDe, deGoc: DeKiemTra): Document {
       { properties: trang, children: [...dauDe(t), bangCau(de.cau), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
       { properties: trang, children: huongDanCham(t, de) },
     ],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Bộ đề Tiếng Việt: một tệp gồm Đọc hiểu (tờ câu hỏi, tờ bài đọc) → Viết → Đọc thành tiếng (phiếu giáo viên,
+// tờ bốn bài đọc) → Hướng dẫn chấm chung. Mỗi phần có đầu bài riêng và bắt đầu trang mới.
+// ---------------------------------------------------------------------------
+
+const TEN_KY_DAY: Record<string, string> = { GIUA_HK1: 'GIỮA HỌC KÌ I', CUOI_HK1: 'CUỐI HỌC KÌ I', GIUA_HK2: 'GIỮA HỌC KÌ II', CUOI_NAM: 'CUỐI NĂM HỌC' };
+
+const BIEU_DIEM_VIET: { tieuChi: string; moTa: string; diem: number }[] = [
+  { tieuChi: '1. Mở bài', moTa: 'Giới thiệu được câu chuyện/đối tượng cần kể, tả.', diem: 1 },
+  { tieuChi: '2. Thân bài', moTa: 'Trình tự sự việc hợp lí (2 điểm); nội dung, chi tiết phù hợp (2 điểm); cảm xúc, suy nghĩ (1 điểm).', diem: 5 },
+  { tieuChi: '3. Kết bài', moTa: 'Kết thúc hợp lí (0,5 điểm); nêu bài học, cảm nghĩ (0,5 điểm).', diem: 1 },
+  { tieuChi: '4. Bố cục', moTa: 'Đủ ba phần, các đoạn liên kết chặt chẽ.', diem: 1 },
+  { tieuChi: '5. Sáng tạo', moTa: 'Có ý riêng, cách diễn đạt sinh động.', diem: 1 },
+  { tieuChi: '6. Chính tả, ngữ pháp, trình bày', moTa: 'Dùng từ, đặt câu đúng (0,5 điểm); viết đúng chính tả, trình bày sạch đẹp (0,5 điểm).', diem: 1 },
+];
+
+function dongTheoDoan(text: string): string[] {
+  return text.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+}
+
+/** "Theo X" → "(Theo X)"; đã có dấu ngoặc hoặc chữ "Theo" thì giữ nguyên. */
+function dongTacGia(tacGia: string): string {
+  const t = tacGia.trim();
+  if (!t) return '';
+  if (t.startsWith('(')) return t;
+  return /^theo\b/i.test(t) ? `(${t})` : `(Theo ${t})`;
+}
+
+function khoiBaiDoc(b: { tieuDe: string; noiDung: string; tacGia: string; nguon: string }, co: number, o: { tieuDeTruoc?: string } = {}): Paragraph[] {
+  const ps: Paragraph[] = [];
+  ps.push(new Paragraph({
+    children: [...(o.tieuDeTruoc ? [tr(o.tieuDeTruoc, { bold: true, size: co })] : []), tr(b.tieuDe.toUpperCase(), { bold: true, size: co })],
+    alignment: AlignmentType.CENTER,
+    spacing: { line: DAN_DONG, before: 60, after: 60 },
+    keepNext: true,
+  }));
+  for (const d of dongTheoDoan(b.noiDung)) {
+    ps.push(new Paragraph({ children: [tr(d, { size: co })], alignment: AlignmentType.JUSTIFIED, indent: { firstLine: 480 }, spacing: { line: DAN_DONG, after: 0 } }));
+  }
+  const tg = dongTacGia(b.tacGia);
+  if (tg) ps.push(new Paragraph({ children: [tr(tg, { size: co })], alignment: AlignmentType.RIGHT, spacing: { line: DAN_DONG } }));
+  if (b.nguon.trim()) ps.push(new Paragraph({ children: [tr(b.nguon.trim(), { italics: true, size: 22 })], alignment: AlignmentType.RIGHT, spacing: { line: 276 } }));
+  return ps;
+}
+
+function bangTieuChuanDoc(): Table {
+  const vien = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
+  const w = [RONG_TRANG - 2000, 2000];
+  const hang = (a: string, b: string, dam = false) => new TableRow({
+    cantSplit: true,
+    children: [o2([doan([tr(a, { bold: dam })], { align: dam ? AlignmentType.CENTER : AlignmentType.LEFT })], w[0], vien), o2([doan([tr(b, { bold: dam })], { align: AlignmentType.CENTER })], w[1], vien)],
+  });
+  return new Table({
+    width: { size: RONG_TRANG, type: WidthType.DXA },
+    columnWidths: w,
+    layout: TableLayoutType.FIXED,
+    rows: [
+      hang('Tiêu chuẩn cho điểm đọc', 'Điểm', true),
+      hang('1. Đọc vừa đủ nghe, rõ từng tiếng; tốc độ đọc đạt yêu cầu; ngắt nghỉ hơi đúng ở các dấu câu, các cụm từ rõ nghĩa', '…/0,5đ'),
+      hang('2. Đọc đúng nội dung (tiếng, từ) và diễn cảm (ngữ điệu, nhấn giọng,…)', '…/0,5đ'),
+      hang('3. Trả lời đúng câu hỏi về nội dung đoạn đọc', '…/1đ'),
+      hang('Cộng', '…/2đ', true),
+    ],
+  });
+}
+
+function bangBieuDiemViet(): Table {
+  const vien = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
+  const w = [2600, RONG_TRANG - 2600 - 1500, 1500];
+  const hang = (a: string, b: string, c: string, dam = false) => new TableRow({
+    cantSplit: true,
+    children: [
+      o2([doan([tr(a, { bold: dam })])], w[0], vien),
+      o2([doan([tr(b, { bold: dam })], { align: dam ? AlignmentType.CENTER : AlignmentType.LEFT })], w[1], vien),
+      o2([doan([tr(c, { bold: dam })], { align: AlignmentType.CENTER })], w[2], vien),
+    ],
+  });
+  return new Table({
+    width: { size: RONG_TRANG, type: WidthType.DXA },
+    columnWidths: w,
+    layout: TableLayoutType.FIXED,
+    rows: [
+      hang('Tiêu chí chấm điểm', 'Mô tả chi tiết', 'Điểm tối đa', true),
+      ...BIEU_DIEM_VIET.map((b) => hang(b.tieuChi, b.moTa, fmtDiem(b.diem))),
+      hang('Tổng', '', '10', true),
+    ],
+  });
+}
+
+function tenDoanDoc(c: CauDe): string {
+  return nhanCau(c).replace(/^Câu /, '');
+}
+
+export function dungTaiLieuTiengViet(t: ThongTinDe, deGoc: DeKiemTra): Document {
+  const tv = deGoc.tiengViet;
+  if (!tv) throw new Error('Đề Tiếng Việt chưa có bài đọc.');
+  const cau = xepCauTheoSo(deGoc.cau);
+  const cauDocHieu = cau.filter((c) => c.dang !== 'VIET');
+  const cauViet = cau.find((c) => c.dang === 'VIET');
+  const kyDay = TEN_KY_DAY[deGoc.ky_kiem_tra] ?? t.tieuDeKy;
+  const namHoc = /NĂM HỌC\s+(.+)$/.exec(t.tieuDeKy)?.[1] ?? '';
+  const trang = { page: { size: { width: 11906, height: 16838 }, margin: { left: LE, right: LE, top: 567, bottom: 567, header: 0, footer: 0 } } };
+  const soTN = cauDocHieu.filter((c) => c.hinhThuc === 'TN').map((c) => tenDoanDoc(c));
+  const dsTN = soTN.length > 1 ? `${soTN.slice(0, -1).join(', ')} và ${soTN[soTN.length - 1]}` : soTN.join('');
+  const diemDocHieu = Math.round(cauDocHieu.reduce((s, c) => s + c.diem, 0) * 100) / 100;
+  const kh = tv.baiDocThanhTieng;
+
+  // 1. Đọc hiểu: tờ câu hỏi
+  const toCauHoi = [
+    ...dauDe(t, { tenMon: 'TIẾNG VIỆT (ĐỌC HIỂU)', phut: 30 }),
+    doan([tr(`II. ĐỌC HIỂU: ${fmtDiem(diemDocHieu)} điểm`, { bold: true })], { truoc: 80 }),
+    doan([tr('Em đọc bài '), tr(`“${tv.baiDocHieu.tieuDe}”`, { italics: true }), tr(' rồi làm các bài tập sau:')], { thut: 300 }),
+    ...(dsTN ? [doan(`Khoanh tròn vào chữ cái (A, B, C, D) trước ý trả lời đúng nhất cho từng câu hỏi ${dsTN} và làm các bài tập dưới đây:`, { sau: 40 })] : []),
+    bangCau(cauDocHieu, true),
+    doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 }),
+  ];
+
+  // 2. Tờ bài đọc hiểu (cỡ chữ 14)
+  const toBaiDoc = [
+    doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`KIỂM TRA ${kyDay} - LỚP 4`, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`NĂM HỌC: ${namHoc}`, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
+    new Paragraph({ children: [new TextRun({ text: 'Bài đọc hiểu:', font: FONT, size: 28, bold: true, underline: {} })], spacing: { line: DAN_DONG, after: 60 } }),
+    ...khoiBaiDoc(tv.baiDocHieu, 28),
+  ];
+
+  // 3. Viết
+  const toViet = [
+    ...dauDe(t, { tenMon: 'TIẾNG VIỆT (VIẾT)', phut: 40 }),
+    new Table({
+      width: { size: RONG_TRANG, type: WidthType.DXA },
+      columnWidths: [RONG_DIEM, RONG_NOI_DUNG],
+      layout: TableLayoutType.FIXED,
+      rows: [new TableRow({
+        children: [
+          o2([doan([tr('…/10đ')])], RONG_DIEM, { ...CAC_VIEN_KHONG, right: VIEN_DEN }),
+          o2([
+            doan([tr('Đề bài: ', { bold: true }), tr(cauViet?.deBai.trim() ?? '')]),
+            doan([tr('Bài làm', { bold: true })], { align: AlignmentType.CENTER, truoc: 60 }),
+            ...Array.from({ length: 44 }, () => dongCham()),
+          ], RONG_NOI_DUNG),
+        ],
+      })],
+    }),
+  ];
+
+  // 4. Đọc thành tiếng: phiếu giáo viên
+  const kyTocDo = deGoc.ky_kiem_tra === 'GIUA_HK1' ? '80 - 85' : '80 - 90';
+  const phieuGV = [
+    ...dauDe(t, { tenMon: 'TIẾNG VIỆT (Đọc thành tiếng)', phut: null }),
+    doan([tr('I. ĐỌC THÀNH TIẾNG: 2 điểm', { bold: true }), tr(` (Thời gian đọc: khoảng ${kyTocDo} tiếng/1 phút)`)], { truoc: 100 }),
+    doan('1. Giáo viên cho học sinh đọc một trong những bài đọc dưới đây:', { truoc: 60 }),
+    ...kh.map((b, i) => doan(`☐  Bài đọc ${i + 1}: ${b.tieuDe.toUpperCase()}`, { thut: 700, truoc: 20 })),
+    doan('2. Giáo viên nêu 1 câu hỏi (trong nội dung đoạn học sinh đọc) cho học sinh trả lời.', { truoc: 100, sau: 80 }),
+    bangTieuChuanDoc(),
+  ];
+
+  // 5. Tờ bốn bài đọc thành tiếng
+  const toBonBai = [
+    doan([tr('Bài đọc thành tiếng', { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr('Học sinh đọc một trong các bài sau và trả lời câu hỏi.', { italics: true })], { align: AlignmentType.CENTER, sau: 80 }),
+    ...kh.flatMap((b, i) => [
+      ...khoiBaiDoc(b, CO, { tieuDeTruoc: `☐  Bài đọc ${i + 1}:  ` }),
+      doan([tr('Câu hỏi: ', { bold: true }), tr(b.cauHoi)], { truoc: 40, sau: 80 }),
+    ]),
+  ];
+
+  // 6. Hướng dẫn chấm chung
+  const bangHDCDocHieu = bangDapAn(cauDocHieu);
+  const hdc = [
+    doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr('HƯỚNG DẪN CHẤM MÔN TIẾNG VIỆT - LỚP 4', { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`KTĐK ${kyDay} - NĂM HỌC ${namHoc}`, { bold: true })], { align: AlignmentType.CENTER, sau: 100 }),
+    doan([tr('I. ĐỌC THÀNH TIẾNG: (2 điểm)', { bold: true })], { truoc: 60 }),
+    doan(`* Học sinh đọc 1 đoạn văn ở 4 bài đọc đã cho từ ${kyTocDo.replace(' - ', ' – ')} tiếng.`),
+    doan('* Giáo viên nêu 1 câu hỏi (trong nội dung đoạn học sinh đọc) cho học sinh trả lời. HS trả lời đúng 1 câu hỏi về nội dung trong đoạn học sinh vừa đọc đạt 1 điểm.'),
+    ...kh.flatMap((b, i) => [
+      doan([tr(`Bài đọc ${i + 1}: ${b.tieuDe.toUpperCase()}`, { bold: true })], { truoc: 40 }),
+      doan([tr('Câu hỏi: ', { bold: true }), tr(b.cauHoi)], { thut: 300 }),
+      doan([tr('Trả lời: ', { bold: true }), tr(b.traLoi)], { thut: 300 }),
+    ]),
+    doan([tr(`II. ĐỌC HIỂU: (${fmtDiem(diemDocHieu)} điểm)`, { bold: true })], { truoc: 100, sau: 40 }),
+    bangHDCDocHieu,
+    doan([tr('III. VIẾT: (10 điểm)', { bold: true })], { truoc: 100 }),
+    doan([tr('Đề bài: ', { bold: true }), tr(cauViet?.deBai.trim() ?? '')]),
+    ...(cauViet?.huongDanCham.trim() ? dongTheoDoan(cauViet.huongDanCham).map((d) => doan(d)) : []),
+    doan('Biểu điểm:', { sau: 40 }),
+    bangBieuDiemViet(),
+  ];
+
+  const phan = (children: (Paragraph | Table)[]) => ({ properties: trang, children });
+  return new Document({
+    creator: 'ThayKhaiEdu',
+    title: `Đề kiểm tra ${kyDay} - Tiếng Việt lớp 4`,
+    styles: { default: { document: { run: { font: FONT, size: CO } } } },
+    sections: [phan(toCauHoi), phan(toBaiDoc), phan(toViet), phan(phieuGV), phan(toBonBai), phan(hdc)],
   });
 }

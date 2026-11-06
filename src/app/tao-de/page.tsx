@@ -11,6 +11,9 @@ import Link from 'next/link';
 import { ArrowLeft, Download, FilePlus2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
+import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
+import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
+import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
@@ -102,7 +105,7 @@ export default function TaoDePage() {
     if (!d.ok) { setLoiTai(d.j.error ?? 'Không đọc được đề kiểm tra.'); setDangTai(false); return; }
     const ban = d.j.de;
     if (ban) {
-      setDe(ban.duLieu);
+      setDe(maMon === 'TIENG_VIET' && !ban.duLieu.tiengViet ? { ...ban.duLieu, tiengViet: taoNoiDungTiengVietRong() } : ban.duLieu);
       setTrangThai(ban.trangThai);
       if (ban.phienBanDacTa < (moiNhat.phienBan ?? 0)) {
         setDeCu(ban.duLieu);
@@ -142,6 +145,12 @@ export default function TaoDePage() {
     while (moi.length <= i) moi.push('');
     moi[i] = v;
     suaCau(c.khoa, { luaChon: moi });
+  };
+
+  const suaTiengViet = (g: NoiDungTiengViet) => {
+    setDe((d) => (d ? { ...d, tiengViet: g } : d));
+    setTrangThai((t) => trangThaiDeSauKhiSua(t));
+    setKetQua(null);
   };
 
   const kiemTra = (): KetQuaKiemDinhDe | null => {
@@ -272,6 +281,8 @@ export default function TaoDePage() {
               <div className="h-full bg-emerald-500" style={{ width: `${tienDo.tong ? (tienDo.xong / tienDo.tong) * 100 : 0}%` }} />
             </div>
           </div>
+
+          {de.tiengViet && <BaiDocTiengViet ky={ky as KyKiemTraBaiDoc} gia={de.tiengViet} onDoi={suaTiengViet} />}
 
           <div className="space-y-4">
             {nhom.map(([ten, cauNhom]) => (

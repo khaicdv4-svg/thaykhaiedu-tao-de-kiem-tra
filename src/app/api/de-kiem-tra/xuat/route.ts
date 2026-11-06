@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Packer } from 'docx';
 import { layDe } from '@/lib/repositories/ma-tran-dac-ta.repository';
-import { dungTaiLieuDe, type ThongTinDe } from '@/core/de/xuat-word';
+import { dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from '@/core/de/xuat-word';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 
 export const runtime = 'nodejs';
@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
       tenMon,
       thoiGianPhut: phut,
     };
-    const buf = await Packer.toBuffer(dungTaiLieuDe(tt, de.duLieu));
+    const tl = mon === 'TIENG_VIET' ? dungTaiLieuTiengViet(tt, de.duLieu) : dungTaiLieuDe(tt, de.duLieu);
+    const buf = await Packer.toBuffer(tl);
     const ten = `De-${mon}-${ky}.docx`;
     return new NextResponse(new Uint8Array(buf), {
       headers: {
