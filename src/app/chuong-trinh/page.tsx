@@ -162,14 +162,14 @@ function TabTaiLieu({ duocSua, chuyenSangYccd }: { duocSua: boolean; chuyenSangY
           )}
           {hinhThuc === 'link' && (
             <div className="space-y-2">
-              <input aria-label="Link" className={`${o} w-full`} placeholder="https://… (Google Docs chia sẻ công khai, trang web công khai)" value={link} onChange={(e) => setLink(e.target.value)} />
-              <p className="text-xs text-slate-500">App tự lấy chữ nếu link mở công khai. Link Drive riêng tư, file PDF trên link thì app không đọc được: tải file lên hoặc dán chữ, link vẫn lưu làm nguồn.</p>
+              <input aria-label="Link" className={`${o} w-full`} placeholder="https://… (link Google Drive, Google Docs/Sheets/Slides hoặc trang web)" value={link} onChange={(e) => setLink(e.target.value)} />
+              <p className="text-xs text-slate-500">Đọc được file PDF (có lớp chữ), Word .docx trên Drive và Google Docs/Sheets/Slides. Trên Drive, thầy chia sẻ file ở chế độ <b>"Bất kỳ ai có đường liên kết"</b> rồi chép link. Mỗi lần dán link của một file, không dán link thư mục. File lớn như cả cuốn SGK có thể mất nửa phút đến một phút.</p>
               <textarea aria-label="Chữ dán kèm" className={`${o} w-full min-h-20`} placeholder="(Không bắt buộc) Dán chữ vào đây nếu app không lấy được từ link" value={chu} onChange={(e) => setChu(e.target.value)} />
             </div>
           )}
           {hinhThuc === 'dan' && <textarea aria-label="Chữ dán" className={`${o} w-full min-h-40`} placeholder="Dán chữ của tài liệu vào đây" value={chu} onChange={(e) => setChu(e.target.value)} />}
           <button type="button" className={nutChinh} disabled={dangLuu || !!dangDoc || (hinhThuc === 'link' ? !link.trim() : !chu.trim())} onClick={() => void luu()}>
-            {dangLuu ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}Lưu tài liệu
+            {dangLuu ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}{dangLuu && hinhThuc === 'link' && !chu.trim() ? 'Đang tải và đọc file từ link…' : 'Lưu tài liệu'}
           </button>
         </div>
       )}
