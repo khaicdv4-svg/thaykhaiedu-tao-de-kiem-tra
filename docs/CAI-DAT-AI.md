@@ -24,7 +24,7 @@ Việc "Tìm bài đọc" gửi kèm công cụ tìm web của chuẩn Anthropic
 
 ## Biến môi trường
 
-- `AI_KHOA_BI_MAT`: đã thêm vào `.env.local` trên máy. Nếu đưa app lên Vercel, thêm đúng biến này (cùng giá trị) trong Settings → Environment Variables.
+- `AI_KHOA_BI_MAT`: đã đặt trên Vercel ngày 06/11/2026 (giá trị ngẫu nhiên mới, kiểu sensitive, không xem lại được). Khóa API dán trên bản Vercel chỉ dùng được trên bản Vercel; bản chạy trên máy dùng giá trị riêng trong `.env.local`.
 - Đổi `AI_KHOA_BI_MAT` thì khóa đã lưu không giải mã được, phải dán lại khóa ở trang Cài đặt AI.
 - Bỏ `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`: app không đọc hai biến này nữa.
 
