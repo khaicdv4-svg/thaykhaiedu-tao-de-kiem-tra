@@ -19,6 +19,7 @@ interface KetQua {
 
 export function GoiYCat({ tieuDe, noiDung, ky, onLuu }: { tieuDe: string; noiDung: string; ky: KyKiemTraBaiDoc; onLuu: (doan: string) => Promise<void> }) {
   const [dangLuu, setDangLuu] = useState<number | null>(null);
+  const [daLuu, setDaLuu] = useState<number[]>([]);
   const [dang, setDang] = useState(false);
   const [kq, setKq] = useState<KetQua | null>(null);
   const [loi, setLoi] = useState<string | null>(null);
@@ -63,8 +64,8 @@ export function GoiYCat({ tieuDe, noiDung, ky, onLuu }: { tieuDe: string; noiDun
           </div>
           {kq.aiChon?.chi === i && kq.aiChon.lyDo && <p className="text-xs text-violet-800">{kq.aiChon.lyDo}</p>}
           <p className="whitespace-pre-line text-slate-800" style={{ fontFamily: "'Times New Roman', serif", fontSize: '13pt' }}>{d.doan}</p>
-          <button type="button" disabled={dangLuu !== null} onClick={async () => { setDangLuu(i); try { await onLuu(d.doan); } finally { setDangLuu(null); } }} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50">
-            {dangLuu === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />} Lưu thành bài đọc thành tiếng mới
+          <button type="button" disabled={dangLuu !== null || daLuu.includes(i)} onClick={async () => { setDangLuu(i); try { await onLuu(d.doan); setDaLuu((c) => [...c, i]); } finally { setDangLuu(null); } }} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50">
+            {dangLuu === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />} {daLuu.includes(i) ? 'Đã lưu thành bài mới' : 'Lưu thành bài đọc thành tiếng mới'}
           </button>
         </div>
       ))}

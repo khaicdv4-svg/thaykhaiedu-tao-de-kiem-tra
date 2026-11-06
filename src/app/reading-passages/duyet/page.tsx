@@ -29,8 +29,8 @@ export default function HangChoDuyetPage() {
   const [sua, setSua] = useState<Record<string, BaiDocSua>>({});
   const [thongBao, setThongBao] = useState<{ loai: 'ok' | 'loi'; text: string } | null>(null);
 
-  const tai = async () => {
-    setDangTai(true);
+  const tai = async (yenLang = false) => {
+    if (!yenLang) setDangTai(true);
     try {
       const r = await fetch('/api/reading-passages/hang-cho').then((x) => x.json());
       if (r.error) throw new Error(r.error);
@@ -89,7 +89,7 @@ export default function HangChoDuyetPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idGoc, doan }),
       }).then((x) => x.json());
       if (r.error) throw new Error(r.error);
-      await tai();
+      await tai(true);
       setThongBao({ loai: r.choDuyet > 0 ? 'ok' : 'loi', text: r.choDuyet > 0 ? 'Đã lưu đoạn cắt thành bài đọc thành tiếng mới, đang ở mục Chờ duyệt. Bài gốc vẫn giữ nguyên.' : 'Đã lưu đoạn cắt nhưng còn lỗi, xem ở mục Bản nháp còn lỗi.' });
     } catch (e) {
       setThongBao({ loai: 'loi', text: e instanceof Error ? e.message : String(e) });
@@ -146,7 +146,7 @@ export default function HangChoDuyetPage() {
           <p className="text-sm text-slate-600">Tổ trưởng duyệt bài đạt yêu cầu; bài bị từ chối cần ghi lí do để giáo viên sửa.</p>
         </div>
         <div className="flex gap-2">
-          <button type="button" onClick={tai} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50"><RefreshCw className="w-4 h-4" /> Tải lại</button>
+          <button type="button" onClick={() => tai()} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50"><RefreshCw className="w-4 h-4" /> Tải lại</button>
           <Link href="/reading-passages/nhap" className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"><FilePlus2 className="w-4 h-4" /> Nhập bài đọc</Link>
         </div>
       </div>
