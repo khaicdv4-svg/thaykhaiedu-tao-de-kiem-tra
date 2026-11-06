@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import { Loader2, Scissors, Sparkles } from 'lucide-react';
 import type { DoanCat } from '@/core/reading-passages/cat-doan';
-import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
+import type { KyKiemTraBaiDoc, LoaiBaiDoc, TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 interface KetQua {
   doan: DoanCat[];
@@ -17,7 +17,8 @@ interface KetQua {
   aiLoi?: string | null;
 }
 
-export function GoiYCat({ tieuDe, noiDung, ky, onLuu }: { tieuDe: string; noiDung: string; ky: KyKiemTraBaiDoc; onLuu: (doan: string) => Promise<void> }) {
+export function GoiYCat({ tieuDe, noiDung, ky, loai = 'DOC_THANH_TIENG', theLoai, onLuu }: { tieuDe: string; noiDung: string; ky: KyKiemTraBaiDoc; loai?: LoaiBaiDoc; theLoai?: TheLoaiBaiDoc | null; onLuu: (doan: string) => Promise<void> }) {
+  const tenLoai = loai === 'DOC_HIEU' ? 'đọc hiểu' : 'đọc thành tiếng';
   const [dangLuu, setDangLuu] = useState<number | null>(null);
   const [daLuu, setDaLuu] = useState<number[]>([]);
   const [dang, setDang] = useState(false);
@@ -29,7 +30,7 @@ export function GoiYCat({ tieuDe, noiDung, ky, onLuu }: { tieuDe: string; noiDun
     setLoi(null);
     try {
       const r = await fetch('/api/reading-passages/goi-y-cat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tieuDe, noiDung, ky }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tieuDe, noiDung, ky, loai, theLoai }),
       }).then((x) => x.json());
       if (r.error) throw new Error(r.error);
       setKq(r);
@@ -46,7 +47,7 @@ export function GoiYCat({ tieuDe, noiDung, ky, onLuu }: { tieuDe: string; noiDun
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 space-y-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-slate-700">Bài dài hơn quy định đọc thành tiếng của kì.</span>
+        <span className="text-slate-700">Bài dài hơn quy định {tenLoai} của kì.</span>
         <button type="button" onClick={goiY} disabled={dang} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
           {dang ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} AI gợi ý đoạn cắt
         </button>
@@ -65,7 +66,7 @@ export function GoiYCat({ tieuDe, noiDung, ky, onLuu }: { tieuDe: string; noiDun
           {kq.aiChon?.chi === i && kq.aiChon.lyDo && <p className="text-xs text-violet-800">{kq.aiChon.lyDo}</p>}
           <p className="whitespace-pre-line text-slate-800" style={{ fontFamily: "'Times New Roman', serif", fontSize: '13pt' }}>{d.doan}</p>
           <button type="button" disabled={dangLuu !== null || daLuu.includes(i)} onClick={async () => { setDangLuu(i); try { await onLuu(d.doan); setDaLuu((c) => [...c, i]); } finally { setDangLuu(null); } }} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50">
-            {dangLuu === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />} {daLuu.includes(i) ? 'Đã lưu thành bài mới' : 'Lưu thành bài đọc thành tiếng mới'}
+            {dangLuu === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />} {daLuu.includes(i) ? 'Đã lưu thành bài mới' : `Lưu thành bài ${tenLoai} mới`}
           </button>
         </div>
       ))}

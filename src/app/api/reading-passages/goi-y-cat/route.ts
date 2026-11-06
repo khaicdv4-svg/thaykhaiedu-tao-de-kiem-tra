@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { goiYCatDoan } from '@/core/reading-passages/cat-doan';
-import { khoangDoDai, type KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { khoangDoDai, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { HE_THONG_CHON_DOAN, docLuaChonAI, loiNhacChonDoan } from '@/core/reading-passages/goi-y-cat-ai';
 import { docBoNaoNeuCo } from '@/lib/repositories/bo-nao.repository';
 import { heThongCoQuyDinhRieng } from '@/core/services/ai/reading-passage-ai';
@@ -14,10 +14,11 @@ export const maxDuration = 120;
  */
 export async function POST(req: NextRequest) {
   try {
-    const { tieuDe, noiDung, ky } = (await req.json()) as { tieuDe?: string; noiDung?: string; ky?: KyKiemTraBaiDoc };
+    const { tieuDe, noiDung, ky, loai = 'DOC_THANH_TIENG', theLoai } = (await req.json()) as { tieuDe?: string; noiDung?: string; ky?: KyKiemTraBaiDoc; loai?: LoaiBaiDoc; theLoai?: TheLoaiBaiDoc | null };
     if (!noiDung?.trim() || !ky) return NextResponse.json({ error: 'Thiếu nội dung bài hoặc kì kiểm tra.' }, { status: 400 });
     const boNao = await docBoNaoNeuCo();
-    const q = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN', boNao)!;
+    const q = khoangDoDai(loai, ky, theLoai ?? 'TRUYEN', boNao);
+    if (!q) return NextResponse.json({ error: 'Tổ chưa quy định độ dài cho loại bài này.' }, { status: 400 });
     const doan = goiYCatDoan(noiDung, { min: q.min, max: q.max, dungSai: q.dungSai, toiDa: 5 });
     if (doan.length === 0) return NextResponse.json({ success: true, doan: [], quyDinh: q, aiChon: null });
 

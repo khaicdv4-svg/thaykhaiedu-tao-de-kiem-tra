@@ -24,6 +24,8 @@ export interface BaiDocSua extends BaiDocCanKiem {
   khoa: string;
   chon: boolean;
   ghiChu?: string[];
+  /** Nhãn khi bài do AI chỉnh độ dài. */
+  nhanAI?: string | null;
 }
 
 const NHAN_LINK: Record<TrangThaiLink, { ten: string; mau: string }> = {
@@ -95,6 +97,7 @@ export function TheBaiDoc({
           <input className={`${o} font-semibold`} value={bai.tieuDe} disabled={chiXem} placeholder="Tên bài" onChange={(e) => doi({ tieuDe: e.target.value })} />
         </div>
         <div className="flex flex-wrap gap-1.5 text-xs">
+          {bai.nhanAI && <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 font-medium text-violet-800">{bai.nhanAI}</span>}
           <span className={`rounded-full border px-2 py-0.5 ${doDaiMau}`}>{doDai}</span>
           <span className={`rounded-full border px-2 py-0.5 ${link.mau}`}>{link.ten}</span>
           <span className={`rounded-full border px-2 py-0.5 ${kq.trungSgk.tiLe >= 30 ? 'bg-red-50 text-red-700 border-red-200' : kq.trungSgk.tiLe >= 10 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>

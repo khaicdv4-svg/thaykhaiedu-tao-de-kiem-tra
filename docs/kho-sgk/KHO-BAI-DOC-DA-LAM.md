@@ -43,3 +43,10 @@ Tách hai bước để dễ tìm bài hơn:
 - **Đề xuất** (AI tìm, tải file): đúng chủ điểm, phù hợp nội dung, số tiếng gần quy định. Bài dài hơn vẫn đề xuất, tổ cắt một đoạn trọn ý (cả đọc thành tiếng lẫn đọc hiểu). Thể loại ưu tiên đúng loại, khác loại cùng nhóm văn học/thông tin vẫn được. Thiếu tác giả, link vẫn hiện để tổ xem.
 - **Chọn vào kho / vào đề** (`kiemTraBaiDoc`, chặn): bắt buộc tác giả; có link thì link phải mở được và đúng bài; không có link thì ghi tên sách và số trang.
 - SGK Tiếng Việt 4 **Cánh Diều, Chân trời sáng tạo được phép dùng và nên tìm**. Chỉ chặn SGK Tiếng Việt 4 Kết nối tri thức đang dạy (theo nguồn ghi, theo tên bài, theo nội dung trùng).
+
+## AI chỉnh độ dài bài đọc (06/11/2026, thầy Khái đồng ý)
+
+- Ở Hàng chờ duyệt, bài lệch độ dài có nút **AI chỉnh độ dài** (`ChinhDoDaiAI`, API `ai-chinh-do-dai`, `luu-ban-chinh`; lõi `src/core/reading-passages/chinh-do-dai.ts`).
+- Ưu tiên cắt đoạn trọn ý trước. AI chỉ bớt câu/vế phụ hoặc thêm rất ít từ nối, vế tả; không thêm sự việc, nhân vật, ý mới.
+- Tổng thêm + bớt ≤ 15% số tiếng bài gốc; code đếm tiếng và so sánh (máy chủ kiểm lại khi lưu).
+- Bản chỉnh lưu thành bài mới: tác giả "Theo …", giữ nguồn/link của bài gốc, `ai_notes.chinhDoDai = { tuBai, them, bot, nhan }`, nhãn "Có AI chỉnh sửa thêm … / bớt … tiếng" hiện trên thẻ bài và trong kho. Bài gốc giữ nguyên.

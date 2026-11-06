@@ -88,6 +88,7 @@ export class ReadingPassageRepository {
       assessmentPeriod: row.assessment_period,
       readingUse: row.reading_use,
       literaryForm: row.literary_form,
+      nhanAI: typeof row.ai_notes?.chinhDoDai?.nhan === 'string' ? row.ai_notes.chinhDoDai.nhan : null,
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

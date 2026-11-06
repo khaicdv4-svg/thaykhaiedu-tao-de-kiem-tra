@@ -88,6 +88,8 @@ export interface ReadingPassage {
   readingUse?: string | null;
   /** TRUYEN, MIEU_TA, THO, VAN_BAN_THONG_TIN, KICH, KHAC. */
   literaryForm?: string | null;
+  /** Nhãn khi bài do AI chỉnh độ dài, ví dụ "Có AI chỉnh sửa bớt 18 tiếng". */
+  nhanAI?: string | null;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;

@@ -11,13 +11,14 @@ import { ArrowLeft, CheckCircle2, FilePlus2, Loader2, RefreshCw, Save, XCircle }
 import { TheBaiDoc, type BaiDocSua } from '@/components/kho-bai-doc/TheBaiDoc';
 import { useBoNao } from '@/lib/hooks/useBoNao';
 import { GoiYCat } from '@/components/kho-bai-doc/GoiYCat';
+import { ChinhDoDaiAI } from '@/components/kho-bai-doc/ChinhDoDaiAI';
 import { kiemTraBaiDoc } from '@/core/reading-passages/kiem-tra';
 import type { TrangThaiLink } from '@/core/reading-passages/kiem-tra';
 
 interface BaiTrongKho {
   id: string; tieuDe: string; noiDung: string; tacGia: string; nguon: string; nguonUrl: string | null;
   loai: BaiDocSua['loai']; ky: BaiDocSua['ky']; theLoai: BaiDocSua['theLoai']; chuDiem: string | null;
-  trangThai: string; trangThaiLink: TrangThaiLink; nguonGoc: string; taoLuc: string;
+  trangThai: string; trangThaiLink: TrangThaiLink; nguonGoc: string; taoLuc: string; nhanAI?: string | null;
 }
 
 const NGUON_GOC: Record<string, string> = { TAI_FILE: 'Tải file', AI_TIM: 'AI tìm', NHAP_TAY: 'Nhập tay' };
@@ -92,7 +93,7 @@ export default function HangChoDuyetPage() {
       }).then((x) => x.json());
       if (r.error) throw new Error(r.error);
       await tai(true);
-      setThongBao({ loai: r.choDuyet > 0 ? 'ok' : 'loi', text: r.choDuyet > 0 ? 'Đã lưu đoạn cắt thành bài đọc thành tiếng mới, đang ở mục Chờ duyệt. Bài gốc vẫn giữ nguyên.' : 'Đã lưu đoạn cắt nhưng còn lỗi, xem ở mục Bản nháp còn lỗi.' });
+      setThongBao({ loai: r.choDuyet > 0 ? 'ok' : 'loi', text: r.choDuyet > 0 ? 'Đã lưu đoạn cắt thành bài mới, đang ở mục Chờ duyệt. Bài gốc vẫn giữ nguyên.' : 'Đã lưu đoạn cắt nhưng còn lỗi, xem ở mục Bản nháp còn lỗi.' });
     } catch (e) {
       setThongBao({ loai: 'loi', text: e instanceof Error ? e.message : String(e) });
     }
@@ -101,13 +102,15 @@ export default function HangChoDuyetPage() {
   const choDuyet = ds.filter((b) => b.trangThai === 'PENDING_REVIEW');
   const banNhap = ds.filter((b) => b.trangThai === 'DRAFT');
 
-  const baiGoc = (b: BaiTrongKho): BaiDocSua => ({ khoa: b.id, chon: false, tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, nguonUrl: b.nguonUrl ?? '', loai: b.loai, ky: b.ky, theLoai: b.theLoai, chuDiem: b.chuDiem, trangThaiLink: b.trangThaiLink, ghiChu: [`Nguồn gốc: ${NGUON_GOC[b.nguonGoc] ?? b.nguonGoc} · ${new Date(b.taoLuc).toLocaleDateString('vi-VN')}`] });
+  const baiGoc = (b: BaiTrongKho): BaiDocSua => ({ khoa: b.id, chon: false, tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, nguonUrl: b.nguonUrl ?? '', loai: b.loai, ky: b.ky, theLoai: b.theLoai, chuDiem: b.chuDiem, trangThaiLink: b.trangThaiLink, nhanAI: b.nhanAI ?? null, ghiChu: [`Nguồn gốc: ${NGUON_GOC[b.nguonGoc] ?? b.nguonGoc} · ${new Date(b.taoLuc).toLocaleDateString('vi-VN')}`] });
 
   const the = (b: BaiTrongKho, coNut: boolean) => {
     const bai = sua[b.id] ?? baiGoc(b);
     const kq = kiemTraBaiDoc(bai, [], boNao);
-    const quaDai = bai.loai === 'DOC_THANH_TIENG' && !!bai.ky && kq.canhBao.some((c) => c.includes('cắt một đoạn'));
+    const quaDai = !!bai.loai && !!bai.ky && kq.canhBao.some((c) => /cắt một đoạn/i.test(c));
     const daSua = !!sua[b.id];
+    // Lệch độ dài (ngắn hơn hoặc dài hơn khoảng quy định): cho AI chỉnh thêm/bớt. Chỉ khi chưa sửa tay (AI đọc bài đã lưu).
+    const lechDoDai = !daSua && !!kq.khoang && (kq.soTieng < kq.khoang.min || kq.soTieng > kq.khoang.max);
     return (
     <TheBaiDoc
       key={b.id}
@@ -125,7 +128,10 @@ export default function HangChoDuyetPage() {
       ) : null}
       phuTro={(
         <>
-          {quaDai && bai.ky && <GoiYCat tieuDe={bai.tieuDe} noiDung={bai.noiDung} ky={bai.ky} onLuu={(doan) => luuDoanCat(b.id, doan)} />}
+          {quaDai && bai.ky && <GoiYCat tieuDe={bai.tieuDe} noiDung={bai.noiDung} ky={bai.ky} loai={bai.loai ?? undefined} theLoai={bai.theLoai} onLuu={(doan) => luuDoanCat(b.id, doan)} />}
+          {lechDoDai && kq.khoang && (
+            <ChinhDoDaiAI id={b.id} soTieng={kq.soTieng} khoang={kq.khoang} onDaLuu={async (tb) => { setThongBao(tb); await tai(true); }} />
+          )}
           {daSua && (
             <div className="flex items-center gap-2 pt-1">
               <button type="button" disabled={dangXuLy === b.id} onClick={() => luuSua(b.id)} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">

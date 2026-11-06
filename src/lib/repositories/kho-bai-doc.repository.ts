@@ -6,7 +6,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { docBoNaoNeuCo } from '@/lib/repositories/bo-nao.repository';
 import { kiemTraBaiDoc, type BaiDocCanKiem, type TrangThaiLink, type VanBanSgk } from '@/core/reading-passages/kiem-tra';
-import type { KyKiemTraBaiDoc, LoaiBaiDoc, TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { khoangDoDai, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { kiemTraBanChinh, tacGiaTheo } from '@/core/reading-passages/chinh-do-dai';
 
 export interface BaiDocNhapKho extends BaiDocCanKiem {
   nguonGoc: 'TAI_FILE' | 'AI_TIM' | 'NHAP_TAY';
@@ -33,6 +34,8 @@ export interface BaiDocTrongKho {
   nguoiTao: string | null;
   taoLuc: string;
   ghiChuDuyet: string | null;
+  /** Nhãn khi bài do AI chỉnh độ dài, ví dụ "Có AI chỉnh sửa bớt 18 tiếng". */
+  nhanAI: string | null;
 }
 
 const CHUA_RO = '(chưa rõ)';
@@ -57,6 +60,7 @@ function anhXa(r: Record<string, any>): BaiDocTrongKho {
     nguoiTao: r.created_by,
     taoLuc: r.created_at,
     ghiChuDuyet: r.review_note,
+    nhanAI: typeof r.ai_notes?.chinhDoDai?.nhan === 'string' ? r.ai_notes.chinhDoDai.nhan : null,
   };
 }
 
@@ -245,9 +249,43 @@ export async function taoBaiTuDoanCat(idGoc: string, doan: string) {
   const g = anhXa(r);
   const kq = await luuVaoHangCho([{
     tieuDe: g.tieuDe, noiDung: doan, tacGia: g.tacGia, nguon: g.nguon, nguonUrl: g.nguonUrl ?? '',
-    loai: 'DOC_THANH_TIENG', ky: g.ky, theLoai: g.theLoai, chuDiem: g.chuDiem,
+    loai: g.loai ?? 'DOC_THANH_TIENG', ky: g.ky, theLoai: g.theLoai, chuDiem: g.chuDiem,
     trangThaiLink: g.trangThaiLink, nguonGoc: g.nguonGoc as BaiDocNhapKho['nguonGoc'],
     tenFile: r.import_file_name ?? undefined, ghiChuAI: { doanTrichTu: idGoc },
   }]);
   return kq;
+}
+
+/** Một bài trong kho theo id (để AI chỉnh độ dài). */
+export async function layBaiDoc(id: string): Promise<BaiDocTrongKho> {
+  const { supabase } = await layNguoiDung();
+  const { data: r, error } = await supabase.from('reading_passages').select('*').eq('id', id).single();
+  if (error || !r) throw new Error('Không tìm thấy bài đọc.');
+  return anhXa(r);
+}
+
+/**
+ * Lưu bản AI chỉnh độ dài thành bài mới (bài gốc giữ nguyên).
+ * Máy chủ so lại với bài gốc: đúng độ dài, không đổi quá 15%; tác giả ghi "Theo …", gắn nhãn AI chỉnh.
+ */
+export async function taoBaiTuBanChinh(idGoc: string, noiDung: string) {
+  const { supabase, role } = await layNguoiDung();
+  if (!['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'].includes(role)) {
+    throw new Error('Chỉ tổ trưởng hoặc quản trị mới được lưu bản AI chỉnh.');
+  }
+  const { data: r, error } = await supabase.from('reading_passages').select('*').eq('id', idGoc).single();
+  if (error || !r) throw new Error('Không tìm thấy bài gốc.');
+  const g = anhXa(r);
+  if (!g.loai || !g.ky || !g.theLoai) throw new Error('Bài gốc chưa đủ loại bài, kì, thể loại.');
+  const k = khoangDoDai(g.loai, g.ky, g.theLoai, await docBoNaoNeuCo());
+  if (!k) throw new Error('Tổ chưa quy định độ dài cho loại bài này.');
+  const kt = kiemTraBanChinh(g.noiDung, noiDung, k);
+  if (!kt.hopLe) throw new Error(kt.loi.join(' '));
+  return luuVaoHangCho([{
+    tieuDe: g.tieuDe, noiDung, tacGia: tacGiaTheo(g.tacGia), nguon: g.nguon, nguonUrl: g.nguonUrl ?? '',
+    loai: g.loai, ky: g.ky, theLoai: g.theLoai, chuDiem: g.chuDiem,
+    trangThaiLink: g.trangThaiLink, nguonGoc: g.nguonGoc as BaiDocNhapKho['nguonGoc'],
+    tenFile: r.import_file_name ?? undefined,
+    ghiChuAI: { chinhDoDai: { tuBai: idGoc, them: kt.them, bot: kt.bot, nhan: kt.nhan } },
+  }]);
 }

@@ -341,6 +341,7 @@ export default function ReadingPassagesPage() {
                   <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
                     {p.title}
                   </h3>
+                  {p.nhanAI && <span className="inline-block rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800">{p.nhanAI}</span>}
 
                   <div className="text-xs text-slate-500 space-y-0.5">
                     <p>
@@ -422,6 +423,7 @@ export default function ReadingPassagesPage() {
 
             <div className="space-y-1 text-slate-500">
               <p><strong>Tác giả:</strong> {selectedPassageForView.author}</p>
+              {selectedPassageForView.nhanAI && <p className="text-violet-800 font-medium">{selectedPassageForView.nhanAI}</p>}
               <p><strong>Nguồn xuất bản:</strong> {selectedPassageForView.sourceReference}</p>
               <p><strong>Độ dài:</strong> {selectedPassageForView.wordCount} tiếng Việt (Khối {selectedPassageForView.grade})</p>
             </div>
