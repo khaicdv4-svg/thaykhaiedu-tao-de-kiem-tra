@@ -186,14 +186,14 @@ const MON_SANG_PPCT: Record<string, string> = {
  * Lịch tiết đã nhập của một môn lớp 4 (PPCT HUB). Chỉ lớp 4 vì PPCT hiện nhập cho khối 4.
  * Nếu một môn có nhiều lần nhập thì lấy lần nhập mới nhất, tránh cộng dồn tiết.
  */
-export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null }[]> {
+export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null; tietTen: string | null }[]> {
   const subjectId = MON_SANG_PPCT[mon];
   if (!subjectId) throw new Error('Môn này chưa có phân phối chương trình trong ứng dụng.');
   if (lop !== 4) throw new Error('Phân phối chương trình hiện mới nhập cho lớp 4.');
   const { supabase, orgId } = await layNguoiDung();
   const { data, error } = await supabase
     .from('ppct_tiet')
-    .select('thu_tu, tuan, hoc_ki, chu_de, bai_ten, source_id, created_at')
+    .select('thu_tu, tuan, hoc_ki, chu_de, bai_ten, tiet_ten, source_id, created_at')
     .eq('organization_id', orgId)
     .eq('subject_id', subjectId)
     .eq('grade', lop)
@@ -204,5 +204,5 @@ export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: num
   const moiNhat = hang.reduce<{ id: string | null; luc: string }>((m, r) => (r.created_at > m.luc ? { id: r.source_id as string, luc: r.created_at as string } : m), { id: null, luc: '' });
   return hang
     .filter((r) => !moiNhat.id || r.source_id === moiNhat.id)
-    .map((r) => ({ thuTu: r.thu_tu as number, tuan: r.tuan as number | null, hocKi: r.hoc_ki as number | null, chuDe: r.chu_de as string | null, baiTen: r.bai_ten as string | null }));
+    .map((r) => ({ thuTu: r.thu_tu as number, tuan: r.tuan as number | null, hocKi: r.hoc_ki as number | null, chuDe: r.chu_de as string | null, baiTen: r.bai_ten as string | null, tietTen: (r.tiet_ten as string | null) ?? null }));
 }

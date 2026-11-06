@@ -33,6 +33,7 @@ import { MatrixPreview } from '@/components/matrices/MatrixPreview';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
+import { DungTiengViet } from '@/components/matrices/DungTiengViet';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 
 const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
@@ -199,7 +200,9 @@ export default function MatricesPage() {
   useEffect(() => {
     if (!mtc) return;
     const nhap = docBanNhap(mtc);
-    const khoiTao = laKhungDung(mtc) ? { ...taoMaTranRiengRong(mtc), nguon_yccd: 'CHUONG_TRINH' as const } : taoMaTranRiengRong(mtc);
+    // Tiếng Việt: khung có sẵn danh sách YCCĐ từng dòng (một phần lấy từ tên tiết Luyện từ và câu, không có trong Kho),
+    // nên chọn YCCĐ theo dòng của khung. Các môn khác: chọn từ Kho chương trình.
+    const khoiTao = laKhungDung(mtc) && mtc.ma_mon !== 'TIENG_VIET' ? { ...taoMaTranRiengRong(mtc), nguon_yccd: 'CHUONG_TRINH' as const } : taoMaTranRiengRong(mtc);
     setMtr(ganSanYccdDuyNhat(mtc, nhap ?? khoiTao));
     setKetQua(null);
     setDaXemTruoc(false);
@@ -391,7 +394,9 @@ export default function MatricesPage() {
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
 
       {buoc === 0 && dangDung && maMon && (
-        <DungTuChuongTrinh key={`${maMon}-${kyDung}`} maMon={maMon} tenMon={tenMonDangChon} ky={kyDung} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
+        maMon === 'TIENG_VIET'
+          ? <DungTiengViet key={`${maMon}-${kyDung}`} ky={kyDung} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
+          : <DungTuChuongTrinh key={`${maMon}-${kyDung}`} maMon={maMon} tenMon={tenMonDangChon} ky={kyDung} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
       )}
 
       {/* Bước 1: chọn môn */}
@@ -417,15 +422,13 @@ export default function MatricesPage() {
               <button
                 key={m.ma_mon}
                 type="button"
-                disabled={cachLap === 'CHUONG_TRINH' && m.ma_mon === 'TIENG_VIET'}
                 onClick={() => setMaMon(m.ma_mon)}
-                className={`rounded-xl border p-4 text-left transition disabled:opacity-50 disabled:cursor-not-allowed ${maMon === m.ma_mon ? 'border-blue-600 ring-2 ring-blue-100 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}
+                className={`rounded-xl border p-4 text-left transition ${maMon === m.ma_mon ? 'border-blue-600 ring-2 ring-blue-100 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}
               >
                 <div className="font-semibold text-slate-900">{m.mon}</div>
                 <div className="text-xs text-slate-500 mt-1">
                   {m.bai_kiem_tra.length > 1 ? 'Bài Đọc và bài Viết, mỗi bài 10 điểm' : '10 điểm'}
                   {m.thoi_gian_phut ? ` · ${m.thoi_gian_phut} phút` : ''}
-                  {cachLap === 'CHUONG_TRINH' && m.ma_mon === 'TIENG_VIET' ? ' · cần ma trận chung (có Đọc thành tiếng, Đọc hiểu, Viết)' : ''}
                 </div>
               </button>
             ))}
