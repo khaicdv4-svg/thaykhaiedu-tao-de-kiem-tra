@@ -26,6 +26,7 @@ import {
   trangThaiSauKiemDinh,
   type KetQuaKiemDinh,
 } from '@/core/matrix/matrix-template';
+import type { YccdChuongTrinh } from '@/core/chuong-trinh/mon';
 import type { HinhThucCau, MaTranChung, MaTranRieng, MucDo, SuaCauMaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 import { MatrixPreview } from '@/components/matrices/MatrixPreview';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
@@ -63,6 +64,7 @@ function ghiBanNhap(m: MaTranChung, mtr: MaTranRieng): boolean {
 
 /** Câu chỉ có một YCCĐ thì gắn sẵn, giáo viên không phải chọn. */
 function ganSanYccdDuyNhat(mtc: MaTranChung, mtr: MaTranRieng): MaTranRieng {
+  if (mtr.nguon_yccd === 'CHUONG_TRINH') return mtr;
   const daCo = new Set(mtr.cau_hoi.map((c) => c.khoa));
   const them = danhSachCau(mtc, mtr.lua_chon_da_dung)
     .filter((c) => c.cau.dang !== 'VIET' && c.phan.kieu !== 'VIET' && c.dong.yccd.length === 1 && !daCo.has(c.khoa))
@@ -159,6 +161,8 @@ export default function MatricesPage() {
   const [ketQua, setKetQua] = useState<KetQuaKiemDinh | null>(null);
   const [daXemTruoc, setDaXemTruoc] = useState(false);
   const [thongBao, setThongBao] = useState<string | null>(null);
+  const [yccdCT, setYccdCT] = useState<YccdChuongTrinh[] | null>(null);
+  const [loiCT, setLoiCT] = useState<string | null>(null);
 
   const mtc = useMemo(() => MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? null, [maMon]);
   const kqChung = useMemo(() => (mtc ? kiemDinhMaTranChung(mtc) : null), [mtc]);
@@ -172,6 +176,29 @@ export default function MatricesPage() {
     setDaXemTruoc(false);
     setThongBao(nhap ? 'Đã mở lại bản nháp ma trận riêng đã lưu.' : null);
   }, [mtc]);
+
+  // Khi chọn nguồn Chương trình: lấy YCCĐ đã duyệt của môn, lớp này trong Kho chương trình
+  const lopSo = mtc ? Number(mtc.lop.replace(/\D/g, '')) || 4 : 4;
+  const nguonCT = mtr?.nguon_yccd === 'CHUONG_TRINH';
+  useEffect(() => {
+    if (!mtc || !nguonCT) return;
+    let huy = false;
+    setYccdCT(null);
+    setLoiCT(null);
+    fetch(`/api/chuong-trinh/yccd?mon=${mtc.ma_mon}&lop=${lopSo}&trangThai=DA_DUYET`)
+      .then((r) => r.json())
+      .then((j: { yccd?: YccdChuongTrinh[]; error?: string }) => { if (!huy) { if (j.error) setLoiCT(j.error); else setYccdCT(j.yccd ?? []); } })
+      .catch(() => { if (!huy) setLoiCT('Không tải được Kho chương trình.'); });
+    return () => { huy = true; };
+  }, [mtc, nguonCT, lopSo]);
+  const dsYccdCT = useMemo(() => yccdCT?.map((y) => y.noiDung), [yccdCT]);
+  const nhomYccdCT = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const y of yccdCT ?? []) m.set(y.mach ?? 'Chưa rõ mạch', [...(m.get(y.mach ?? 'Chưa rõ mạch') ?? []), y.noiDung]);
+    return [...m.entries()];
+  }, [yccdCT]);
+
+  const doiNguonYccd = (nguon: 'MA_TRAN_CHUNG' | 'CHUONG_TRINH') => capNhat((m) => ({ ...m, nguon_yccd: nguon }));
 
   const capNhat = (fn: (m: MaTranRieng) => MaTranRieng) => {
     if (!mtc) return;
@@ -209,7 +236,7 @@ export default function MatricesPage() {
 
   const kiemTra = () => {
     if (!mtc || !mtr) return null;
-    const kq = kiemDinhMaTranRieng(mtc, mtr);
+    const kq = kiemDinhMaTranRieng(mtc, mtr, dsYccdCT);
     setKetQua(kq);
     setMtr({ ...mtr, trang_thai: trangThaiSauKiemDinh(mtr, kq) });
     return kq;
@@ -222,7 +249,7 @@ export default function MatricesPage() {
 
   const xacNhan = () => {
     if (!mtc || !mtr) return;
-    const kq = kiemDinhMaTranRieng(mtc, mtr);
+    const kq = kiemDinhMaTranRieng(mtc, mtr, dsYccdCT);
     setKetQua(kq);
     if (!kq.hopLe || !daXemTruoc) return;
     const daXacNhan: MaTranRieng = { ...mtr, trang_thai: 'DA_XAC_NHAN' };
@@ -350,9 +377,34 @@ export default function MatricesPage() {
           )}
 
           <div className="the-tke p-6">
+            <h2 className="text-lg font-semibold text-slate-900">Nguồn yêu cầu cần đạt (YCCĐ)</h2>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {([
+                ['MA_TRAN_CHUNG', 'Ma trận chung của tổ', 'YCCĐ ghi sẵn trong ma trận chung tổ đã soạn và tải lên.'],
+                ['CHUONG_TRINH', 'Chương trình GDPT 2018', 'YCCĐ đã duyệt trong Kho chương trình (AI trích từ CT GDPT, SGK, SGV).'],
+              ] as const).map(([k, ten, mt]) => {
+                const dang = (mtr?.nguon_yccd ?? 'MA_TRAN_CHUNG') === k;
+                return (
+                  <button key={k} type="button" aria-pressed={dang} onClick={() => !dang && doiNguonYccd(k)} className={`text-left rounded-lg border p-3 ${dang ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50'}`}>
+                    <div className={`text-sm font-semibold ${dang ? 'text-blue-800' : 'text-slate-800'}`}>{dang ? '● ' : '○ '}{ten}</div>
+                    <div className="text-xs text-slate-600 mt-0.5">{mt}</div>
+                  </button>
+                );
+              })}
+            </div>
+            {nguonCT && loiCT && <p className="text-sm text-red-700 mt-2">{loiCT}</p>}
+            {nguonCT && !loiCT && yccdCT && yccdCT.length === 0 && (
+              <p className="text-sm text-amber-800 mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
+                Kho chương trình chưa có YCCĐ đã duyệt cho {mtc?.mon} lớp {lopSo}. Vào <a className="underline" href="/chuong-trinh">Kho chương trình GDPT 2018</a> nạp tài liệu, cho AI trích rồi duyệt; hoặc chọn lại Ma trận chung.
+              </p>
+            )}
+            {nguonCT && yccdCT && yccdCT.length > 0 && <p className="text-xs text-slate-500 mt-2">Có {yccdCT.length} YCCĐ đã duyệt của {mtc?.mon} lớp {lopSo}. Câu đã chọn YCCĐ không nằm trong danh sách này sẽ bị báo lỗi khi kiểm tra.</p>}
+          </div>
+
+          <div className="the-tke p-6">
             <h2 className="text-lg font-semibold text-slate-900">Chọn yêu cầu cần đạt, chỉnh câu cho từng câu</h2>
             <p className="text-sm text-slate-600 mb-4">
-              Mỗi câu gắn đúng một YCCĐ. Câu chỉ có một YCCĐ đã được chọn sẵn. Số câu, mức, TN/TL, điểm lấy theo ma trận chung; cần thì sửa ngay tại câu, ô đã sửa có viền vàng và nút khôi phục.
+              Mỗi câu gắn đúng một YCCĐ. Nguồn Ma trận chung: câu chỉ có một YCCĐ được chọn sẵn. Số câu, mức, TN/TL, điểm lấy theo ma trận chung; cần thì sửa ngay tại câu, ô đã sửa có viền vàng và nút khôi phục.
             </p>
             {!chonDuPhuongAn ? (
               <p className="text-sm text-slate-500">Chọn phương án ở trên trước.</p>
@@ -390,7 +442,14 @@ export default function MatricesPage() {
                           onChange={(e) => chonYccd(c.khoa, e.target.value)}
                         >
                           <option value="">– Chọn YCCĐ –</option>
-                          {c.dong.yccd.map((y) => <option key={y} value={y}>{y}</option>)}
+                          {nguonCT ? (
+                            <>
+                              {gt && !dsYccdCT?.includes(gt) && <option value={gt}>{gt} (không có trong Kho chương trình)</option>}
+                              {nhomYccdCT.map(([mach, ds]) => (
+                                <optgroup key={mach} label={mach}>{ds.map((y) => <option key={y} value={y}>{y}</option>)}</optgroup>
+                              ))}
+                            </>
+                          ) : c.dong.yccd.map((y) => <option key={y} value={y}>{y}</option>)}
                         </select>
                       )}
                     </div>

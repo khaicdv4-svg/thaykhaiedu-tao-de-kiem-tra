@@ -148,6 +148,11 @@ export interface MaTranRieng {
    * Chỉ ghi những gì khác ma trận chung. Không có thì giữ nguyên ma trận chung.
    */
   sua_cau?: Record<string, SuaCauMaTranRieng>;
+  /**
+   * Nguồn YCCĐ khi chọn cho từng câu. Không có = MA_TRAN_CHUNG (YCCĐ ghi trong ma trận chung của tổ).
+   * CHUONG_TRINH = YCCĐ đã duyệt trong Kho chương trình GDPT 2018.
+   */
+  nguon_yccd?: 'MA_TRAN_CHUNG' | 'CHUONG_TRINH';
   trang_thai: TrangThaiMaTran;
   cap_nhat_luc?: string;
 }

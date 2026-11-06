@@ -344,7 +344,11 @@ export function taoMaTranRiengRong(mtc: MaTranChung): MaTranRieng {
   };
 }
 
-export function kiemDinhMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng): KetQuaKiemDinh {
+/**
+ * @param yccdChuongTrinh Danh sách YCCĐ đã duyệt của môn, lớp trong Kho chương trình. Chỉ dùng khi
+ * mtr.nguon_yccd = CHUONG_TRINH; không truyền thì chỉ kiểm tra mỗi câu có đúng một YCCĐ.
+ */
+export function kiemDinhMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng, yccdChuongTrinh?: string[]): KetQuaKiemDinh {
   const loi: string[] = [];
   const canhBao: string[] = [];
   const mtc = apDungSuaCau(mtcGoc, mtr.sua_cau);
@@ -391,7 +395,9 @@ export function kiemDinhMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng): KetQ
     const chon = (daChon.get(c.khoa) ?? []).filter((y) => y.trim());
     if (chon.length === 0) loi.push(`${ten}: chưa chọn YCCĐ.`);
     else if (chon.length > 1) loi.push(`${ten}: chỉ được gắn một YCCĐ, đang có ${chon.length}.`);
-    else if (!c.dong.yccd.includes(chon[0])) loi.push(`${ten}: YCCĐ đã chọn không thuộc dòng "${c.dong.noi_dung ?? c.dong.mach}" của ma trận chung.`);
+    else if (mtr.nguon_yccd === 'CHUONG_TRINH') {
+      if (yccdChuongTrinh && !yccdChuongTrinh.includes(chon[0])) loi.push(`${ten}: YCCĐ đã chọn không có trong Kho chương trình (đã duyệt).`);
+    } else if (!c.dong.yccd.includes(chon[0])) loi.push(`${ten}: YCCĐ đã chọn không thuộc dòng "${c.dong.noi_dung ?? c.dong.mach}" của ma trận chung.`);
   }
   for (const k of daChon.keys()) {
     if (!khoaHopLe.has(k)) loi.push(`Có YCCĐ gắn cho câu "${k}" không có trong ma trận theo phương án đã chọn.`);

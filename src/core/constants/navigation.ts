@@ -18,6 +18,7 @@ import {
   Brain,
   CalendarRange,
   Table2,
+  Library,
 } from 'lucide-react';
 import { UserRole } from '@/types/permissions';
 
@@ -49,6 +50,15 @@ export const MAIN_NAVIGATION: NavItem[] = [
     iconName: 'BookOpen',
     icon: BookOpen,
     description: 'Xem và nhập phân phối chương trình (tuần, bài, tiết) và YCCĐ từng môn',
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+  },
+  {
+    id: 'chuong-trinh',
+    title: 'Kho chương trình GDPT 2018',
+    href: '/chuong-trinh',
+    iconName: 'Library',
+    icon: Library,
+    description: 'Nguồn chung lớp 1–5: tài liệu CT GDPT 2018, SGK, SGV và YCCĐ AI trích, chờ tổ trưởng duyệt',
     allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {

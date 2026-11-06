@@ -22,7 +22,7 @@ describe('Giai đoạn 1 - Nền tảng & Giao diện (Platform & UI Tests)', ()
     expect(hrefs).not.toContain('/ai-settings');
     expect(hrefs).toContain('/ma-tran-chung');
     expect(hrefs).toContain('/ma-tran-ca-nam');
-    expect(teacherNav.length).toBe(10);
+    expect(teacherNav.length).toBe(11);
   });
 
   it('correctly provides full specialized menu for GROUP_LEADER (Tổ trưởng)', () => {
@@ -35,15 +35,15 @@ describe('Giai đoạn 1 - Nền tảng & Giao diện (Platform & UI Tests)', ()
     expect(hrefs).toContain('/templates');
     expect(hrefs).toContain('/dashboard');
     expect(hrefs).toContain('/test-builder');
-    expect(leaderNav.length).toBe(14);
+    expect(leaderNav.length).toBe(15);
   });
 
   it('correctly provides full menu for SCHOOL_ADMIN and SYSTEM_ADMIN', () => {
     const adminNav = getNavigationForRole('SCHOOL_ADMIN');
-    expect(adminNav.length).toBe(14);
+    expect(adminNav.length).toBe(15);
 
     const sysAdminNav = getNavigationForRole('SYSTEM_ADMIN');
-    expect(sysAdminNav.length).toBe(14);
+    expect(sysAdminNav.length).toBe(15);
   });
 
   it('ensures each navigation item has valid title, href, and icon definition', () => {
