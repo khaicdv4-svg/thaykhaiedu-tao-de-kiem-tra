@@ -32,6 +32,7 @@ import { MatrixPreview } from '@/components/matrices/MatrixPreview';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
+import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 
 const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
 
@@ -46,11 +47,11 @@ const NHAN_TRANG_THAI: Record<TrangThaiMaTran, { ten: string; mau: string }> = {
 const MA_KHUNG_DUNG = 'DUNG_TU_CHUONG_TRINH';
 const laKhungDung = (m: MaTranChung | null) => m?.phien_ban_mau === MA_KHUNG_DUNG;
 const khoaLuu = (m: MaTranChung) => `thaykhaiedu.maTranRieng.${m.ma_mon}.${m.ky_kiem_tra}${laKhungDung(m) ? '.ct' : ''}`;
-const khoaKhung = (maMon: string) => `thaykhaiedu.khungDung.${maMon}.CUOI_HK1`;
+const khoaKhung = (maMon: string, ky: string) => `thaykhaiedu.khungDung.${maMon}.${ky}`;
 
-function docKhungDung(maMon: string): MaTranChung | null {
+function docKhungDung(maMon: string, ky: string): MaTranChung | null {
   try {
-    const raw = window.localStorage.getItem(khoaKhung(maMon));
+    const raw = window.localStorage.getItem(khoaKhung(maMon, ky));
     return raw ? (JSON.parse(raw) as MaTranChung) : null;
   } catch {
     return null;
@@ -178,13 +179,14 @@ export default function MatricesPage() {
   const [loiCT, setLoiCT] = useState<string | null>(null);
   const [cachLap, setCachLap] = useState<'MA_TRAN_CHUNG' | 'CHUONG_TRINH'>('MA_TRAN_CHUNG');
   const [dangDung, setDangDung] = useState(false);
+  const [kyDung, setKyDung] = useState<KyDung>('CUOI_HK1');
   const [khungDung, setKhungDung] = useState<MaTranChung | null>(null);
 
   const mtc = useMemo(
     () => (cachLap === 'CHUONG_TRINH' ? khungDung : MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? null),
     [maMon, cachLap, khungDung],
   );
-  const khungDaLuu = useMemo(() => (cachLap === 'CHUONG_TRINH' && maMon && typeof window !== 'undefined' ? docKhungDung(maMon) : null), [cachLap, maMon, khungDung]);
+  const khungDaLuu = useMemo(() => (cachLap === 'CHUONG_TRINH' && maMon && typeof window !== 'undefined' ? docKhungDung(maMon, kyDung) : null), [cachLap, maMon, kyDung, khungDung]);
   const khungDungHienTai = laKhungDung(mtc);
   const tenMonDangChon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? '';
   const kqChung = useMemo(() => (mtc ? kiemDinhMaTranChung(mtc) : null), [mtc]);
@@ -224,7 +226,7 @@ export default function MatricesPage() {
   const nhanKhungDung = (m: MaTranChung) => {
     try {
       window.localStorage.removeItem(khoaLuu(m)); // khung mới thì bản nháp ma trận riêng cũ không còn khớp
-      window.localStorage.setItem(khoaKhung(m.ma_mon), JSON.stringify(m));
+      window.localStorage.setItem(khoaKhung(m.ma_mon, m.ky_kiem_tra), JSON.stringify(m));
     } catch {
       /* không lưu được thì vẫn dùng trong phiên này */
     }
@@ -332,7 +334,7 @@ export default function MatricesPage() {
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
 
       {buoc === 0 && dangDung && maMon && (
-        <DungTuChuongTrinh maMon={maMon} tenMon={tenMonDangChon} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
+        <DungTuChuongTrinh key={`${maMon}-${kyDung}`} maMon={maMon} tenMon={tenMonDangChon} ky={kyDung} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
       )}
 
       {/* Bước 1: chọn môn */}
@@ -340,7 +342,7 @@ export default function MatricesPage() {
         <div className="the-tke p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Chọn môn kiểm tra</h2>
-            <p className="text-sm text-slate-600">Kì kiểm tra: Cuối học kì I, năm học 2026 – 2027, Lớp 4.</p>
+            <p className="text-sm text-slate-600">{cachLap === 'CHUONG_TRINH' ? 'Năm học 2026 – 2027, Lớp 4. Chọn kì kiểm tra ở dưới.' : 'Kì kiểm tra: Cuối học kì I, năm học 2026 – 2027, Lớp 4.'}</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {([
@@ -371,6 +373,20 @@ export default function MatricesPage() {
               </button>
             ))}
           </div>
+          {cachLap === 'CHUONG_TRINH' && (
+            <fieldset>
+              <legend className="text-sm font-semibold text-slate-900 mb-1">Kì kiểm tra</legend>
+              <div className="flex flex-wrap gap-2">
+                {DANH_SACH_KY.map((k) => (
+                  <label key={k.ma} className={`cursor-pointer rounded-lg border px-4 py-2 text-sm ${kyDung === k.ma ? 'border-blue-600 bg-blue-50 text-blue-800 font-medium' : 'border-slate-200 bg-white'}`}>
+                    <input type="radio" className="sr-only" name="ky-kiem-tra" checked={kyDung === k.ma} onChange={() => setKyDung(k.ma)} />
+                    {k.ten}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Ứng dụng tự lọc các bài đúng giai đoạn của kì đã chọn, thầy tick bài cần dùng ở bước sau.</p>
+            </fieldset>
+          )}
           {cachLap === 'CHUONG_TRINH' ? (
             <div className="flex flex-wrap justify-end gap-2">
               {khungDaLuu && maMon && (

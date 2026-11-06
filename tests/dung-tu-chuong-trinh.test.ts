@@ -4,6 +4,7 @@ import {
   chiaTheoTrongSo,
   docGanYccd,
   docGanYccdTheoBai,
+  khoangTuanTheoKy,
   type NhomNguon,
   donViTheoMuc,
   dungMaTranTuChuongTrinh,
@@ -178,5 +179,23 @@ describe('ghép theo từng bài', () => {
     const ok = new Set(['a', 'b']);
     expect(docGanYccdTheoBai('```json\n{"1":["a","zz"],"3":["b","b"]}\n```', 3, ok)).toEqual([['a'], [], ['b']]);
     expect(docGanYccdTheoBai('không có', 2, ok)).toBeNull();
+  });
+});
+
+describe('khoangTuanTheoKy', () => {
+  const tiet = [
+    ...Array.from({ length: 18 }, (_, i) => ({ thuTu: i + 1, tuan: i + 1, hocKi: 1, chuDe: 'A', baiTen: 'B' })),
+    ...Array.from({ length: 17 }, (_, i) => ({ thuTu: i + 19, tuan: i + 19, hocKi: 2, chuDe: 'A', baiTen: 'B' })),
+  ];
+  it('bốn kì cho bốn khoảng tuần theo học kì trong PPCT', () => {
+    expect(khoangTuanTheoKy(tiet, 'GIUA_HK1')).toEqual({ tuanTu: 1, tuanDen: 9 });
+    expect(khoangTuanTheoKy(tiet, 'CUOI_HK1')).toEqual({ tuanTu: 1, tuanDen: 18 });
+    expect(khoangTuanTheoKy(tiet, 'GIUA_HK2')).toEqual({ tuanTu: 19, tuanDen: 27 });
+    expect(khoangTuanTheoKy(tiet, 'CUOI_NAM')).toEqual({ tuanTu: 19, tuanDen: 35 });
+  });
+  it('PPCT không ghi học kì thì dùng 1–18 và 19–35', () => {
+    const khong = tiet.map(({ hocKi: _h, ...r }) => (void _h, r));
+    expect(khoangTuanTheoKy(khong, 'CUOI_HK1')).toEqual({ tuanTu: 1, tuanDen: 18 });
+    expect(khoangTuanTheoKy(khong, 'GIUA_HK2')).toEqual({ tuanTu: 19, tuanDen: 27 });
   });
 });

@@ -15,8 +15,38 @@ import type { CauHoiMaTran, DongMaTran, HinhThucCau, MaTranChung, MucDo } from '
 export interface TietPpct {
   thuTu: number;
   tuan: number | null;
+  hocKi?: number | null;
   chuDe: string | null;
   baiTen: string | null;
+}
+
+export type KyDung = 'GIUA_HK1' | 'CUOI_HK1' | 'GIUA_HK2' | 'CUOI_NAM';
+
+export const DANH_SACH_KY: { ma: KyDung; ten: string; tieuDe: string }[] = [
+  { ma: 'GIUA_HK1', ten: 'Giữa học kì I', tieuDe: 'GIỮA HỌC KÌ I' },
+  { ma: 'CUOI_HK1', ten: 'Cuối học kì I', tieuDe: 'CUỐI HỌC KÌ I' },
+  { ma: 'GIUA_HK2', ten: 'Giữa học kì II', tieuDe: 'GIỮA HỌC KÌ II' },
+  { ma: 'CUOI_NAM', ten: 'Cuối năm học', tieuDe: 'CUỐI NĂM HỌC' },
+];
+
+/**
+ * Khoảng tuần mặc định của từng kì, lấy từ học kì ghi trong PPCT (không có thì dùng 1–18 và 19–35).
+ * Giữa kì: nửa đầu của học kì. Cuối kì I: cả học kì I. Cuối năm: học kì II.
+ * Chỉ là mặc định, giáo viên đổi được.
+ */
+export function khoangTuanTheoKy(tiet: TietPpct[], ky: KyDung): { tuanTu: number; tuanDen: number } {
+  const tuanCua = (hk: number) => tiet.filter((t) => t.hocKi === hk && t.tuan !== null).map((t) => t.tuan as number);
+  const t1 = tuanCua(1);
+  const t2 = tuanCua(2);
+  const hk1 = t1.length ? { tu: Math.min(...t1), den: Math.max(...t1) } : { tu: 1, den: 18 };
+  const hk2 = t2.length ? { tu: Math.min(...t2), den: Math.max(...t2) } : { tu: 19, den: 35 };
+  const giua = (k: { tu: number; den: number }) => Math.floor((k.tu + k.den) / 2);
+  switch (ky) {
+    case 'GIUA_HK1': return { tuanTu: hk1.tu, tuanDen: giua(hk1) };
+    case 'CUOI_HK1': return { tuanTu: hk1.tu, tuanDen: hk1.den };
+    case 'GIUA_HK2': return { tuanTu: hk2.tu, tuanDen: giua(hk2) };
+    case 'CUOI_NAM': return { tuanTu: hk2.tu, tuanDen: hk2.den };
+  }
 }
 
 /** Một chủ đề (hoặc nhóm bài) trong phạm vi kiểm tra. */
