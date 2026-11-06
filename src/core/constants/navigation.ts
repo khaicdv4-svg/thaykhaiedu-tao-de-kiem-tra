@@ -16,6 +16,8 @@ import {
   Settings,
   Bot,
   Brain,
+  CalendarRange,
+  Table2,
 } from 'lucide-react';
 import { UserRole } from '@/types/permissions';
 
@@ -50,8 +52,26 @@ export const MAIN_NAVIGATION: NavItem[] = [
     allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
+    id: 'ma-tran-ca-nam',
+    title: 'Ma trận nội dung cả năm',
+    href: '/ma-tran-ca-nam',
+    iconName: 'CalendarRange',
+    icon: CalendarRange,
+    description: 'Tải ma trận nội dung cả năm của từng môn (độ dài bài đọc, chủ điểm, YCCĐ theo kì)',
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+  },
+  {
+    id: 'ma-tran-chung',
+    title: 'Ma trận chung',
+    href: '/ma-tran-chung',
+    iconName: 'Table2',
+    icon: Table2,
+    description: 'Tải ma trận chung của tổ theo môn và kì kiểm tra, có phiên bản và xác nhận',
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+  },
+  {
     id: 'matrices',
-    title: 'Ma trận & Đặc tả',
+    title: 'Ma trận riêng & Đặc tả',
     href: '/matrices',
     iconName: 'Grid',
     icon: Grid,
