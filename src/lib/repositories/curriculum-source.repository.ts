@@ -335,6 +335,45 @@ export class CurriculumSourceRepository {
     };
   }
 
+  /** Lịch tiết của một môn (từng tiết theo tuần) và YCCĐ của môn đó, để xem lại dữ liệu đã nhập. */
+  async layPpctDaNhap(sourceId: string): Promise<{
+    tiet: { thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null; tietTen: string; tietSo: number | null; ghiChu: string | null; yccd: string[] }[];
+    yccd: { ma: string; maHienThi: string | null; noiDung: string; mach: string | null }[];
+  }> {
+    const supabase = await createServerSupabaseClient();
+    if (!supabase) throw new Error('Chưa cấu hình Supabase.');
+    const [t, o] = await Promise.all([
+      supabase
+        .from('ppct_tiet')
+        .select('thu_tu, tuan, hoc_ki, chu_de, bai_ten, tiet_ten, tiet_so, ghi_chu, yccd_external_ids')
+        .eq('source_id', sourceId)
+        .order('thu_tu')
+        .limit(2000),
+      supabase
+        .from('curriculum_outcomes')
+        .select('external_hub_id, code, content, strand_name, order_index')
+        .eq('source_id', sourceId)
+        .order('order_index')
+        .limit(2000),
+    ]);
+    if (t.error) throw new Error(`Không đọc được lịch tiết: ${t.error.message}`);
+    if (o.error) throw new Error(`Không đọc được YCCĐ: ${o.error.message}`);
+    return {
+      tiet: (t.data ?? []).map((r) => ({
+        thuTu: r.thu_tu,
+        tuan: r.tuan,
+        hocKi: r.hoc_ki,
+        chuDe: r.chu_de,
+        baiTen: r.bai_ten,
+        tietTen: r.tiet_ten,
+        tietSo: r.tiet_so,
+        ghiChu: r.ghi_chu,
+        yccd: r.yccd_external_ids ?? [],
+      })),
+      yccd: (o.data ?? []).map((r) => ({ ma: r.external_hub_id, maHienThi: r.code, noiDung: r.content, mach: r.strand_name })),
+    };
+  }
+
   /**
    * Xóa một nguồn chương trình
    */

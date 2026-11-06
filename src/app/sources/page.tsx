@@ -20,6 +20,7 @@ import { ProvenanceSelector } from '@/components/sources/ProvenanceSelector';
 import { DocxXlsxImportTab } from '@/components/sources/DocxXlsxImportTab';
 import { ScannedPdfManualTab } from '@/components/sources/ScannedPdfManualTab';
 import { EmptySourcesState } from '@/components/sources/EmptySourcesState';
+import { PpctDaNhapView } from '@/components/sources/PpctDaNhapView';
 import {
   CurriculumSource,
   ValidationSummary,
@@ -35,7 +36,7 @@ import {
 type TabMode = 'ppct_hub' | 'docx_xlsx' | 'pdf_scan' | 'saved_sources';
 
 export default function SourcesPage() {
-  const [activeTab, setActiveTab] = useState<TabMode>('ppct_hub');
+  const [activeTab, setActiveTab] = useState<TabMode>('saved_sources');
   const [pipelineStep, setPipelineStep] = useState(1);
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [grade, setGrade] = useState(4);
@@ -280,10 +281,10 @@ export default function SourcesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
             <BookOpen className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-            <span>Nguồn Chuyên môn & Phân phối chương trình</span>
+            <span>Phân phối chương trình</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Giai đoạn 2: Quản lý kế hoạch dạy học, phân phối chương trình và cây YCCĐ chuẩn bộ sách Kết nối tri thức Khối 4 (Năm học 2026–2027)
+            Xem lịch tiết theo tuần và YCCĐ từng môn đã nhập; nhập mới hoặc nhập lại từ file sao lưu PPCT HUB. Bộ sách Kết nối tri thức, năm học 2026–2027.
           </p>
         </div>
 
@@ -311,6 +312,18 @@ export default function SourcesPage() {
 
       {/* Tabs điều hướng */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={() => setActiveTab('saved_sources')}
+          className={`flex items-center gap-2 py-3 px-4 text-xs font-semibold border-b-2 transition-colors ${
+            activeTab === 'saved_sources'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+        >
+          <FolderOpen className="w-4 h-4" />
+          <span>Dữ liệu đã nhập ({savedSources.length} môn)</span>
+        </button>
         <button
           type="button"
           onClick={() => setActiveTab('ppct_hub')}
@@ -353,18 +366,6 @@ export default function SourcesPage() {
           <span>PDF Scan & Đối chiếu tay</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('saved_sources')}
-          className={`flex items-center gap-2 py-3 px-4 text-xs font-semibold border-b-2 transition-colors ${
-            activeTab === 'saved_sources'
-              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
-          }`}
-        >
-          <FolderOpen className="w-4 h-4" />
-          <span>Kho nguồn đã lưu ({savedSources.length})</span>
-        </button>
       </div>
 
       {/* TAB 1: NHẬP SAO LƯU PPCT HUB (.JSON) */}
@@ -553,7 +554,7 @@ export default function SourcesPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              Danh sách nguồn chuyên môn đã lưu (Khối {grade} - Năm học {academicYear})
+              Phân phối chương trình đã nhập (Khối {grade}, năm học {academicYear})
             </h3>
             <button
               type="button"
@@ -576,43 +577,7 @@ export default function SourcesPage() {
               onStartImportDocx={() => setActiveTab('docx_xlsx')}
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedSources.map((src) => (
-                <div
-                  key={src.id}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3 hover:border-blue-400 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                        {src.code || 'SRC-K4'}
-                      </span>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-1">
-                        {src.name}
-                      </h4>
-                    </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      {src.status}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1 text-xs text-slate-500">
-                    <p>Sách: {src.bookEdition}</p>
-                    <p>NXB: {src.publisher}</p>
-                    <p className="font-semibold text-slate-700 dark:text-slate-300">
-                      Quy mô: {src.totalLessons} bài học | {src.totalPeriods} tiết
-                    </p>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>external_id: {src.externalHubId || 'N/A'}</span>
-                    <span className="text-blue-600 font-semibold cursor-pointer hover:underline">
-                      Xem YCCĐ
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PpctDaNhapView sources={savedSources} onNhapLai={() => setActiveTab('ppct_hub')} />
           )}
         </div>
       )}

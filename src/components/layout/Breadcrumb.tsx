@@ -12,7 +12,7 @@ import { ChevronRight, Home } from 'lucide-react';
 
 const ROUTE_NAME_MAP: Record<string, string> = {
   dashboard: 'Tổng quan',
-  sources: 'Chương trình & Nguồn',
+  sources: 'Phân phối chương trình',
   matrices: 'Ma trận riêng & Đặc tả',
   'ma-tran-chung': 'Ma trận chung',
   'ma-tran-ca-nam': 'Ma trận nội dung cả năm',

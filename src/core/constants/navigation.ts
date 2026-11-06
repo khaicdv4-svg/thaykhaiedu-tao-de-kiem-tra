@@ -44,11 +44,11 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'sources',
-    title: 'Chương trình & Nguồn',
+    title: 'Phân phối chương trình',
     href: '/sources',
     iconName: 'BookOpen',
     icon: BookOpen,
-    description: 'Quản lý chương trình GDPT, YCCĐ và tài liệu SGK nguồn',
+    description: 'Xem và nhập phân phối chương trình (tuần, bài, tiết) và YCCĐ từng môn',
     allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
