@@ -10,17 +10,42 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import {
+  chiaCauTheoBai,
   dungMaTranTuChuongTrinh,
   nhomBaiTrongPhamVi,
-  tenNoiDungNhom,
   type TietPpct,
 } from '@/core/matrix/dung-tu-chuong-trinh';
 import type { YccdChuongTrinh } from '@/core/chuong-trinh/mon';
 import type { MaTranChung } from '@/types/matrix-template';
 
+const khoaBai = (idNhom: string, bi: number) => `${idNhom}#${bi}`;
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
 const oNhap = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white w-24';
+
+/** Một bài trong chủ đề: tên bài như PPCT, các YCCĐ đã ghép; danh sách tick chỉ vẽ khi mở để nhẹ trang. */
+function BaiGhepYccd({ ten, soTiet, dsYccd, chon, dangGhep, onBatTat }: { ten: string; soTiet: number; dsYccd: YccdChuongTrinh[]; chon: string[]; dangGhep: boolean; onBatTat: (id: string) => void }) {
+  const [mo, setMo] = useState(false);
+  return (
+    <details onToggle={(e) => setMo((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer text-sm py-0.5">
+        <span className="text-slate-900">{ten}</span>
+        <span className="text-slate-500"> · {soTiet} tiết</span>
+        <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${chon.length ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>{dangGhep ? '…' : `${chon.length} YCCĐ`}</span>
+      </summary>
+      {mo && (
+        <div className="mt-1 mb-2 max-h-64 overflow-y-auto space-y-1 rounded-lg border border-slate-200 p-2">
+          {dsYccd.map((y) => (
+            <label key={y.id} className="flex items-start gap-2 text-sm text-slate-800">
+              <input type="checkbox" className="mt-1" checked={chon.includes(y.id)} onChange={() => onBatTat(y.id)} />
+              <span><span className="text-xs text-slate-500">{y.mach ?? ''}{y.chuDe ? ` › ${y.chuDe}` : ''}</span><br />{y.noiDung}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </details>
+  );
+}
 
 export function DungTuChuongTrinh({
   maMon,
@@ -93,9 +118,9 @@ export function DungTuChuongTrinh({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mon: maMon, lop: 4, chuDe: n.chuDe, bai: n.bai }),
         });
-        const j = (await r.json()) as { ids?: string[]; error?: string };
-        if (!r.ok || !j.ids) throw new Error(j.error ?? 'AI không trả kết quả.');
-        moi[n.id] = j.ids;
+        const j = (await r.json()) as { theoBai?: string[][]; error?: string };
+        if (!r.ok || !j.theoBai) throw new Error(j.error ?? 'AI không trả kết quả.');
+        j.theoBai.forEach((ids, bi) => { moi[khoaBai(n.id, bi)] = ids; });
         setGhep({ ...moi });
       } catch (e) {
         setLoiAI(`${n.chuDe}: ${e instanceof Error ? e.message : 'lỗi'}. Các chủ đề còn lại thầy ghép tay hoặc bấm lại.`);
@@ -107,13 +132,24 @@ export function DungTuChuongTrinh({
     setTienDo(null);
   };
 
-  const batTat = (idNhom: string, idYccd: string) =>
+  const batTat = (khoa: string, idYccd: string) =>
     setGhep((g) => {
-      const cu = g[idNhom] ?? [];
-      return { ...g, [idNhom]: cu.includes(idYccd) ? cu.filter((x) => x !== idYccd) : [...cu, idYccd] };
+      const cu = g[khoa] ?? [];
+      return { ...g, [khoa]: cu.includes(idYccd) ? cu.filter((x) => x !== idYccd) : [...cu, idYccd] };
     });
 
   const dung = () => {
+    const chia = chiaCauTheoBai(
+      nhom.map((n) => ({
+        chuDe: n.chuDe,
+        bai: n.chiTiet.map((b, bi) => ({
+          ten: b.ten,
+          soTiet: b.soTiet,
+          yccd: (ghep[khoaBai(n.id, bi)] ?? []).map((id) => theoId.get(id)?.noiDung).filter((x): x is string => !!x),
+        })),
+      })),
+      soCau,
+    );
     const kq = dungMaTranTuChuongTrinh({
       maMon,
       tenMon,
@@ -126,14 +162,12 @@ export function DungTuChuongTrinh({
       soCau,
       tiLeMuc: { m1, m2, m3 },
       ghiChuPhamVi: `Phạm vi: tuần ${tuanTu} đến tuần ${tuanDen} của phân phối chương trình (${tongTiet} tiết).`,
-      dong: nhom.map((n) => ({
-        mach: n.chuDe,
-        noiDung: tenNoiDungNhom(n.bai),
-        soTiet: n.soTiet,
-        yccd: (ghep[n.id] ?? []).map((id) => theoId.get(id)?.noiDung).filter((x): x is string => !!x),
-      })),
+      dong: chia.dong,
     });
-    setKetQuaDung({ loi: kq.loi, canhBao: kq.canhBao });
+    const canhBao = [...kq.canhBao];
+    if (chia.baiKhongCau > 0) canhBao.push(`${chia.baiKhongCau} bài trong phạm vi chưa có câu nào (số câu ít hơn số bài). Tăng số câu nếu muốn phủ thêm bài.`);
+    if (chia.baiThieuYccd.length > 0) canhBao.push(`${chia.baiThieuYccd.length} bài chưa ghép YCCĐ nên không được gắn câu: ${chia.baiThieuYccd.slice(0, 6).join('; ')}${chia.baiThieuYccd.length > 6 ? '…' : ''}.`);
+    setKetQuaDung({ loi: kq.loi, canhBao });
     if (kq.maTran) onDung(kq.maTran);
   };
 
@@ -183,35 +217,39 @@ export function DungTuChuongTrinh({
 
           <div className="the-tke p-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-semibold text-slate-900">2. Chủ đề trong phạm vi và YCCĐ ghép với từng chủ đề</h3>
+              <h3 className="font-semibold text-slate-900">2. Bài trong phạm vi và YCCĐ ghép với từng bài</h3>
               <button type="button" className={nutPhu} disabled={!!dangGhep || nhom.length === 0} onClick={ghepBangAI}>
                 {dangGhep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {tienDo ? `AI đang ghép ${tienDo.xong}/${tienDo.tong}` : 'AI gợi ý YCCĐ cho các chủ đề'}
+                {tienDo ? `AI đang ghép ${tienDo.xong}/${tienDo.tong}` : 'AI gợi ý YCCĐ cho từng bài'}
               </button>
             </div>
             <p className="text-sm text-slate-600">
-              {nhom.length === 0 ? 'Không có tiết nào trong khoảng tuần này.' : `${nhom.length} chủ đề, ${tongTiet} tiết. AI chỉ chọn trong YCCĐ đã duyệt, thầy tick thêm hoặc bỏ bớt cho đúng.`}
+              {nhom.length === 0 ? 'Không có tiết nào trong khoảng tuần này.' : `${nhom.length} chủ đề, ${tongTiet} tiết. AI ghép YCCĐ đã duyệt cho từng bài, thầy mở bài để tick thêm hoặc bỏ bớt. Bài nào chưa có YCCĐ sẽ không được gắn câu.`}
             </p>
             {loiAI && <p className="text-sm text-red-700">{loiAI}</p>}
             <div className="divide-y divide-slate-100">
               {nhom.map((n) => {
-                const chon = ghep[n.id] ?? [];
+                const daGhep = n.chiTiet.filter((_, bi) => (ghep[khoaBai(n.id, bi)] ?? []).length > 0).length;
                 return (
-                  <details key={n.id} className="py-2" open={chon.length === 0 && !dangGhep ? false : undefined}>
+                  <details key={n.id} className="py-2">
                     <summary className="cursor-pointer text-sm">
                       <span className="font-semibold text-slate-900">{n.chuDe}</span>
-                      <span className="text-slate-500"> · {n.soTiet} tiết · tuần {n.tuanDau}–{n.tuanCuoi} · {n.bai.length} bài</span>
-                      <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${chon.length ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
-                        {dangGhep === n.id ? 'đang ghép…' : `${chon.length} YCCĐ`}
+                      <span className="text-slate-500"> · {n.soTiet} tiết · tuần {n.tuanDau}–{n.tuanCuoi}</span>
+                      <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${daGhep === n.chiTiet.length ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                        {dangGhep === n.id ? 'đang ghép…' : `${daGhep}/${n.chiTiet.length} bài đã ghép YCCĐ`}
                       </span>
                     </summary>
-                    <div className="mt-2 text-xs text-slate-500">{n.bai.join(' · ')}</div>
-                    <div className="mt-2 max-h-72 overflow-y-auto space-y-1 rounded-lg border border-slate-200 p-2">
-                      {(yccd ?? []).map((y) => (
-                        <label key={y.id} className="flex items-start gap-2 text-sm text-slate-800">
-                          <input type="checkbox" className="mt-1" checked={chon.includes(y.id)} onChange={() => batTat(n.id, y.id)} />
-                          <span><span className="text-xs text-slate-500">{y.mach ?? ''}{y.chuDe ? ` › ${y.chuDe}` : ''}</span><br />{y.noiDung}</span>
-                        </label>
+                    <div className="mt-2 ml-3 space-y-1 border-l-2 border-slate-200 pl-3">
+                      {n.chiTiet.map((b, bi) => (
+                        <BaiGhepYccd
+                          key={b.ten}
+                          ten={b.ten}
+                          soTiet={b.soTiet}
+                          dsYccd={yccd ?? []}
+                          chon={ghep[khoaBai(n.id, bi)] ?? []}
+                          dangGhep={dangGhep === n.id}
+                          onBatTat={(id) => batTat(khoaBai(n.id, bi), id)}
+                        />
                       ))}
                     </div>
                   </details>

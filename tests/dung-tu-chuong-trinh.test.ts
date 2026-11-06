@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chiaCauTheoBai,
   chiaTheoTrongSo,
   docGanYccd,
+  docGanYccdTheoBai,
+  type NhomNguon,
   donViTheoMuc,
   dungMaTranTuChuongTrinh,
   nhomBaiTrongPhamVi,
@@ -135,5 +138,45 @@ describe('dungMaTranTuChuongTrinh', () => {
     const mtr: MaTranRieng = { ...rong, nguon_yccd: 'CHUONG_TRINH', cau_hoi: cau.map((c) => ({ khoa: c.khoa, yccd: c.dong.yccd[0] })) };
     const tatCa = mtc.bai_kiem_tra[0].phan[0].dong.flatMap((d) => d.yccd);
     expect(kiemDinhMaTranRieng(mtc, mtr, tatCa).loi).toEqual([]);
+  });
+});
+
+describe('ghép theo từng bài', () => {
+  const y = (n: number) => Array.from({ length: n }, (_, i) => `YCCĐ ${i + 1}`);
+  const nhom: NhomNguon[] = [
+    { chuDe: 'Chủ đề 1', bai: [{ ten: 'Bài 1: A', soTiet: 2, yccd: y(1) }, { ten: 'Bài 2: B', soTiet: 3, yccd: y(2) }, { ten: 'Bài 3: C', soTiet: 2, yccd: y(1) }] },
+    { chuDe: 'Chủ đề 2', bai: [{ ten: 'Bài 4: D', soTiet: 4, yccd: y(2) }, { ten: 'Bài 5: E', soTiet: 3, yccd: [] }] },
+    { chuDe: 'Chủ đề 3', bai: [{ ten: 'Bài 6: G', soTiet: 3, yccd: y(1) }, { ten: 'Bài 7: H', soTiet: 5, yccd: y(3) }] },
+  ];
+
+  it('mỗi dòng là một bài, mang tên bài, tổng câu đúng, bài thiếu YCCĐ không nhận câu', () => {
+    const r = chiaCauTheoBai(nhom, 4);
+    expect(r.dong.reduce((s, d) => s + (d.soCauGan ?? 0), 0)).toBe(4);
+    expect(r.dong.every((d) => d.noiDung?.startsWith('Bài'))).toBe(true);
+    expect(r.dong.some((d) => d.noiDung === 'Bài 5: E')).toBe(false);
+    expect(r.baiThieuYccd).toEqual(['Bài 5: E']);
+  });
+
+  it('ít câu hơn số bài thì chọn bài nhiều tiết, mỗi bài một câu', () => {
+    const r = chiaCauTheoBai(nhom, 3);
+    expect(r.dong.every((d) => d.soCauGan === 1)).toBe(true);
+    expect(r.dong.map((d) => d.noiDung)).toContain('Bài 7: H');
+  });
+
+  it('dựng ma trận từ dòng theo bài vẫn hợp lệ, tên bài nằm trong ô nội dung', () => {
+    const r = chiaCauTheoBai(nhom, 10);
+    const kq = dungMaTranTuChuongTrinh(tham({ dong: r.dong, soCau: 10 }));
+    expect(kq.loi).toEqual([]);
+    const mtc = kq.maTran!;
+    expect(kiemDinhMaTranChung(mtc).loi).toEqual([]);
+    const dongMt = mtc.bai_kiem_tra[0].phan[0].dong;
+    expect(dongMt.map((d) => d.noi_dung)).toEqual(r.dong.map((d) => d.noiDung));
+    expect(dongMt.every((d) => d.cau_hoi.length === (r.dong.find((x) => x.noiDung === d.noi_dung)?.soCauGan))).toBe(true);
+  });
+
+  it('docGanYccdTheoBai: đúng theo thứ tự bài, bỏ id lạ, thiếu khóa thì rỗng', () => {
+    const ok = new Set(['a', 'b']);
+    expect(docGanYccdTheoBai('```json\n{"1":["a","zz"],"3":["b","b"]}\n```', 3, ok)).toEqual([['a'], [], ['b']]);
+    expect(docGanYccdTheoBai('không có', 2, ok)).toBeNull();
   });
 });

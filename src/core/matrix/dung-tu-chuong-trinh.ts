@@ -25,6 +25,8 @@ export interface NhomBai {
   id: string;
   chuDe: string;
   bai: string[];
+  /** Từng bài trong chủ đề với số tiết của bài (trong phạm vi tuần). */
+  chiTiet: { ten: string; soTiet: number }[];
   soTiet: number;
   tuanDau: number;
   tuanCuoi: number;
@@ -51,10 +53,13 @@ export function nhomBaiTrongPhamVi(tiet: TietPpct[], tuanTu: number, tuanDen: nu
     const bai = chuoiSach(t.baiTen);
     let nhom = kq.find((n) => n.chuDe === chuDe);
     if (!nhom) {
-      nhom = { id: String(t.thuTu), chuDe, bai: [], soTiet: 0, tuanDau: t.tuan!, tuanCuoi: t.tuan! };
+      nhom = { id: String(t.thuTu), chuDe, bai: [], chiTiet: [], soTiet: 0, tuanDau: t.tuan!, tuanCuoi: t.tuan! };
       kq.push(nhom);
     }
-    if (bai && !nhom.bai.includes(bai)) nhom.bai.push(bai);
+    if (bai) {
+      if (!nhom.bai.includes(bai)) { nhom.bai.push(bai); nhom.chiTiet.push({ ten: bai, soTiet: 0 }); }
+      nhom.chiTiet.find((b) => b.ten === bai)!.soTiet += 1;
+    }
     nhom.soTiet += 1;
     nhom.tuanDau = Math.min(nhom.tuanDau, t.tuan!);
     nhom.tuanCuoi = Math.max(nhom.tuanCuoi, t.tuan!);
@@ -84,6 +89,52 @@ export const HE_THONG_GAN_YCCD =
   'Bạn là chuyên gia chương trình giáo dục phổ thông 2018 bậc tiểu học. Nhiệm vụ: với một chủ đề của sách giáo khoa, chọn trong DANH SÁCH YCCĐ cho sẵn những yêu cầu cần đạt mà các bài của chủ đề đó dạy. ' +
   'Chỉ chọn theo id trong danh sách. Không viết thêm, không sửa chữ, không bịa id. Không chắc thì bỏ, không chọn bừa. ' +
   'Chỉ trả về một mảng JSON các id, ví dụ ["a1","b2"]. Không giải thích.';
+
+export const HE_THONG_GAN_YCCD_THEO_BAI =
+  'Bạn là chuyên gia chương trình giáo dục phổ thông 2018 bậc tiểu học. Nhiệm vụ: với từng bài của một chủ đề sách giáo khoa, chọn trong DANH SÁCH YCCĐ cho sẵn những yêu cầu cần đạt mà bài đó dạy. ' +
+  'Chỉ chọn theo id trong danh sách. Không viết thêm, không sửa chữ, không bịa id. Không chắc thì bỏ, không chọn bừa. Bài ôn tập, luyện tập chung có thể chọn các YCCĐ của những bài trước trong chủ đề. ' +
+  'Chỉ trả về một đối tượng JSON, khóa là số thứ tự bài, giá trị là mảng id. Ví dụ {"1":["a1"],"2":["b2","c3"],"3":[]}. Không giải thích.';
+
+export function loiNhacGanYccdTheoBai(p: { mon: string; lop: number; chuDe: string; bai: string[]; yccd: YccdRutGon[] }): string {
+  const ds = p.yccd.map((y) => `- ${y.id} | ${y.mach ?? ''} | ${y.noiDung}`).join('\n');
+  return [
+    `Môn ${p.mon}, lớp ${p.lop}, sách Kết nối tri thức với cuộc sống.`,
+    `Chủ đề: ${p.chuDe}`,
+    'Các bài (số thứ tự. tên):',
+    ...p.bai.map((b, i) => `${i + 1}. ${b}`),
+    '',
+    'DANH SÁCH YCCĐ (id | mạch | nội dung):',
+    ds,
+    '',
+    'Trả về đối tượng JSON: khóa là số thứ tự bài, giá trị là mảng id YCCĐ của bài đó.',
+  ].join('\n');
+}
+
+/** Đọc {"1":[ids],...} thành mảng theo bài (0-based). Chỉ giữ id có thật. Sai dạng thì null. */
+export function docGanYccdTheoBai(traLoi: string, soBai: number, idHopLe: Set<string>): string[][] | null {
+  const t = traLoi.replace(/```(?:json)?/gi, '').trim();
+  const dau = t.indexOf('{');
+  const cuoi = t.lastIndexOf('}');
+  if (dau < 0 || cuoi <= dau) return null;
+  try {
+    const obj = JSON.parse(t.slice(dau, cuoi + 1)) as unknown;
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+    const r = obj as Record<string, unknown>;
+    const kq: string[][] = [];
+    for (let i = 0; i < soBai; i++) {
+      const mang = r[String(i + 1)];
+      const ids: string[] = [];
+      if (Array.isArray(mang)) for (const x of mang) {
+        const id = typeof x === 'string' ? x.trim() : '';
+        if (id && idHopLe.has(id) && !ids.includes(id)) ids.push(id);
+      }
+      kq.push(ids);
+    }
+    return kq;
+  } catch {
+    return null;
+  }
+}
 
 export function loiNhacGanYccd(p: { mon: string; lop: number; chuDe: string; bai: string[]; yccd: YccdRutGon[] }): string {
   const ds = p.yccd.map((y) => `- ${y.id} | ${y.mach ?? ''} | ${y.noiDung}`).join('\n');
@@ -165,6 +216,47 @@ export interface DongNguon {
   noiDung: string | null;
   yccd: string[];
   soTiet: number;
+  /** Nếu có: số câu đã định sẵn cho dòng (dựng theo bài). Không có thì chia theo số tiết. */
+  soCauGan?: number;
+}
+
+export interface BaiNguon {
+  ten: string;
+  soTiet: number;
+  yccd: string[];
+}
+export interface NhomNguon {
+  chuDe: string;
+  bai: BaiNguon[];
+}
+
+/**
+ * Chia số câu xuống từng bài: trước hết theo chủ đề (tỉ lệ số tiết), trong chủ đề chọn các bài
+ * nhiều tiết nhất (mỗi bài một câu khi số câu ít hơn số bài). Bài chưa có YCCĐ không nhận câu.
+ * Trả về mỗi bài nhận câu thành một dòng: mạch = chủ đề, nội dung = tên bài.
+ */
+export function chiaCauTheoBai(nhom: NhomNguon[], soCau: number): { dong: DongNguon[]; baiKhongCau: number; baiThieuYccd: string[] } {
+  const hopLe = nhom.map((n) => ({ ...n, bai: n.bai.filter((b) => b.yccd.length > 0 && b.soTiet > 0) })).filter((n) => n.bai.length > 0);
+  const baiThieuYccd = nhom.flatMap((n) => n.bai.filter((b) => b.yccd.length === 0).map((b) => b.ten));
+  const cauNhom = chiaTheoTrongSo(hopLe.map((n) => n.bai.reduce((s, b) => s + b.soTiet, 0)), soCau);
+  const dong: DongNguon[] = [];
+  let tongBai = 0;
+  hopLe.forEach((n, i) => {
+    tongBai += n.bai.length;
+    const k = cauNhom[i];
+    if (k <= 0) return;
+    let soCauBai: number[];
+    if (k <= n.bai.length) {
+      const top = n.bai.map((b, bi) => ({ bi, t: b.soTiet })).sort((a, b) => b.t - a.t || a.bi - b.bi).slice(0, k).map((x) => x.bi);
+      soCauBai = n.bai.map((_, bi) => (top.includes(bi) ? 1 : 0));
+    } else {
+      soCauBai = chiaTheoTrongSo(n.bai.map((b) => b.soTiet), k);
+    }
+    n.bai.forEach((b, bi) => {
+      if (soCauBai[bi] > 0) dong.push({ mach: n.chuDe, noiDung: b.ten, yccd: b.yccd, soTiet: b.soTiet, soCauGan: soCauBai[bi] });
+    });
+  });
+  return { dong, baiKhongCau: tongBai - dong.length, baiThieuYccd };
 }
 
 export interface ThamSoDung {
@@ -239,7 +331,12 @@ export function dungMaTranTuChuongTrinh(p: ThamSoDung): KetQuaDung {
   }
 
   // 3. Số câu mỗi dòng theo số tiết
-  const cauMoiDong = chiaTheoTrongSo(dongCoYccd.map((d) => d.soTiet), p.soCau);
+  const cauMoiDong = dongCoYccd.some((d) => d.soCauGan !== undefined)
+    ? dongCoYccd.map((d) => d.soCauGan ?? 0)
+    : chiaTheoTrongSo(dongCoYccd.map((d) => d.soTiet), p.soCau);
+  if (cauMoiDong.reduce((a, b) => a + b, 0) !== p.soCau) {
+    return { maTran: null, loi: ['Số câu chia cho các dòng không khớp tổng số câu. Báo lại để sửa.'], canhBao };
+  }
   const cauDong = dongCoYccd.map((d, i) => ({ d, so: cauMoiDong[i] })).filter((x) => x.so > 0);
   if (cauDong.length < dongCoYccd.length) {
     const bo = dongCoYccd.filter((d) => !cauDong.some((x) => x.d === d)).map((d) => `"${d.mach}"`).join(', ');
