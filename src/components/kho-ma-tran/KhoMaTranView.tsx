@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, Eye, FileUp, FolderUp, Loader2, Trash2, TriangleAlert, X } from 'lucide-react';
 import { useAuth } from '@/core/contexts/AuthContext';
 import { docChuTuDocx } from '@/core/utils/docx-text';
+import { docKhoiTuDocx, type KhoiVanBan } from '@/core/utils/docx-bang';
 import {
   DANH_SACH_KY_MA_TRAN,
   DANH_SACH_MON,
@@ -29,7 +30,7 @@ import type { TaiLieuMaTran } from '@/lib/repositories/kho-ma-tran.repository';
 
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const VAI_TRO_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
-const MOI_LAN_GUI = 8;
+const MOI_LAN_GUI = 4;
 
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
@@ -43,6 +44,34 @@ interface FileCho extends KetQuaPhanLoai {
 const tenMon = (ma: string) => DANH_SACH_MON.find((m) => m.ma === ma)?.ten ?? ma;
 const tenKy = (ma: string | null) => DANH_SACH_KY_MA_TRAN.find((k) => k.ma === ma)?.ten ?? '';
 const ngay = (s: string | null) => (s ? new Date(s).toLocaleDateString('vi-VN') : '');
+
+/** Hiện lại file Word: đoạn văn và bảng có ô gộp, giống bản gốc nhất có thể. */
+function XemTaiLieuWord({ khoi }: { khoi: KhoiVanBan[] }) {
+  return (
+    <div className="space-y-1 text-sm text-slate-800" style={{ fontFamily: '"Times New Roman", serif' }}>
+      {khoi.map((k, i) =>
+        k.loai === 'doan' ? (
+          <p key={i} className={`whitespace-pre-wrap min-h-[1em] ${k.giua ? 'text-center' : ''} ${k.dam ? 'font-bold' : ''}`}>{k.chu}</p>
+        ) : (
+          <table key={i} className="w-full border-collapse my-2">
+            <tbody>
+              {k.hang.map((h, j) => (
+                <tr key={j}>
+                  {h.map((o, n) => (
+                    <td key={n} colSpan={o.cot > 1 ? o.cot : undefined} rowSpan={o.hang > 1 ? o.hang : undefined}
+                      className={`border border-slate-400 px-1.5 py-1 align-middle whitespace-pre-wrap ${o.giua ? 'text-center' : ''} ${o.dam ? 'font-bold' : ''}`}>
+                      {o.chu}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ),
+      )}
+    </div>
+  );
+}
 
 /** Đọc mọi file trong thư mục được kéo thả (Chrome, Edge, Firefox). */
 async function docMucKeoTha(items: DataTransferItemList): Promise<{ file: File; duongDan: string }[]> {
@@ -81,7 +110,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
   const [dangLuu, setDangLuu] = useState(false);
   const [thongBao, setThongBao] = useState<{ loai: 'ok' | 'loi'; text: string } | null>(null);
   const [oDangXem, setODangXem] = useState<string | null>(null);
-  const [xemChu, setXemChu] = useState<{ tenFile: string; noiDung: string } | null>(null);
+  const [xemChu, setXemChu] = useState<{ tenFile: string; noiDung: string; cauTruc: KhoiVanBan[] | null } | null>(null);
   const [keoVao, setKeoVao] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const thuMucRef = useRef<HTMLInputElement>(null);
@@ -150,16 +179,18 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     setDangLuu(true);
     setThongBao(null);
     const loiDoc: string[] = [];
-    const daDoc: { loai: LoaiMaTranTo; maMon: string; ky: KyMaTran | null; tenFile: string; duongDan: string; kichThuoc: number; noiDung: string }[] = [];
+    const daDoc: { loai: LoaiMaTranTo; maMon: string; ky: KyMaTran | null; tenFile: string; duongDan: string; kichThuoc: number; noiDung: string; cauTruc: KhoiVanBan[] | null }[] = [];
     for (const f of canLuu) {
       try {
-        const noiDung = await docChuTuDocx(await f.file.arrayBuffer());
-        daDoc.push({ loai, maMon: f.maMon!, ky: f.ky, tenFile: f.tenFile, duongDan: f.duongDan, kichThuoc: f.file.size, noiDung });
+        const buf = await f.file.arrayBuffer();
+        const noiDung = await docChuTuDocx(buf);
+        const cauTruc = await docKhoiTuDocx(buf).catch(() => null);
+        daDoc.push({ loai, maMon: f.maMon!, ky: f.ky, tenFile: f.tenFile, duongDan: f.duongDan, kichThuoc: f.file.size, noiDung, cauTruc });
       } catch {
         loiDoc.push(`${f.tenFile}: không đọc được file.`);
       }
     }
-    const ketQua: { tenFile: string; ok: boolean; loi?: string }[] = [];
+    const ketQua: { tenFile: string; ok: boolean; loi?: string; boSung?: boolean }[] = [];
     try {
       for (let i = 0; i < daDoc.length; i += MOI_LAN_GUI) {
         const r = await fetch('/api/kho-ma-tran', {
@@ -173,14 +204,16 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     } catch (e) {
       loiDoc.push(e instanceof Error ? e.message : String(e));
     }
-    const ok = ketQua.filter((k) => k.ok).length;
+    const boSung = ketQua.filter((k) => k.ok && k.boSung).length;
+    const ok = ketQua.filter((k) => k.ok && !k.boSung).length;
+    const ghiChuBoSung = boSung ? ` ${boSung} file trùng bản đã có nên không tạo bản mới, chỉ cập nhật để xem dạng bảng.` : '';
     const loi = [...loiDoc, ...ketQua.filter((k) => !k.ok).map((k) => `${k.tenFile}: ${k.loi}`)];
     setThongBao(
       loi.length
-        ? { loai: 'loi', text: `Đã lưu ${ok} file. Chưa lưu được: ${loi.join(' · ')}` }
-        : { loai: 'ok', text: `Đã lưu ${ok} file. Tổ trưởng bấm vào từng ô để xem và xác nhận.` },
+        ? { loai: 'loi', text: `Đã lưu ${ok} file.${ghiChuBoSung} Chưa lưu được: ${loi.join(' · ')}` }
+        : { loai: 'ok', text: ok ? `Đã lưu ${ok} file.${ghiChuBoSung} Tổ trưởng bấm vào từng ô để xem và xác nhận.` : `Không có file mới.${ghiChuBoSung}` },
     );
-    if (ok) setCho([]);
+    if (ok || boSung) setCho([]);
     setDangLuu(false);
     napDanhSach();
   };
@@ -188,6 +221,30 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
   const xacNhan = async (id: string) => {
     const r = await fetch('/api/kho-ma-tran/xac-nhan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then((x) => x.json());
     setThongBao(r.error ? { loai: 'loi', text: r.error } : { loai: 'ok', text: 'Đã xác nhận.' });
+    napDanhSach();
+  };
+
+  /** Xác nhận cùng lúc bản mới nhất đang chờ của mọi ô. Gọi lần lượt API xác nhận từng file sẵn có. */
+  const [dangXacNhanHet, setDangXacNhanHet] = useState(false);
+  const xacNhanTatCa = async () => {
+    const ds = choXacNhanTheoO;
+    if (!ds.length) return;
+    if (!window.confirm(`Xác nhận cùng lúc ${ds.length} ô đang chờ? Mỗi ô lấy bản mới nhất. Nên mở xem trước những ô chưa kiểm tra.`)) return;
+    setDangXacNhanHet(true);
+    const loi: string[] = [];
+    for (const t of ds) {
+      try {
+        const r = await fetch('/api/kho-ma-tran/xac-nhan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: t.id }) }).then((x) => x.json());
+        if (r.error) loi.push(`${tenMon(t.maMon)}${t.ky ? ' – ' + tenKy(t.ky) : ''}: ${r.error}`);
+      } catch (e) {
+        loi.push(`${tenMon(t.maMon)}${t.ky ? ' – ' + tenKy(t.ky) : ''}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    setDangXacNhanHet(false);
+    const ok = ds.length - loi.length;
+    setThongBao(loi.length
+      ? { loai: 'loi', text: `Đã xác nhận ${ok}/${ds.length} ô. Chưa được: ${loi.join('; ')}` }
+      : { loai: 'ok', text: `Đã xác nhận ${ok} ô.` });
     napDanhSach();
   };
 
@@ -201,7 +258,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
   const moChu = async (id: string) => {
     const r = await fetch(`/api/kho-ma-tran/noi-dung?id=${id}`).then((x) => x.json());
     if (r.error) setThongBao({ loai: 'loi', text: r.error });
-    else setXemChu({ tenFile: r.tenFile, noiDung: r.noiDung });
+    else setXemChu({ tenFile: r.tenFile, noiDung: r.noiDung, cauTruc: r.cauTruc ?? null });
   };
 
   // Bảng ô: môn × (kì hoặc một cột cả năm)
@@ -214,6 +271,17 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     }
     return m;
   }, [taiLieu]);
+
+  // Mỗi ô: bản mới nhất đang chờ (mới hơn bản đã xác nhận). Danh sách đã xếp phiên bản giảm dần.
+  const choXacNhanTheoO = useMemo(() => {
+    const kq: TaiLieuMaTran[] = [];
+    for (const ds of theoO.values()) {
+      const daXN = ds.find((t) => t.trangThai === 'DA_XAC_NHAN');
+      const moiNhat = ds.find((t) => t.trangThai === 'CHO_XAC_NHAN' && (!daXN || t.phienBan > daXN.phienBan));
+      if (moiNhat) kq.push(moiNhat);
+    }
+    return kq;
+  }, [theoO]);
 
   const dangXem = oDangXem ? theoO.get(oDangXem) ?? [] : [];
 
@@ -316,6 +384,16 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
         </div>
       )}
 
+      {/* Xác nhận hàng loạt */}
+      {duocXacNhan && !dangTai && choXacNhanTheoO.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <p className="text-sm text-amber-800">Có {choXacNhanTheoO.length} ô đang chờ xác nhận.</p>
+          <button type="button" className={nutChinh} onClick={xacNhanTatCa} disabled={dangXacNhanHet}>
+            {dangXacNhanHet ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Xác nhận tất cả ({choXacNhanTheoO.length} ô)
+          </button>
+        </div>
+      )}
+
       {/* Bảng môn × kì */}
       <div className="the-tke overflow-x-auto">
         {dangTai ? (
@@ -394,12 +472,19 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
 
       {xemChu && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[85vh] flex flex-col">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
               <div className="font-semibold text-slate-900">{xemChu.tenFile}</div>
               <button type="button" aria-label="Đóng" className="p-1 rounded hover:bg-slate-100" onClick={() => setXemChu(null)}><X className="w-5 h-5" /></button>
             </div>
-            <pre className="p-4 overflow-auto text-sm whitespace-pre-wrap font-sans text-slate-800">{xemChu.noiDung}</pre>
+            {xemChu.cauTruc ? (
+              <div className="p-4 overflow-auto"><XemTaiLieuWord khoi={xemChu.cauTruc} /></div>
+            ) : (
+              <>
+                <p className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">Bản này tải lên trước khi app biết đọc bảng nên chỉ còn chữ. Muốn xem dạng bảng, thầy cô tải lại đúng file này: app không tạo phiên bản mới, chỉ bổ sung phần bảng.</p>
+                <pre className="p-4 overflow-auto text-sm whitespace-pre-wrap font-sans text-slate-800">{xemChu.noiDung}</pre>
+              </>
+            )}
           </div>
         </div>
       )}

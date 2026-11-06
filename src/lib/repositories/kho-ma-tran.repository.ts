@@ -5,6 +5,7 @@
  */
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import type { KhoiVanBan } from '@/core/utils/docx-bang';
 import { DANH_SACH_KY_MA_TRAN, DANH_SACH_MON, type KyMaTran, type LoaiMaTranTo } from '@/core/kho-ma-tran/phan-loai';
 
 const KHOI = 4;
@@ -35,6 +36,15 @@ export interface FileTaiLen {
   duongDan?: string;
   kichThuoc?: number;
   noiDung: string;
+  /** Đoạn văn và bảng đọc từ file Word, để xem lại đúng dạng bảng */
+  cauTruc?: KhoiVanBan[] | null;
+}
+
+const CAU_TRUC_TOI_DA = 1_500_000; // ký tự JSON
+
+function cauTrucHopLe(c: unknown): KhoiVanBan[] | null {
+  if (!Array.isArray(c) || c.length === 0) return null;
+  return JSON.stringify(c).length <= CAU_TRUC_TOI_DA ? (c as KhoiVanBan[]) : null;
 }
 
 async function layNguoiDung() {
@@ -93,29 +103,40 @@ export async function danhSachTaiLieu(loai: LoaiMaTranTo): Promise<TaiLieuMaTran
 }
 
 /** Nội dung chữ của một file (để xem và để các phần khác đọc). */
-export async function noiDungTaiLieu(id: string): Promise<{ tenFile: string; noiDung: string }> {
+export async function noiDungTaiLieu(id: string): Promise<{ tenFile: string; noiDung: string; cauTruc: KhoiVanBan[] | null }> {
   const { supabase, orgId } = await layNguoiDung();
-  const { data, error } = await supabase.from('tai_lieu_ma_tran').select('ten_file, noi_dung').eq('organization_id', orgId).eq('id', id).single();
+  const { data, error } = await supabase.from('tai_lieu_ma_tran').select('ten_file, noi_dung, cau_truc').eq('organization_id', orgId).eq('id', id).single();
   if (error || !data) throw new Error('Không tìm thấy file.');
-  return { tenFile: data.ten_file, noiDung: data.noi_dung };
+  return { tenFile: data.ten_file, noiDung: data.noi_dung, cauTruc: data.cau_truc ?? null };
 }
 
 /** Lưu nhiều file. Mỗi file là phiên bản mới của ô (môn × kì). Trả về kết quả từng file. */
-export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string; ok: boolean; loi?: string; phienBan?: number }[]> {
+export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string; ok: boolean; loi?: string; phienBan?: number; boSung?: boolean }[]> {
   const { supabase, user, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải ma trận lên.');
   if (ds.length === 0) return [];
   if (ds.length > 60) throw new Error('Mỗi lần tải tối đa 60 file.');
 
-  const kq: { tenFile: string; ok: boolean; loi?: string; phienBan?: number }[] = [];
+  const kq: { tenFile: string; ok: boolean; loi?: string; phienBan?: number; boSung?: boolean }[] = [];
   for (const f of ds) {
     const loi = kiemTraFileTaiLen(f);
     if (loi) { kq.push({ tenFile: f.tenFile, ok: false, loi }); continue; }
     const ky = f.loai === 'CHUNG' ? f.ky : null;
 
-    let q = supabase.from('tai_lieu_ma_tran').select('phien_ban').eq('organization_id', orgId).eq('khoi', KHOI).eq('loai', f.loai).eq('ma_mon', f.maMon);
+    // Lấy bản mới nhất của ô (môn × kì) để biết số phiên bản tiếp theo
+    let q = supabase.from('tai_lieu_ma_tran').select('id, phien_ban, noi_dung, cau_truc').eq('organization_id', orgId).eq('khoi', KHOI).eq('loai', f.loai).eq('ma_mon', f.maMon);
     q = ky ? q.eq('ky_kiem_tra', ky) : q.is('ky_kiem_tra', null);
     const { data: cu } = await q.order('phien_ban', { ascending: false }).limit(1);
+    const cauTruc = cauTrucHopLe(f.cauTruc);
+
+    // Tải lại đúng file cũ (chữ y hệt): không tạo phiên bản mới; bản cũ chưa có dạng bảng thì bổ sung vào
+    const giong = cu?.[0];
+    if (giong && giong.noi_dung === f.noiDung) {
+      if (giong.cau_truc || !cauTruc) { kq.push({ tenFile: f.tenFile, ok: true, phienBan: giong.phien_ban, boSung: true }); continue; }
+      const { data: daGhi, error: loiGhi } = await supabase.rpc('bo_sung_cau_truc_ma_tran', { p_id: giong.id, p_noi_dung: f.noiDung, p_cau_truc: cauTruc });
+      if (!loiGhi && daGhi) { kq.push({ tenFile: f.tenFile, ok: true, phienBan: giong.phien_ban, boSung: true }); continue; }
+    }
+
     const phienBan = (cu?.[0]?.phien_ban ?? 0) + 1;
 
     const { error } = await supabase.from('tai_lieu_ma_tran').insert({
@@ -129,6 +150,7 @@ export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string;
       duong_dan: f.duongDan?.slice(0, 1000) ?? null,
       kich_thuoc: typeof f.kichThuoc === 'number' ? Math.round(f.kichThuoc) : null,
       noi_dung: f.noiDung,
+      cau_truc: cauTruc,
       tai_len_boi: user.id,
     });
     kq.push(error ? { tenFile: f.tenFile, ok: false, loi: error.message } : { tenFile: f.tenFile, ok: true, phienBan });

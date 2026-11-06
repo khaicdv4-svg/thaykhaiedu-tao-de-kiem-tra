@@ -10,7 +10,7 @@ async function giaiNen(raw: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-async function docTepTrongZip(buf: ArrayBuffer, ten: string): Promise<Uint8Array | null> {
+export async function docTepTrongZip(buf: ArrayBuffer, ten: string): Promise<Uint8Array | null> {
   const v = new DataView(buf);
   const u8 = new Uint8Array(buf);
   // Tìm "End of central directory" từ cuối file
@@ -45,7 +45,7 @@ async function docTepTrongZip(buf: ArrayBuffer, ten: string): Promise<Uint8Array
   return null;
 }
 
-function giaiMaXml(s: string): string {
+export function giaiMaXml(s: string): string {
   return s
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
