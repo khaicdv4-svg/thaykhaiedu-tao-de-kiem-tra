@@ -143,11 +143,11 @@ export class CurriculumSourceRepository {
    */
   async ingestSubjectSource(params: IngestSubjectParams): Promise<{ sourceId: string; outcomesSaved: number; mappingsSaved: number }> {
     const supabase = await createServerSupabaseClient();
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) throw new Error('Chưa cấu hình Supabase.');
 
     // Lấy thông tin người dùng hiện tại và tổ chức
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    if (!user) throw new Error('Phiên đăng nhập đã hết. Thầy cô đăng nhập lại rồi lưu.');
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -156,10 +156,17 @@ export class CurriculumSourceRepository {
       .single();
 
     if (!profile?.organization_id) {
-      throw new Error('Organization ID not found for current user');
+      throw new Error('Tài khoản chưa được gắn với trường nào.');
     }
 
     const orgId = profile.organization_id;
+
+    // 0. Môn trong PPCT HUB (vd. 'subj-toan4') có thể chưa có trong danh mục môn: thêm vào trước,
+    //    nếu không khóa ngoại chặn và lưu thất bại (lỗi 06/11/2026).
+    const { error: monErr } = await supabase.rpc('dam_bao_mon_hoc', { p_id: params.source.subjectId, p_ten: params.source.name });
+    if (monErr) {
+      throw new Error(`Môn "${params.source.name}" (${params.source.subjectId}) chưa có trong danh mục môn và không thêm được: ${monErr.message}`);
+    }
 
     // 1. Lưu hoặc cập nhật curriculum_sources
     const { data: sourceRow, error: srcErr } = await supabase
@@ -190,7 +197,7 @@ export class CurriculumSourceRepository {
       .single();
 
     if (srcErr || !sourceRow) {
-      throw new Error(`Failed to upsert curriculum source: ${srcErr?.message}`);
+      throw new Error(`Không lưu được PPCT môn "${params.source.name}": ${srcErr?.message ?? 'lỗi không rõ'}`);
     }
 
     const sourceId = sourceRow.id;

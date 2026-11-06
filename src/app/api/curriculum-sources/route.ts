@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
 
     const parsed = extractAndFilterPpctHubData(jsonContent, Number(grade), academicYear);
     const results = [];
+    const loi: string[] = [];
 
     for (const subjectId of selectedSubjectIds) {
       const payload = prepareSubjectIngestionPayload(
@@ -51,20 +52,32 @@ export async function POST(req: NextRequest) {
       );
 
       if (payload) {
-        const saved = await repo.ingestSubjectSource(payload);
-        results.push({
-          subjectId,
-          sourceId: saved.sourceId,
-          outcomesSaved: saved.outcomesSaved,
-          mappingsSaved: saved.mappingsSaved,
-        });
+        // Lưu từng môn riêng: môn này lỗi không làm mất các môn khác
+        try {
+          const saved = await repo.ingestSubjectSource(payload);
+          results.push({
+            subjectId,
+            sourceId: saved.sourceId,
+            outcomesSaved: saved.outcomesSaved,
+            mappingsSaved: saved.mappingsSaved,
+          });
+        } catch (e) {
+          loi.push(e instanceof Error ? e.message : String(e));
+        }
+      } else {
+        loi.push(`Môn ${subjectId}: không có dữ liệu trong file.`);
       }
+    }
+
+    if (results.length === 0) {
+      return NextResponse.json({ error: loi.join(' · ') || 'Không lưu được môn nào.' }, { status: 400 });
     }
 
     return NextResponse.json({
       success: true,
-      message: `Đã lưu thành công ${results.length} môn học vào kho chuyên môn.`,
+      message: `Đã lưu ${results.length} môn học vào kho chuyên môn.`,
       results,
+      loi,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

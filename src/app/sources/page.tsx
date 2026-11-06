@@ -257,10 +257,12 @@ export default function SourcesPage() {
       }
 
       setPipelineStep(8); // Bước 8: Đã lưu vào kho thành công
-      setSaveMessage({
-        type: 'success',
-        text: `Đã lưu thành công ${json.results?.length || selectedSubjectIds.length} môn học vào kho chuyên môn trường (Năm học ${academicYear})!`,
-      });
+      const loiMon: string[] = Array.isArray(json.loi) ? json.loi : [];
+      setSaveMessage(
+        loiMon.length
+          ? { type: 'error', text: `Đã lưu ${json.results?.length ?? 0} môn. Chưa lưu được: ${loiMon.join(' · ')}` }
+          : { type: 'success', text: `Đã lưu ${json.results?.length || selectedSubjectIds.length} môn học vào kho chuyên môn trường (năm học ${academicYear}). Tải lại trang vẫn còn.` },
+      );
       // Tự động tải lại danh sách nguồn đã lưu
       fetchSavedSources();
     } catch (err: unknown) {
