@@ -170,3 +170,39 @@ export async function xoaYccd(ids: string[]): Promise<void> {
   const { error } = await supabase.from('ct_yccd').delete().in('id', ids).eq('organization_id', orgId);
   if (error) throw new Error(`Không xóa được: ${error.message}`);
 }
+
+/** Mã môn trong Kho chương trình → mã môn trong PPCT HUB (bảng ppct_tiet). */
+const MON_SANG_PPCT: Record<string, string> = {
+  TOAN: 'subj-toan4',
+  TIENG_VIET: 'subj-tv4',
+  KHOA_HOC: 'subj-kh4',
+  LS_DL: 'subj-lsdl4',
+  CONG_NGHE: 'subj-cn4',
+  DAO_DUC: 'subj-dd4',
+  HDTN: 'subj-hdtn4',
+};
+
+/**
+ * Lịch tiết đã nhập của một môn lớp 4 (PPCT HUB). Chỉ lớp 4 vì PPCT hiện nhập cho khối 4.
+ * Nếu một môn có nhiều lần nhập thì lấy lần nhập mới nhất, tránh cộng dồn tiết.
+ */
+export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null }[]> {
+  const subjectId = MON_SANG_PPCT[mon];
+  if (!subjectId) throw new Error('Môn này chưa có phân phối chương trình trong ứng dụng.');
+  if (lop !== 4) throw new Error('Phân phối chương trình hiện mới nhập cho lớp 4.');
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase
+    .from('ppct_tiet')
+    .select('thu_tu, tuan, hoc_ki, chu_de, bai_ten, source_id, created_at')
+    .eq('organization_id', orgId)
+    .eq('subject_id', subjectId)
+    .eq('grade', lop)
+    .order('thu_tu')
+    .limit(2000);
+  if (error) throw new Error(`Không đọc được phân phối chương trình: ${error.message}`);
+  const hang = data ?? [];
+  const moiNhat = hang.reduce<{ id: string | null; luc: string }>((m, r) => (r.created_at > m.luc ? { id: r.source_id as string, luc: r.created_at as string } : m), { id: null, luc: '' });
+  return hang
+    .filter((r) => !moiNhat.id || r.source_id === moiNhat.id)
+    .map((r) => ({ thuTu: r.thu_tu as number, tuan: r.tuan as number | null, hocKi: r.hoc_ki as number | null, chuDe: r.chu_de as string | null, baiTen: r.bai_ten as string | null }));
+}

@@ -31,6 +31,7 @@ import type { HinhThucCau, MaTranChung, MaTranRieng, MucDo, SuaCauMaTranRieng, T
 import { MatrixPreview } from '@/components/matrices/MatrixPreview';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
+import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
 
 const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
 
@@ -42,7 +43,19 @@ const NHAN_TRANG_THAI: Record<TrangThaiMaTran, { ten: string; mau: string }> = {
   CAN_XAC_NHAN_LAI: { ten: 'Cần xác nhận lại', mau: 'bg-amber-50 text-amber-800 border-amber-200' },
 };
 
-const khoaLuu = (m: MaTranChung) => `thaykhaiedu.maTranRieng.${m.ma_mon}.${m.ky_kiem_tra}`;
+const MA_KHUNG_DUNG = 'DUNG_TU_CHUONG_TRINH';
+const laKhungDung = (m: MaTranChung | null) => m?.phien_ban_mau === MA_KHUNG_DUNG;
+const khoaLuu = (m: MaTranChung) => `thaykhaiedu.maTranRieng.${m.ma_mon}.${m.ky_kiem_tra}${laKhungDung(m) ? '.ct' : ''}`;
+const khoaKhung = (maMon: string) => `thaykhaiedu.khungDung.${maMon}.CUOI_HK1`;
+
+function docKhungDung(maMon: string): MaTranChung | null {
+  try {
+    const raw = window.localStorage.getItem(khoaKhung(maMon));
+    return raw ? (JSON.parse(raw) as MaTranChung) : null;
+  } catch {
+    return null;
+  }
+}
 
 function docBanNhap(m: MaTranChung): MaTranRieng | null {
   try {
@@ -64,7 +77,7 @@ function ghiBanNhap(m: MaTranChung, mtr: MaTranRieng): boolean {
 
 /** Câu chỉ có một YCCĐ thì gắn sẵn, giáo viên không phải chọn. */
 function ganSanYccdDuyNhat(mtc: MaTranChung, mtr: MaTranRieng): MaTranRieng {
-  if (mtr.nguon_yccd === 'CHUONG_TRINH') return mtr;
+  if (mtr.nguon_yccd === 'CHUONG_TRINH' && !laKhungDung(mtc)) return mtr;
   const daCo = new Set(mtr.cau_hoi.map((c) => c.khoa));
   const them = danhSachCau(mtc, mtr.lua_chon_da_dung)
     .filter((c) => c.cau.dang !== 'VIET' && c.phan.kieu !== 'VIET' && c.dong.yccd.length === 1 && !daCo.has(c.khoa))
@@ -163,15 +176,25 @@ export default function MatricesPage() {
   const [thongBao, setThongBao] = useState<string | null>(null);
   const [yccdCT, setYccdCT] = useState<YccdChuongTrinh[] | null>(null);
   const [loiCT, setLoiCT] = useState<string | null>(null);
+  const [cachLap, setCachLap] = useState<'MA_TRAN_CHUNG' | 'CHUONG_TRINH'>('MA_TRAN_CHUNG');
+  const [dangDung, setDangDung] = useState(false);
+  const [khungDung, setKhungDung] = useState<MaTranChung | null>(null);
 
-  const mtc = useMemo(() => MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? null, [maMon]);
+  const mtc = useMemo(
+    () => (cachLap === 'CHUONG_TRINH' ? khungDung : MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? null),
+    [maMon, cachLap, khungDung],
+  );
+  const khungDaLuu = useMemo(() => (cachLap === 'CHUONG_TRINH' && maMon && typeof window !== 'undefined' ? docKhungDung(maMon) : null), [cachLap, maMon, khungDung]);
+  const khungDungHienTai = laKhungDung(mtc);
+  const tenMonDangChon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? '';
   const kqChung = useMemo(() => (mtc ? kiemDinhMaTranChung(mtc) : null), [mtc]);
 
   // Nạp bản nháp (nếu có) khi chọn môn
   useEffect(() => {
     if (!mtc) return;
     const nhap = docBanNhap(mtc);
-    setMtr(ganSanYccdDuyNhat(mtc, nhap ?? taoMaTranRiengRong(mtc)));
+    const khoiTao = laKhungDung(mtc) ? { ...taoMaTranRiengRong(mtc), nguon_yccd: 'CHUONG_TRINH' as const } : taoMaTranRiengRong(mtc);
+    setMtr(ganSanYccdDuyNhat(mtc, nhap ?? khoiTao));
     setKetQua(null);
     setDaXemTruoc(false);
     setThongBao(nhap ? 'Đã mở lại bản nháp ma trận riêng đã lưu.' : null);
@@ -197,6 +220,18 @@ export default function MatricesPage() {
     for (const y of yccdCT ?? []) m.set(y.mach ?? 'Chưa rõ mạch', [...(m.get(y.mach ?? 'Chưa rõ mạch') ?? []), y.noiDung]);
     return [...m.entries()];
   }, [yccdCT]);
+
+  const nhanKhungDung = (m: MaTranChung) => {
+    try {
+      window.localStorage.removeItem(khoaLuu(m)); // khung mới thì bản nháp ma trận riêng cũ không còn khớp
+      window.localStorage.setItem(khoaKhung(m.ma_mon), JSON.stringify(m));
+    } catch {
+      /* không lưu được thì vẫn dùng trong phiên này */
+    }
+    setKhungDung(m);
+    setDangDung(false);
+    setBuoc(1);
+  };
 
   const doiNguonYccd = (nguon: 'MA_TRAN_CHUNG' | 'CHUONG_TRINH') => capNhat((m) => ({ ...m, nguon_yccd: nguon }));
 
@@ -296,34 +331,64 @@ export default function MatricesPage() {
 
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
 
+      {buoc === 0 && dangDung && maMon && (
+        <DungTuChuongTrinh maMon={maMon} tenMon={tenMonDangChon} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
+      )}
+
       {/* Bước 1: chọn môn */}
-      {buoc === 0 && (
+      {buoc === 0 && !dangDung && (
         <div className="the-tke p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Chọn môn kiểm tra</h2>
             <p className="text-sm text-slate-600">Kì kiểm tra: Cuối học kì I, năm học 2026 – 2027, Lớp 4.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              ['MA_TRAN_CHUNG', 'Dùng ma trận chung của tổ', 'Tổ đã có ma trận chung. Lập ma trận riêng từ đó.'],
+              ['CHUONG_TRINH', 'Dựng từ chương trình', 'Tổ chưa có ma trận chung. Dựng khung từ phân phối chương trình và YCCĐ đã duyệt.'],
+            ] as const).map(([k, ten, mt]) => (
+              <button key={k} type="button" aria-pressed={cachLap === k} onClick={() => { setCachLap(k); setKhungDung(null); setBuoc(0); }} className={`text-left rounded-lg border p-3 ${cachLap === k ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50'}`}>
+                <div className={`text-sm font-semibold ${cachLap === k ? 'text-blue-800' : 'text-slate-800'}`}>{cachLap === k ? '● ' : '○ '}{ten}</div>
+                <div className="text-xs text-slate-600 mt-0.5">{mt}</div>
+              </button>
+            ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {MAU_MA_TRAN_CHUNG.map((m) => (
               <button
                 key={m.ma_mon}
                 type="button"
+                disabled={cachLap === 'CHUONG_TRINH' && m.ma_mon === 'TIENG_VIET'}
                 onClick={() => setMaMon(m.ma_mon)}
-                className={`rounded-xl border p-4 text-left transition ${maMon === m.ma_mon ? 'border-blue-600 ring-2 ring-blue-100 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}
+                className={`rounded-xl border p-4 text-left transition disabled:opacity-50 disabled:cursor-not-allowed ${maMon === m.ma_mon ? 'border-blue-600 ring-2 ring-blue-100 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}
               >
                 <div className="font-semibold text-slate-900">{m.mon}</div>
                 <div className="text-xs text-slate-500 mt-1">
                   {m.bai_kiem_tra.length > 1 ? 'Bài Đọc và bài Viết, mỗi bài 10 điểm' : '10 điểm'}
                   {m.thoi_gian_phut ? ` · ${m.thoi_gian_phut} phút` : ''}
+                  {cachLap === 'CHUONG_TRINH' && m.ma_mon === 'TIENG_VIET' ? ' · cần ma trận chung (có Đọc thành tiếng, Đọc hiểu, Viết)' : ''}
                 </div>
               </button>
             ))}
           </div>
-          <div className="flex justify-end">
-            <button type="button" className={nutChinh} disabled={!mtc} onClick={() => setBuoc(1)}>
-              Tiếp tục <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          {cachLap === 'CHUONG_TRINH' ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              {khungDaLuu && maMon && (
+                <button type="button" className={nutPhu} onClick={() => { setKhungDung(khungDaLuu); setBuoc(1); }}>
+                  Mở lại khung đã dựng
+                </button>
+              )}
+              <button type="button" className={nutChinh} disabled={!maMon} onClick={() => setDangDung(true)}>
+                Dựng khung từ chương trình <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <button type="button" className={nutChinh} disabled={!mtc} onClick={() => setBuoc(1)}>
+                Tiếp tục <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -331,8 +396,12 @@ export default function MatricesPage() {
       {buoc === 1 && mtc && kqChung && (
         <div className="space-y-4">
           <div className="the-tke p-6 space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">Ma trận chung của tổ – {mtc.mon}</h2>
-            <p className="text-sm text-slate-600">Đây là khung tổ đã thống nhất. Ma trận riêng giữ nguyên số câu, mức, hình thức và điểm của từng câu.</p>
+            <h2 className="text-lg font-semibold text-slate-900">{khungDungHienTai ? 'Khung ma trận dựng từ chương trình' : 'Ma trận chung của tổ'} – {mtc.mon}</h2>
+            <p className="text-sm text-slate-600">
+              {khungDungHienTai
+                ? 'Khung do ứng dụng dựng từ phân phối chương trình và YCCĐ đã duyệt, chưa phải khung tổ đã thống nhất. Số câu, mức, hình thức và điểm là gợi ý, thầy chỉnh ở bước sau.'
+                : 'Đây là khung tổ đã thống nhất. Ma trận riêng giữ nguyên số câu, mức, hình thức và điểm của từng câu.'}
+            </p>
             {mtc.van_de_can_xac_nhan && mtc.van_de_can_xac_nhan.length > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 <div className="font-semibold mb-1">Tổ trưởng cần xác nhận trong ma trận chung</div>
@@ -347,7 +416,7 @@ export default function MatricesPage() {
             <MatrixPreview maTran={mtc} />
           </div>
           <div className="flex justify-between">
-            <button type="button" className={nutPhu} onClick={() => setBuoc(0)}><ArrowLeft className="w-4 h-4" /> Quay lại</button>
+            <button type="button" className={nutPhu} onClick={() => { setBuoc(0); setDangDung(khungDungHienTai); }}><ArrowLeft className="w-4 h-4" /> Quay lại</button>
             <button type="button" className={nutChinh} disabled={!kqChung.hopLe} onClick={() => setBuoc(2)}>
               Lập ma trận riêng <ArrowRight className="w-4 h-4" />
             </button>
@@ -376,6 +445,12 @@ export default function MatricesPage() {
             </div>
           )}
 
+          {khungDungHienTai ? (
+            <div className="the-tke p-6 text-sm text-slate-700">
+              <h2 className="text-lg font-semibold text-slate-900">Nguồn yêu cầu cần đạt (YCCĐ)</h2>
+              <p className="mt-1">YCCĐ lấy từ Kho chương trình GDPT 2018 (đã duyệt), theo chủ đề thầy đã ghép ở bước dựng khung. Mỗi câu chọn đúng một YCCĐ của chủ đề đó.</p>
+            </div>
+          ) : (
           <div className="the-tke p-6">
             <h2 className="text-lg font-semibold text-slate-900">Nguồn yêu cầu cần đạt (YCCĐ)</h2>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -400,6 +475,7 @@ export default function MatricesPage() {
             )}
             {nguonCT && yccdCT && yccdCT.length > 0 && <p className="text-xs text-slate-500 mt-2">Có {yccdCT.length} YCCĐ đã duyệt của {mtc?.mon} lớp {lopSo}. Câu đã chọn YCCĐ không nằm trong danh sách này sẽ bị báo lỗi khi kiểm tra.</p>}
           </div>
+          )}
 
           <div className="the-tke p-6">
             <h2 className="text-lg font-semibold text-slate-900">Chọn yêu cầu cần đạt, chỉnh câu cho từng câu</h2>
@@ -442,7 +518,7 @@ export default function MatricesPage() {
                           onChange={(e) => chonYccd(c.khoa, e.target.value)}
                         >
                           <option value="">– Chọn YCCĐ –</option>
-                          {nguonCT ? (
+                          {nguonCT && !khungDungHienTai ? (
                             <>
                               {gt && !dsYccdCT?.includes(gt) && <option value={gt}>{gt} (không có trong Kho chương trình)</option>}
                               {nhomYccdCT.map(([mach, ds]) => (
