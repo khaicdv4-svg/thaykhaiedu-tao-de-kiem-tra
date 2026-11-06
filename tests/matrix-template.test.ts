@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { MAU_MA_TRAN_CHUNG, timMaTranChung } from '../src/core/matrix/templates';
 import {
+  apDungSuaCau,
+  chuanHoaSuaCau,
   danhSachCau,
   dungMaTranRieng,
   kiemDinhMaTranChung,
@@ -211,5 +213,45 @@ describe('Ma trận riêng', () => {
       expect(kq.errors).toEqual([]);
       expect(kq.totalCalculatedPoints).toBe(10);
     }
+  });
+});
+
+describe('Ma trận riêng: sửa số câu, mức, TN/TL, điểm', () => {
+  const mtc = timMaTranChung('CONG_NGHE', 'CUOI_HK1')!;
+  const lc: LuaChon = {};
+  const ds = danhSachCau(mtc, lc);
+  const [a, b] = ds.filter((c) => (c.phan.kieu ?? 'CAU_HOI') === 'CAU_HOI');
+
+  it('áp chỗ sửa nhưng giữ khóa câu, YCCĐ đã chọn không mất', () => {
+    const sua = { [a.khoa]: { muc: (a.cau.muc === 3 ? 1 : 3) as 1 | 3, hinh_thuc: (a.cau.hinh_thuc === 'TN' ? 'TL' : 'TN') as 'TN' | 'TL', cau: '99' } };
+    const c = danhSachCau(apDungSuaCau(mtc, sua), lc).find((x) => x.khoa === a.khoa)!;
+    expect(c.cau.cau).toBe('99');
+    expect(c.cau.muc).not.toBe(a.cau.muc);
+    expect(c.cau.hinh_thuc).not.toBe(a.cau.hinh_thuc);
+    expect(c.cau.dang).toBeNull();
+    // Ma trận chung gốc không bị đổi
+    expect(danhSachCau(mtc, lc).find((x) => x.khoa === a.khoa)!.cau.cau).toBe(a.cau.cau);
+  });
+
+  it('bỏ mục sửa trùng ma trận chung', () => {
+    expect(chuanHoaSuaCau(mtc, { [a.khoa]: { muc: a.cau.muc, diem: a.cau.diem } })).toEqual({});
+  });
+
+  it('đổi điểm hai câu bù nhau: vẫn hợp lệ, có cảnh báo khác ma trận chung', () => {
+    const mtr = maTranRiengHopLe(mtc);
+    mtr.sua_cau = { [a.khoa]: { diem: a.cau.diem + 0.5 }, [b.khoa]: { diem: b.cau.diem - 0.5 } };
+    const kq = kiemDinhMaTranRieng(mtc, mtr);
+    expect(kq.loi).toEqual([]);
+    expect(kq.canhBao.some((x) => x.includes('khác ma trận chung'))).toBe(true);
+    const leg = toLegacyMatrixItems(mtc, mtr, 'm');
+    expect(leg.find((x) => x.id === `m:${a.khoa}`)!.totalPoints).toBe(a.cau.diem + 0.5);
+  });
+
+  it('tăng điểm một câu: báo lỗi tổng điểm; trùng số câu: báo lỗi', () => {
+    const mtr = maTranRiengHopLe(mtc);
+    mtr.sua_cau = { [a.khoa]: { diem: a.cau.diem + 0.5, cau: b.cau.cau } };
+    const loi = kiemDinhMaTranRieng(mtc, mtr).loi.join(' | ');
+    expect(loi).toContain('tổng điểm');
+    expect(loi).toContain('trùng số thứ tự câu');
   });
 });

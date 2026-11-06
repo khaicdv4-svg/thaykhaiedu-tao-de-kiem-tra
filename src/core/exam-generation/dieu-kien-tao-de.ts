@@ -11,7 +11,7 @@
  */
 
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
-import { danhSachCau, kiemDinhMaTranRieng } from '@/core/matrix/matrix-template';
+import { apDungSuaCau, danhSachCau, kiemDinhMaTranRieng } from '@/core/matrix/matrix-template';
 import { laCungBai } from '@/core/reading-passages/cung-bai';
 import { CHU_DIEM_THEO_KY, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
@@ -93,7 +93,7 @@ export function kiemTraDieuKienTaoDe(d: DauVaoTaoDe): KetQuaDieuKien {
   }
 
   // 3. Căn cứ SGK cho từng câu
-  const thieu = danhSachCau(mtc, mtr.lua_chon_da_dung)
+  const thieu = danhSachCau(apDungSuaCau(mtc, mtr.sua_cau), mtr.lua_chon_da_dung)
     .filter((c) => c.cau.dang !== 'VIET' && (c.phan.kieu ?? 'CAU_HOI') === 'CAU_HOI')
     .filter((c) => !(d.canCuSgk?.[c.khoa]?.length))
     .map((c) => c.cau.cau);

@@ -35,6 +35,8 @@ export interface CauHoiMaTran {
   dang: DangCau | null;
   /** Điểm của cả câu (gồm mọi ý nhỏ). */
   diem: number;
+  /** Số câu gốc trong ma trận chung, giữ khóa câu không đổi khi ma trận riêng đánh lại số câu. */
+  khoa_goc?: string;
 }
 
 /** Một dòng ma trận: mạch / nội dung / danh sách YCCĐ / các câu gắn với dòng. */
@@ -126,6 +128,13 @@ export interface CauHoiMaTranRieng {
   yccd: string;
 }
 
+export interface SuaCauMaTranRieng {
+  cau?: string;
+  muc?: MucDo;
+  hinh_thuc?: HinhThucCau;
+  diem?: number;
+}
+
 export interface MaTranRieng {
   loai: 'MA_TRAN_RIENG';
   ma_tran_chung_ma_mon: string;
@@ -134,6 +143,11 @@ export interface MaTranRieng {
   /** Mã nhóm lựa chọn → mã phương án đã chọn. Ví dụ { loai_van_ban: "VBVH" }. */
   lua_chon_da_dung: Record<string, string>;
   cau_hoi: CauHoiMaTranRieng[];
+  /**
+   * Giáo viên sửa câu so với ma trận chung: khóa câu → giá trị mới.
+   * Chỉ ghi những gì khác ma trận chung. Không có thì giữ nguyên ma trận chung.
+   */
+  sua_cau?: Record<string, SuaCauMaTranRieng>;
   trang_thai: TrangThaiMaTran;
   cap_nhat_luc?: string;
 }

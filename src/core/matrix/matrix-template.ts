@@ -16,6 +16,7 @@ import type {
   MaTranRieng,
   MucDo,
   PhanMaTran,
+  SuaCauMaTranRieng,
 } from '@/types/matrix-template';
 import type { CognitiveLevel, MatrixSpecificationItem } from '@/types/curriculum';
 
@@ -35,7 +36,62 @@ export interface CauTrongMaTran {
 }
 
 export function khoaCau(bai: BaiKiemTraMaTran, phan: PhanMaTran, cau: CauHoiMaTran): string {
-  return `${bai.ma}/${phan.ma}/${cau.cau}`;
+  return `${bai.ma}/${phan.ma}/${cau.khoa_goc ?? cau.cau}`;
+}
+
+/**
+ * Áp những chỗ giáo viên sửa (số câu, mức, TN/TL, điểm) vào một bản sao ma trận chung.
+ * Khóa câu giữ theo số câu gốc nên YCCĐ đã chọn không mất khi đánh lại số câu.
+ */
+export function apDungSuaCau(mtc: MaTranChung, sua: Record<string, SuaCauMaTranRieng> | undefined): MaTranChung {
+  if (!sua || Object.keys(sua).length === 0) return mtc;
+  const suaDong = (bai: BaiKiemTraMaTran, phan: PhanMaTran) => (d: DongMaTran): DongMaTran => ({
+    ...d,
+    cau_hoi: d.cau_hoi.map((c) => {
+      const s = sua[khoaCau(bai, phan, c)];
+      if (!s) return c;
+      const doiHinhThuc = s.hinh_thuc !== undefined && s.hinh_thuc !== c.hinh_thuc;
+      return {
+        ...c,
+        khoa_goc: c.khoa_goc ?? c.cau,
+        ...(s.cau !== undefined ? { cau: s.cau } : {}),
+        ...(s.muc !== undefined ? { muc: s.muc } : {}),
+        ...(s.diem !== undefined ? { diem: s.diem } : {}),
+        // Đổi TN/TL thì dạng câu cũ (NLC, Đ/S...) không còn đúng, để trống cho hình thức quyết định
+        ...(doiHinhThuc ? { hinh_thuc: s.hinh_thuc!, dang: null } : {}),
+      };
+    }),
+  });
+  return {
+    ...mtc,
+    bai_kiem_tra: mtc.bai_kiem_tra.map((bai) => ({
+      ...bai,
+      phan: bai.phan.map((phan) => ({
+        ...phan,
+        dong: phan.dong.map(suaDong(bai, phan)),
+        ...(phan.lua_chon
+          ? { lua_chon: { ...phan.lua_chon, phuong_an: phan.lua_chon.phuong_an.map((pa) => ({ ...pa, dong: pa.dong.map(suaDong(bai, phan)) })) } }
+          : {}),
+      })),
+    })),
+  };
+}
+
+/** Bỏ những mục sửa trùng với ma trận chung, để chỉ ghi chỗ thật sự khác. */
+export function chuanHoaSuaCau(mtc: MaTranChung, sua: Record<string, SuaCauMaTranRieng>): Record<string, SuaCauMaTranRieng> {
+  const goc = new Map(toHopLuaChon(mtc).flatMap((lc) => danhSachCau(mtc, lc)).map((c) => [c.khoa, c.cau]));
+  const out: Record<string, SuaCauMaTranRieng> = {};
+  for (const [khoa, s] of Object.entries(sua)) {
+    const c = goc.get(khoa);
+    if (!c) continue;
+    const m: SuaCauMaTranRieng = {};
+    if (s.cau !== undefined && s.cau.trim() && s.cau.trim() !== c.cau) m.cau = s.cau.trim();
+    if (s.muc !== undefined && s.muc !== c.muc) m.muc = s.muc;
+    if (s.hinh_thuc !== undefined && s.hinh_thuc !== c.hinh_thuc) m.hinh_thuc = s.hinh_thuc;
+    if (s.diem !== undefined && Math.abs(s.diem - c.diem) > 1e-9) m.diem = s.diem;
+    if (Object.keys(m).length) out[khoa] = m;
+  }
+  return out;
 }
 
 /** Các dòng của một phần theo lựa chọn: dòng của phương án đã chọn đứng trước, rồi tới dòng dùng chung. */
@@ -288,9 +344,10 @@ export function taoMaTranRiengRong(mtc: MaTranChung): MaTranRieng {
   };
 }
 
-export function kiemDinhMaTranRieng(mtc: MaTranChung, mtr: MaTranRieng): KetQuaKiemDinh {
+export function kiemDinhMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng): KetQuaKiemDinh {
   const loi: string[] = [];
   const canhBao: string[] = [];
+  const mtc = apDungSuaCau(mtcGoc, mtr.sua_cau);
 
   if (mtr.ma_tran_chung_ma_mon !== mtc.ma_mon || mtr.ma_tran_chung_ky !== mtc.ky_kiem_tra) {
     loi.push('Ma trận riêng không thuộc ma trận chung này (khác môn hoặc khác kì).');
@@ -306,8 +363,21 @@ export function kiemDinhMaTranRieng(mtc: MaTranChung, mtr: MaTranRieng): KetQuaK
     else if (!nhom.phuong_an.some((p) => p.ma === ma)) loi.push(`${nhom.ten}: phương án "${ma}" không có trong ma trận chung.`);
   }
 
-  // Cấu trúc (số câu, mức, điểm) lấy nguyên từ ma trận chung nên chỉ cần kiểm theo lựa chọn đã dùng
+  // Cấu trúc (số câu, mức, điểm) sau khi áp chỗ giáo viên sửa, theo lựa chọn đã dùng
   kiemDinhCauTruc(mtc, mtr.lua_chon_da_dung, loi, canhBao);
+
+  // Nhắc những câu đã sửa khác ma trận chung của tổ
+  const goc = new Map(danhSachCau(mtcGoc, mtr.lua_chon_da_dung).map((c) => [c.khoa, c.cau]));
+  for (const c of danhSachCau(mtc, mtr.lua_chon_da_dung)) {
+    const g = goc.get(c.khoa);
+    if (!g) continue;
+    const khac: string[] = [];
+    if (g.cau !== c.cau.cau) khac.push(`số câu ${g.cau} → ${c.cau.cau}`);
+    if (g.muc !== c.cau.muc) khac.push(`Mức ${g.muc} → Mức ${c.cau.muc}`);
+    if (g.hinh_thuc !== c.cau.hinh_thuc) khac.push(`${g.hinh_thuc} → ${c.cau.hinh_thuc}`);
+    if (Math.abs(g.diem - c.cau.diem) > 1e-9) khac.push(`${fmt(g.diem)} → ${fmt(c.cau.diem)} điểm`);
+    if (khac.length) canhBao.push(`${c.phan.ten ?? c.bai.ten}, Câu ${g.cau} khác ma trận chung: ${khac.join(', ')}.`);
+  }
 
   // Mỗi câu đúng một YCCĐ, thuộc dòng gốc
   const cauList = danhSachCau(mtc, mtr.lua_chon_da_dung);
@@ -353,7 +423,8 @@ export function trangThaiSauKhiSua(mtr: MaTranRieng): MaTranRieng['trang_thai'] 
  * - mỗi dòng chỉ còn YCCĐ đã gắn cho câu của dòng đó,
  * - bỏ dòng không có câu hỏi (giữ dòng tiêu chí chấm của Đọc thành tiếng).
  */
-export function dungMaTranRieng(mtc: MaTranChung, mtr: MaTranRieng): MaTranChung {
+export function dungMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng): MaTranChung {
+  const mtc = apDungSuaCau(mtcGoc, mtr.sua_cau);
   const chon = new Map(mtr.cau_hoi.map((c) => [c.khoa, c.yccd]));
   return {
     ...mtc,
@@ -397,7 +468,8 @@ function loaiCauCu(c: CauHoiMaTran): MatrixSpecificationItem['questionType'] {
 }
 
 /** Chuyển ma trận riêng sang danh sách MatrixSpecificationItem cũ (mỗi câu một dòng). */
-export function toLegacyMatrixItems(mtc: MaTranChung, mtr: MaTranRieng, matrixId: string): MatrixSpecificationItem[] {
+export function toLegacyMatrixItems(mtcGoc: MaTranChung, mtr: MaTranRieng, matrixId: string): MatrixSpecificationItem[] {
+  const mtc = apDungSuaCau(mtcGoc, mtr.sua_cau);
   const chon = new Map(mtr.cau_hoi.map((c) => [c.khoa, c.yccd]));
   return danhSachCau(mtc, mtr.lua_chon_da_dung)
     .filter((c) => (c.phan.kieu ?? 'CAU_HOI') === 'CAU_HOI')

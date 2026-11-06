@@ -11,10 +11,12 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, Save, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import {
+  apDungSuaCau,
   cacNhomLuaChon,
+  chuanHoaSuaCau,
   danhSachCau,
   dungMaTranRieng,
   kiemDinhMaTranChung,
@@ -24,7 +26,7 @@ import {
   trangThaiSauKiemDinh,
   type KetQuaKiemDinh,
 } from '@/core/matrix/matrix-template';
-import type { MaTranChung, MaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
+import type { HinhThucCau, MaTranChung, MaTranRieng, MucDo, SuaCauMaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 import { MatrixPreview } from '@/components/matrices/MatrixPreview';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
@@ -92,6 +94,61 @@ function Stepper({ buoc, xong }: { buoc: number; xong: boolean[] }) {
   );
 }
 
+const fmtDiem = (x: number) => String(x).replace('.', ',');
+const CAC_DIEM = Array.from({ length: 20 }, (_, i) => (i + 1) / 2); // 0,5 → 10
+
+/** Sửa số câu, mức, TN/TL, điểm của một câu ngay trong danh sách. */
+function SuaThongTinCau({
+  cau,
+  goc,
+  onSua,
+}: {
+  cau: { cau: string; y_nho: string[] | null; muc: MucDo; hinh_thuc: HinhThucCau; diem: number };
+  goc: { cau: string; muc: MucDo; hinh_thuc: HinhThucCau; diem: number };
+  onSua: (s: SuaCauMaTranRieng | null) => void;
+}) {
+  const [soCau, setSoCau] = useState(cau.cau);
+  useEffect(() => setSoCau(cau.cau), [cau.cau]);
+  const khac = { cau: cau.cau !== goc.cau, muc: cau.muc !== goc.muc, hinh_thuc: cau.hinh_thuc !== goc.hinh_thuc, diem: cau.diem !== goc.diem };
+  const daSua = Object.values(khac).some(Boolean);
+  const o = (doi: boolean) => `rounded-md border px-1.5 py-1 text-sm bg-white ${doi ? 'border-amber-500 ring-1 ring-amber-300 bg-amber-50' : 'border-slate-300'}`;
+  const goi = (doi: boolean, ten: string) => (doi ? `Ma trận chung: ${ten}` : undefined);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="font-semibold text-slate-900">Câu</span>
+        <input
+          aria-label="Số câu"
+          title={goi(khac.cau, `Câu ${goc.cau}`)}
+          className={`${o(khac.cau)} w-14 font-semibold`}
+          value={soCau}
+          onChange={(e) => setSoCau(e.target.value)}
+          onBlur={() => (soCau.trim() ? onSua({ cau: soCau.trim() }) : setSoCau(cau.cau))}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        />
+        {cau.y_nho && <span className="text-sm text-slate-600">({cau.y_nho.join(', ')})</span>}
+        {daSua && (
+          <button type="button" className="ml-auto inline-flex items-center gap-1 text-xs text-amber-800 hover:underline" onClick={() => onSua(null)} title="Trả về như ma trận chung">
+            <RotateCcw className="w-3.5 h-3.5" /> Khôi phục
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <select aria-label="Mức" title={goi(khac.muc, `Mức ${goc.muc}`)} className={o(khac.muc)} value={cau.muc} onChange={(e) => onSua({ muc: Number(e.target.value) as MucDo })}>
+          {[1, 2, 3].map((m) => <option key={m} value={m}>Mức {m}</option>)}
+        </select>
+        <select aria-label="Hình thức" title={goi(khac.hinh_thuc, goc.hinh_thuc)} className={o(khac.hinh_thuc)} value={cau.hinh_thuc} onChange={(e) => onSua({ hinh_thuc: e.target.value as HinhThucCau })}>
+          <option value="TN">TN</option>
+          <option value="TL">TL</option>
+        </select>
+        <select aria-label="Điểm" title={goi(khac.diem, `${fmtDiem(goc.diem)} điểm`)} className={o(khac.diem)} value={cau.diem} onChange={(e) => onSua({ diem: Number(e.target.value) })}>
+          {(CAC_DIEM.includes(cau.diem) ? CAC_DIEM : [...CAC_DIEM, cau.diem].sort((a, b) => a - b)).map((d) => <option key={d} value={d}>{fmtDiem(d)} điểm</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -138,6 +195,18 @@ export default function MatricesPage() {
   const chonYccd = (khoa: string, yccd: string) =>
     capNhat((m) => ({ ...m, cau_hoi: [...m.cau_hoi.filter((c) => c.khoa !== khoa), ...(yccd ? [{ khoa, yccd }] : [])] }));
 
+  /** Sửa số câu, mức, TN/TL, điểm của một câu. Chỉ giữ chỗ khác ma trận chung. */
+  const suaCau = (khoa: string, s: SuaCauMaTranRieng | null) =>
+    capNhat((m) => {
+      const moi = { ...(m.sua_cau ?? {}) };
+      if (s === null) delete moi[khoa];
+      else moi[khoa] = { ...moi[khoa], ...s };
+      const chuan = chuanHoaSuaCau(mtc!, moi);
+      const { sua_cau: _bo, ...conLai } = m;
+      void _bo;
+      return Object.keys(chuan).length ? { ...conLai, sua_cau: chuan } : conLai;
+    });
+
   const kiemTra = () => {
     if (!mtc || !mtr) return null;
     const kq = kiemDinhMaTranRieng(mtc, mtr);
@@ -161,7 +230,13 @@ export default function MatricesPage() {
     setThongBao(ghiBanNhap(mtc, daXacNhan) ? 'Đã xác nhận ma trận riêng. Bước tiếp theo: bản đặc tả.' : 'Đã xác nhận, nhưng chưa lưu được trên trình duyệt này.');
   };
 
-  const cauList = useMemo(() => (mtc && mtr ? danhSachCau(mtc, mtr.lua_chon_da_dung) : []), [mtc, mtr]);
+  const cauList = useMemo(() => (mtc && mtr ? danhSachCau(apDungSuaCau(mtc, mtr.sua_cau), mtr.lua_chon_da_dung) : []), [mtc, mtr]);
+  const cauGoc = useMemo(() => new Map(mtc && mtr ? danhSachCau(mtc, mtr.lua_chon_da_dung).map((c) => [c.khoa, c.cau]) : []), [mtc, mtr]);
+  const tongDiemSua = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of cauList) m.set(c.bai.ten, (m.get(c.bai.ten) ?? 0) + c.cau.diem);
+    return m;
+  }, [cauList]);
   const daChon = useMemo(() => new Map((mtr?.cau_hoi ?? []).map((c) => [c.khoa, c.yccd])), [mtr]);
   const nhomLuaChon = mtc ? cacNhomLuaChon(mtc) : [];
   const chonDuPhuongAn = !!mtr && nhomLuaChon.every((n) => mtr.lua_chon_da_dung[n.ma]);
@@ -275,8 +350,10 @@ export default function MatricesPage() {
           )}
 
           <div className="the-tke p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Chọn yêu cầu cần đạt cho từng câu</h2>
-            <p className="text-sm text-slate-600 mb-4">Mỗi câu gắn đúng một YCCĐ. Câu chỉ có một YCCĐ đã được chọn sẵn.</p>
+            <h2 className="text-lg font-semibold text-slate-900">Chọn yêu cầu cần đạt, chỉnh câu cho từng câu</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              Mỗi câu gắn đúng một YCCĐ. Câu chỉ có một YCCĐ đã được chọn sẵn. Số câu, mức, TN/TL, điểm lấy theo ma trận chung; cần thì sửa ngay tại câu, ô đã sửa có viền vàng và nút khôi phục.
+            </p>
             {!chonDuPhuongAn ? (
               <p className="text-sm text-slate-500">Chọn phương án ở trên trước.</p>
             ) : (
@@ -285,15 +362,23 @@ export default function MatricesPage() {
                   const baiViet = c.cau.dang === 'VIET' || c.phan.kieu === 'VIET';
                   const gt = daChon.get(c.khoa) ?? '';
                   return (
-                    <div key={c.khoa} className="py-3 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2">
+                    <div key={c.khoa} className="py-3 grid grid-cols-1 md:grid-cols-[330px_1fr] gap-2">
                       <div>
-                        <div className="font-semibold text-slate-900">
-                          {baiViet ? 'Bài viết' : `Câu ${c.cau.cau}${c.cau.y_nho ? ` (${c.cau.y_nho.join(', ')})` : ''}`}
+                        {baiViet ? (
+                          <>
+                            <div className="font-semibold text-slate-900">Bài viết</div>
+                            <div className="text-xs text-slate-500">Mức {c.cau.muc} · {c.cau.hinh_thuc} · {fmtDiem(c.cau.diem)} điểm</div>
+                          </>
+                        ) : (
+                          <SuaThongTinCau
+                            cau={c.cau}
+                            goc={cauGoc.get(c.khoa) ?? c.cau}
+                            onSua={(s) => suaCau(c.khoa, s)}
+                          />
+                        )}
+                        <div className="text-xs text-slate-500 mt-1">
+                          {c.bai.phan.length > 1 || c.bai.tong_diem !== 10 ? `${c.phan.ten} · ` : ''}{c.dong.noi_dung ?? c.dong.mach}
                         </div>
-                        <div className="text-xs text-slate-500">
-                          {c.bai.phan.length > 1 || c.bai.tong_diem !== 10 ? `${c.phan.ten} · ` : ''}Mức {c.cau.muc} · {c.cau.hinh_thuc} · {String(c.cau.diem).replace('.', ',')} điểm
-                        </div>
-                        <div className="text-xs text-slate-500">{c.dong.noi_dung ?? c.dong.mach}</div>
                       </div>
                       {baiViet ? (
                         <div className="text-sm text-slate-600">Bài viết chấm theo toàn bộ YCCĐ của thể loại, không cần chọn.</div>
@@ -314,6 +399,19 @@ export default function MatricesPage() {
               </div>
             )}
           </div>
+
+          {chonDuPhuongAn && mtr.sua_cau && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Đã sửa {Object.keys(mtr.sua_cau).length} câu so với ma trận chung.{' '}
+              {mtc.bai_kiem_tra.map((b) => {
+                const t = Math.round((tongDiemSua.get(b.ten) ?? 0) * 100) / 100;
+                return b.phan.every((p) => (p.kieu ?? 'CAU_HOI') === 'CAU_HOI')
+                  ? <span key={b.ma} className={Math.abs(t - b.tong_diem) > 0.001 ? 'font-semibold text-red-700' : ''}>{b.ten}: {fmtDiem(t)}/{fmtDiem(b.tong_diem)} điểm. </span>
+                  : null;
+              })}
+              Bấm Kiểm tra để soát tổng điểm, thứ tự câu, tỉ lệ mức.
+            </div>
+          )}
 
           {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra ma trận riêng" /></div>}
 
