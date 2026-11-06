@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Sparkles, FilePlus, Copy, Clock, CheckCircle2 } from 'lucide-react';
@@ -75,6 +76,11 @@ export default function TestBuilderPage() {
                 <span>5. Kiểm định độc lập (tổng điểm, số câu, đáp án) & lưu bản nháp.</span>
               </li>
             </ul>
+            <div className="pt-3 border-t border-slate-100">
+              <Link href="/test-builder/bai-doc" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700">
+                Chọn bài đọc cho đề Tiếng Việt
+              </Link>
+            </div>
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
               <span className="text-[11px] text-slate-400">Sẵn sàng triển khai ở Giai đoạn 4</span>
               <button
