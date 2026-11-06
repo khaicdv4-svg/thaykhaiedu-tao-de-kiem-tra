@@ -4,6 +4,7 @@ import {
   validatePpctDiscrepancies,
   prepareSubjectIngestionPayload,
   parseConvertedPeriods,
+  lichTietCuaMon,
 } from '@/core/curriculum/ppct-hub-adapter';
 import { PpctHubBackupFile } from '@/types/curriculum-source';
 
@@ -314,6 +315,35 @@ describe('PPCT HUB Adapter & Validation Engine', () => {
       expect(payload!.outcomes[0].externalHubId).toBe('idea-math4-01');
       expect(payload!.mappings[0].outcomeExternalHubId).toBe('idea-math4-01');
       expect(payload!.mappings[0].periodExternalId).toBe('per-math-1');
+    });
+  });
+
+  describe('lịch tiết theo tuần (ppct_tiet)', () => {
+    it('payload có lịch tiết của môn, mỗi tiết có tuần, bài, chủ đề', () => {
+      const parsed = extractAndFilterPpctHubData(sampleBackup, 4, '2026-2027');
+      const payload = prepareSubjectIngestionPayload(parsed, 'subj-toan4', 'UNVERIFIED_PENDING');
+      const lich = payload!.periods;
+      expect(lich.length).toBe(parsed.periods.filter((p) => p.subjectId === 'subj-toan4').length);
+      const t = lich.find((x) => x.periodExternalId === 'per-math-1')!;
+      expect(t).toBeDefined();
+      expect(t.lessonTitle).toBeTruthy();
+      expect(t.topicName).toBe('Số tự nhiên');
+      expect(t.semester === 1 || t.semester === 2 || t.semester === null).toBe(true);
+    });
+
+    it('xếp theo tuần, học kì suy từ tuần khi file không ghi', () => {
+      const parsed = extractAndFilterPpctHubData(sampleBackup, 4, '2026-2027');
+      const them = {
+        ...parsed,
+        periods: [
+          { id: 'p-b', lessonId: parsed.lessons[0].id, subjectId: 'subj-toan4', week: 20, title: 'Tiết sau', convertedPeriods: 1 },
+          { id: 'p-a', lessonId: parsed.lessons[0].id, subjectId: 'subj-toan4', week: 2, title: 'Tiết trước', convertedPeriods: 1 },
+        ],
+      };
+      const lich = lichTietCuaMon(them, 'subj-toan4');
+      expect(lich.map((t) => t.periodExternalId)).toEqual(['p-a', 'p-b']);
+      expect(lich[0].semester).toBe(parsed.lessons[0].term ?? 1);
+      expect(lich[1].semester).toBe(parsed.lessons[0].term ?? 2);
     });
   });
 

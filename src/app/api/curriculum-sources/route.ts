@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
             sourceId: saved.sourceId,
             outcomesSaved: saved.outcomesSaved,
             mappingsSaved: saved.mappingsSaved,
+            periodsSaved: saved.periodsSaved,
           });
+          loi.push(...saved.canhBao);
         } catch (e) {
           loi.push(e instanceof Error ? e.message : String(e));
         }

@@ -489,6 +489,63 @@ export interface IngestionPayload {
     week?: number;
     semester?: number;
   }>;
+  /** Lịch từng tiết theo tuần: căn cứ để biết học sinh đã học đến đâu khi ra đề. */
+  periods: TietPpct[];
+}
+
+export interface TietPpct {
+  periodExternalId: string;
+  lessonExternalId: string | null;
+  topicName: string | null;
+  lessonTitle: string | null;
+  lessonOrder: number | null;
+  periodTitle: string;
+  /** Số thứ tự tiết trong năm của môn (1, 2, 3...). */
+  periodNumber: number | null;
+  orderInLesson: number | null;
+  week: number | null;
+  semester: number | null;
+  periodType: string | null;
+  notes: string | null;
+  yccdExternalIds: string[];
+}
+
+const soHoacNull = (v: unknown): number | null => {
+  const n = typeof v === 'string' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Lịch tiết của một môn, xếp theo tuần rồi số tiết.
+ * Học kì: lấy từ tiết, không có thì lấy từ bài, không có nữa thì suy từ tuần (1–18: HKI, 19–35: HKII).
+ */
+export function lichTietCuaMon(parsed: ParsedPpctHubData, subjectId: string): TietPpct[] {
+  const lessonMap = new Map(parsed.lessons.map((l) => [l.id, l]));
+  const topicMap = new Map(parsed.topics.map((t) => [t.id, t.name]));
+  const tiet = parsed.periods
+    .filter((p) => p.subjectId === subjectId || (!p.subjectId && lessonMap.get(p.lessonId)?.subjectId === subjectId))
+    .map((p): TietPpct => {
+      const les = lessonMap.get(p.lessonId);
+      const week = soHoacNull(p.week) ?? soHoacNull(les?.startWeek);
+      const semester = soHoacNull(p.semester) ?? soHoacNull(les?.term) ?? (week ? (week <= 18 ? 1 : 2) : null);
+      return {
+        periodExternalId: p.id,
+        lessonExternalId: les?.id ?? p.lessonId ?? null,
+        topicName: les?.topicId ? topicMap.get(les.topicId) ?? null : null,
+        lessonTitle: les?.title || les?.name || null,
+        lessonOrder: soHoacNull(les?.order),
+        periodTitle: (p.title || '').trim() || les?.title || 'Tiết học',
+        periodNumber: soHoacNull(p.globalPeriodNumber) ?? soHoacNull(p.periodNumber),
+        orderInLesson: soHoacNull(p.orderInLesson),
+        week,
+        semester,
+        periodType: p.periodType ?? null,
+        notes: p.notes ?? null,
+        yccdExternalIds: Array.isArray(p.yccdIds) ? p.yccdIds : [],
+      };
+    });
+  const vc = (n: number | null) => (n === null ? Number.MAX_SAFE_INTEGER : n);
+  return tiet.sort((a, b) => vc(a.week) - vc(b.week) || vc(a.periodNumber) - vc(b.periodNumber) || vc(a.lessonOrder) - vc(b.lessonOrder) || vc(a.orderInLesson) - vc(b.orderInLesson));
 }
 
 export function prepareSubjectIngestionPayload(
@@ -595,5 +652,6 @@ export function prepareSubjectIngestionPayload(
     },
     outcomes: outcomePayloads,
     mappings: mappingsPayload,
+    periods: lichTietCuaMon(parsed, subjectId),
   };
 }

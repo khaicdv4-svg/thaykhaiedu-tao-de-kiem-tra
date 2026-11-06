@@ -4,6 +4,7 @@
  */
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import type { TietPpct } from '@/core/curriculum/ppct-hub-adapter';
 import {
   CurriculumSource,
   CurriculumOutcome,
@@ -52,6 +53,7 @@ export interface IngestSubjectParams {
     week?: number;
     semester?: number;
   }>;
+  periods?: TietPpct[];
 }
 
 export class CurriculumSourceRepository {
@@ -141,7 +143,7 @@ export class CurriculumSourceRepository {
   /**
    * Lưu nguồn môn học, danh sách YCCĐ và Mappings vào DB
    */
-  async ingestSubjectSource(params: IngestSubjectParams): Promise<{ sourceId: string; outcomesSaved: number; mappingsSaved: number }> {
+  async ingestSubjectSource(params: IngestSubjectParams): Promise<{ sourceId: string; outcomesSaved: number; mappingsSaved: number; periodsSaved: number; canhBao: string[] }> {
     const supabase = await createServerSupabaseClient();
     if (!supabase) throw new Error('Chưa cấu hình Supabase.');
 
@@ -202,6 +204,9 @@ export class CurriculumSourceRepository {
 
     const sourceId = sourceRow.id;
 
+    const canhBao: string[] = [];
+    let loiYccd = '';
+
     // 2. Lưu danh sách YCCĐ
     let outcomesSaved = 0;
     const outcomeExternalIdToUuidMap = new Map<string, string>();
@@ -239,11 +244,17 @@ export class CurriculumSourceRepository {
       if (!outErr && outcomeRow) {
         outcomesSaved++;
         outcomeExternalIdToUuidMap.set(o.externalHubId, outcomeRow.id);
+      } else if (outErr) {
+        loiYccd = outErr.message;
       }
+    }
+    if (outcomesSaved < params.outcomes.length) {
+      canhBao.push(`${params.source.name}: lưu được ${outcomesSaved}/${params.outcomes.length} YCCĐ${loiYccd ? ` (${loiYccd})` : ''}.`);
     }
 
     // 3. Lưu Mappings
     let mappingsSaved = 0;
+    let loiLienKet = '';
     for (const m of params.mappings) {
       const outcomeUuid = outcomeExternalIdToUuidMap.get(m.outcomeExternalHubId);
       if (outcomeUuid) {
@@ -268,7 +279,50 @@ export class CurriculumSourceRepository {
 
         if (!mapErr) {
           mappingsSaved++;
+        } else {
+          loiLienKet = mapErr.message;
         }
+      }
+    }
+    if (loiLienKet) {
+      canhBao.push(`${params.source.name}: có liên kết YCCĐ – tiết chưa lưu được (${loiLienKet}).`);
+    }
+
+    // 4. Lịch tiết theo tuần: thay toàn bộ lịch cũ của nguồn này bằng lịch trong file
+    let periodsSaved = 0;
+    const lich = params.periods ?? [];
+    const { error: xoaErr } = await supabase.from('ppct_tiet').delete().eq('source_id', sourceId);
+    if (xoaErr) {
+      canhBao.push(`${params.source.name}: không thay được lịch tiết cũ (${xoaErr.message}).`);
+    } else {
+      for (let i = 0; i < lich.length; i += 500) {
+        const dot = lich.slice(i, i + 500).map((t, j) => ({
+          organization_id: orgId,
+          source_id: sourceId,
+          subject_id: params.source.subjectId,
+          grade: params.source.grade,
+          academic_year: params.source.academicYear,
+          thu_tu: i + j + 1,
+          tiet_external_id: t.periodExternalId,
+          bai_external_id: t.lessonExternalId,
+          chu_de: t.topicName,
+          bai_ten: t.lessonTitle,
+          bai_thu_tu: t.lessonOrder,
+          tiet_ten: t.periodTitle,
+          tiet_so: t.periodNumber,
+          tiet_trong_bai: t.orderInLesson,
+          tuan: t.week,
+          hoc_ki: t.semester,
+          loai_tiet: t.periodType,
+          ghi_chu: t.notes,
+          yccd_external_ids: t.yccdExternalIds,
+        }));
+        const { error: tietErr } = await supabase.from('ppct_tiet').insert(dot);
+        if (tietErr) {
+          canhBao.push(`${params.source.name}: lịch tiết chưa lưu đủ (${tietErr.message}).`);
+          break;
+        }
+        periodsSaved += dot.length;
       }
     }
 
@@ -276,6 +330,8 @@ export class CurriculumSourceRepository {
       sourceId,
       outcomesSaved,
       mappingsSaved,
+      periodsSaved,
+      canhBao,
     };
   }
 
