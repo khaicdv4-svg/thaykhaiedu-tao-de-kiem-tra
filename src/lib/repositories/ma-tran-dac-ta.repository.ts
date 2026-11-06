@@ -289,6 +289,14 @@ export async function layDe(maMon: string, ky: string): Promise<{ de: BanDe | nu
   return { de: data ? sangDe(data) : null };
 }
 
+/** Bản đặc tả đã xác nhận mà đề đang lưu kế thừa (dùng để xuất bộ hồ sơ khớp với đề). */
+export async function layDacTaCuaDe(maMon: string, ky: string, dacTaId: string): Promise<BanDacTa> {
+  kiemMonKy(maMon, ky);
+  const { supabase, orgId } = await layNguoiDung();
+  const { chon } = await layDacTaDeKeThua(supabase, orgId, maMon, ky, dacTaId);
+  return chon;
+}
+
 /** Đặc tả đã xác nhận mà đề kế thừa phải đúng phiên bản và là bản mới nhất khi lưu (cũ hơn vẫn lưu được nhưng báo lỗi lúc kiểm định). */
 async function layDacTaDeKeThua(supabase: any, orgId: string, maMon: string, ky: string, id: string) {
   const { data, error } = await supabase.from('dac_ta').select(COT_DT).eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('la_ban_nhap', false).order('phien_ban', { ascending: false });

@@ -183,11 +183,11 @@ export default function TaoDePage() {
     setThongBao(tt === 'SAN_SANG_DUYET' ? 'Đã chuyển đề sang bước duyệt. Cả tổ cùng thấy bản này.' : 'Đã lưu đề lên hệ thống. Cả tổ cùng thấy bản này.');
   };
 
-  const xuatWord = async () => {
+  const xuatWord = async (hoSo = false) => {
     setDangXuat(true);
     try {
       try { localStorage.setItem('tke.truong', truong); localStorage.setItem('tke.namHoc', namHoc); localStorage.setItem('tke.phut', String(phut)); } catch { /* bỏ qua */ }
-      const q = new URLSearchParams({ mon: maMon, ky, truong, namHoc, phut: String(phut) });
+      const q = new URLSearchParams({ mon: maMon, ky, truong, namHoc, phut: String(phut), ...(hoSo ? { goi: 'hoso' } : {}) });
       const r = await fetch(`/api/de-kiem-tra/xuat?${q}`);
       if (!r.ok) {
         const j = (await r.json().catch(() => ({}))) as { error?: string };
@@ -196,10 +196,10 @@ export default function TaoDePage() {
         const url = URL.createObjectURL(await r.blob());
         const a = document.createElement('a');
         a.href = url;
-        a.download = `De-${maMon}-${ky}.docx`;
+        a.download = `${hoSo ? 'HoSo' : 'De'}-${maMon}-${ky}.docx`;
         a.click();
         URL.revokeObjectURL(url);
-        setThongBao('Đã xuất tệp Word (đề và hướng dẫn chấm) từ bản đề đã lưu. Nếu vừa sửa, thầy bấm Lưu bản nháp trước khi xuất.');
+        setThongBao(hoSo ? 'Đã xuất bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm) từ bản đề đã lưu.' : 'Đã xuất tệp Word (đề và hướng dẫn chấm) từ bản đề đã lưu. Nếu vừa sửa, thầy bấm Lưu bản nháp trước khi xuất.');
       }
     } catch {
       setThongBao('Chưa xuất được: không kết nối được hệ thống.');
@@ -380,8 +380,11 @@ export default function TaoDePage() {
               <span className="block text-slate-600 mb-1">Thời gian (phút)</span>
               <input aria-label="Thời gian làm bài" type="number" min={5} max={120} className={`${o} w-28`} value={phut} onChange={(e) => setPhut(Number(e.target.value) || 35)} />
             </label>
-            <button type="button" className={nutPhu} disabled={dangXuat} onClick={() => void xuatWord()}>
+            <button type="button" className={nutPhu} disabled={dangXuat} onClick={() => void xuatWord(false)}>
               {dangXuat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Xuất Word (đề + hướng dẫn chấm)
+            </button>
+            <button type="button" className={nutPhu} disabled={dangXuat} onClick={() => void xuatWord(true)}>
+              <Download className="w-4 h-4" /> Xuất bộ hồ sơ
             </button>
           </div>
 

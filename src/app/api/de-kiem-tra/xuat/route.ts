@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Packer } from 'docx';
-import { layDe } from '@/lib/repositories/ma-tran-dac-ta.repository';
-import { dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from '@/core/de/xuat-word';
+import { layDe, layDacTaCuaDe } from '@/lib/repositories/ma-tran-dac-ta.repository';
+import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from '@/core/de/xuat-word';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 
 export const runtime = 'nodejs';
@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 const TEN_KY: Record<string, string> = { GIUA_HK1: 'GIỮA HKI', CUOI_HK1: 'CUỐI HKI', GIUA_HK2: 'GIỮA HKII', CUOI_NAM: 'CUỐI NĂM' };
 const loi = (e: unknown, ma = 400) => NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: ma });
 
-/** GET ?mon=&ky=&truong=&namHoc=&phut= → tệp Word gồm đề và hướng dẫn chấm của đề đang soạn. */
+/** GET ?mon=&ky=&truong=&namHoc=&phut=[&goi=hoso] → tệp Word: đề + hướng dẫn chấm, hoặc cả bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm). */
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
@@ -27,6 +27,16 @@ export async function GET(req: NextRequest) {
       tenMon,
       thoiGianPhut: phut,
     };
+    if (sp.get('goi') === 'hoso') {
+      const dt = await layDacTaCuaDe(mon, ky, de.dacTaId);
+      const buf = await Packer.toBuffer(dungHoSoDe(tt, dt.duLieu, de.duLieu));
+      return new NextResponse(new Uint8Array(buf), {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'Content-Disposition': `attachment; filename="HoSo-${mon}-${ky}.docx"`,
+        },
+      });
+    }
     const tl = mon === 'TIENG_VIET' ? dungTaiLieuTiengViet(tt, de.duLieu) : dungTaiLieuDe(tt, de.duLieu);
     const buf = await Packer.toBuffer(tl);
     const ten = `De-${mon}-${ky}.docx`;

@@ -5,7 +5,7 @@ import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
 import { kiemDinhDe, taoDeTuDacTa } from '../src/core/de/de';
-import { dungTaiLieuDe, dungTaiLieuTiengViet, xepCauTheoSo } from '../src/core/de/xuat-word';
+import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, xepCauTheoSo } from '../src/core/de/xuat-word';
 import { docChuTuDocx } from '../src/core/utils/docx-text';
 
 const mtc = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'LS_DL')!;
@@ -34,6 +34,17 @@ describe('Xuất Word', () => {
     const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
     for (const s of ['TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN', 'PHẦN BÀI LÀM CỦA HỌC SINH', 'HƯỚNG DẪN CHẤM MÔN LỊCH SỬ VÀ ĐỊA LÍ', 'HẾT ĐỀ']) expect(xml).toContain(s);
     expect(xml).toContain('Câu 1');
+  });
+
+  it('bộ hồ sơ gồm ma trận, đặc tả, đề và hướng dẫn chấm trong một tệp', async () => {
+    const buf = await Packer.toBuffer(dungHoSoDe(tt, dacTa, de));
+    if (process.env.XUAT_HOSO) writeFileSync(process.env.XUAT_HOSO, buf);
+    const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+    for (const s of ['MA TRẬN ĐỀ', 'BẢN ĐẶC TẢ ĐỀ', 'HIỆU TRƯỞNG', 'TỔ TRƯỞNG', 'PHẦN BÀI LÀM CỦA HỌC SINH', 'HƯỚNG DẪN CHẤM MÔN LỊCH SỬ VÀ ĐỊA LÍ']) expect(xml).toContain(s);
+    // thứ tự: ma trận → đặc tả → đề → hướng dẫn chấm
+    expect(xml.indexOf('MA TRẬN ĐỀ')).toBeLessThan(xml.indexOf('BẢN ĐẶC TẢ ĐỀ'));
+    expect(xml.indexOf('BẢN ĐẶC TẢ ĐỀ')).toBeLessThan(xml.indexOf('PHẦN BÀI LÀM CỦA HỌC SINH'));
+    expect(xml.indexOf('PHẦN BÀI LÀM CỦA HỌC SINH')).toBeLessThan(xml.indexOf('HƯỚNG DẪN CHẤM MÔN'));
   });
 
   it('xếp câu theo số thứ tự, câu không đánh số để cuối', () => {

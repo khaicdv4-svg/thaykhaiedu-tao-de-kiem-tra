@@ -14,6 +14,8 @@ import {
   BorderStyle,
   Document,
   LeaderType,
+  PageOrientation,
+  type ISectionOptions,
   Paragraph,
   Table,
   TableCell,
@@ -25,6 +27,7 @@ import {
   WidthType,
 } from 'docx';
 import { NHAN_LUA_CHON, nhanCau, type CauDe, type DeKiemTra } from '@/core/de/de';
+import type { DacTa } from '@/core/dac-ta/dac-ta';
 
 export interface ThongTinDe {
   tenTruong: string;
@@ -237,7 +240,10 @@ export function xepCauTheoSo(cau: CauDe[]): CauDe[] {
   return cau.map((c, i) => ({ c, i })).sort((a, b) => so(a.c) - so(b.c) || a.i - b.i).map((x) => x.c);
 }
 
-export function dungTaiLieuDe(t: ThongTinDe, deGoc: DeKiemTra): Document {
+const TAI_LIEU = { creator: 'ThayKhaiEdu', styles: { default: { document: { run: { font: FONT, size: CO } } } } } as const;
+
+/** Các phần (mỗi phần một trang mới) của đề và hướng dẫn chấm cho môn thường. */
+export function cacPhanDe(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptions[] {
   const de = { ...deGoc, cau: xepCauTheoSo(deGoc.cau) };
   const trang = {
     page: {
@@ -245,15 +251,14 @@ export function dungTaiLieuDe(t: ThongTinDe, deGoc: DeKiemTra): Document {
       margin: { left: LE, right: LE, top: 567, bottom: 567, header: 0, footer: 0 },
     },
   };
-  return new Document({
-    creator: 'ThayKhaiEdu',
-    title: `${t.tieuDeKy} - ${t.tenMon}`,
-    styles: { default: { document: { run: { font: FONT, size: CO } } } },
-    sections: [
-      { properties: trang, children: [...dauDe(t), bangCau(de.cau), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
-      { properties: trang, children: huongDanCham(t, de) },
-    ],
-  });
+  return [
+    { properties: trang, children: [...dauDe(t), bangCau(de.cau), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
+    { properties: trang, children: huongDanCham(t, de) },
+  ];
+}
+
+export function dungTaiLieuDe(t: ThongTinDe, deGoc: DeKiemTra): Document {
+  return new Document({ ...TAI_LIEU, title: `${t.tieuDeKy} - ${t.tenMon}`, sections: cacPhanDe(t, deGoc) });
 }
 
 // ---------------------------------------------------------------------------
@@ -349,7 +354,8 @@ function tenDoanDoc(c: CauDe): string {
   return nhanCau(c).replace(/^Câu /, '');
 }
 
-export function dungTaiLieuTiengViet(t: ThongTinDe, deGoc: DeKiemTra): Document {
+/** Các phần của bộ đề Tiếng Việt (Đọc hiểu, bài đọc, Viết, Đọc thành tiếng, hướng dẫn chấm). */
+export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptions[] {
   const tv = deGoc.tiengViet;
   if (!tv) throw new Error('Đề Tiếng Việt chưa có bài đọc.');
   const cau = xepCauTheoSo(deGoc.cau);
@@ -446,11 +452,135 @@ export function dungTaiLieuTiengViet(t: ThongTinDe, deGoc: DeKiemTra): Document 
     bangBieuDiemViet(),
   ];
 
-  const phan = (children: (Paragraph | Table)[]) => ({ properties: trang, children });
-  return new Document({
-    creator: 'ThayKhaiEdu',
-    title: `Đề kiểm tra ${kyDay} - Tiếng Việt lớp 4`,
-    styles: { default: { document: { run: { font: FONT, size: CO } } } },
-    sections: [phan(toCauHoi), phan(toBaiDoc), phan(toViet), phan(phieuGV), phan(toBonBai), phan(hdc)],
+  const phan = (children: (Paragraph | Table)[]): ISectionOptions => ({ properties: trang, children });
+  return [phan(toCauHoi), phan(toBaiDoc), phan(toViet), phan(phieuGV), phan(toBonBai), phan(hdc)];
+}
+
+export function dungTaiLieuTiengViet(t: ThongTinDe, deGoc: DeKiemTra): Document {
+  const kyDay = TEN_KY_DAY[deGoc.ky_kiem_tra] ?? t.tieuDeKy;
+  return new Document({ ...TAI_LIEU, title: `Đề kiểm tra ${kyDay} - Tiếng Việt lớp 4`, sections: cacPhanTiengViet(t, deGoc) });
+}
+
+// ---------------------------------------------------------------------------
+// Bộ hồ sơ: Ma trận → Bản đặc tả → Đề → Hướng dẫn chấm, trong một tệp.
+// Ma trận và đặc tả được dựng từ chính bản đặc tả đã xác nhận mà đề kế thừa, nên luôn khớp với đề.
+// ---------------------------------------------------------------------------
+
+const RONG_NGANG = 16838 - LE * 2;
+const TRANG_NGANG = { page: { size: { width: 11906, height: 16838, orientation: PageOrientation.LANDSCAPE }, margin: { left: LE, right: LE, top: 567, bottom: 567, header: 0, footer: 0 } } };
+
+const ONHO = 22; // 11 pt cho bảng rộng
+const trN = (text: string, o: { bold?: boolean } = {}) => tr(text, { bold: o.bold, size: ONHO });
+const doanN = (text: string, o: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) => new Paragraph({ children: [trN(text, { bold: o.bold })], alignment: o.align, spacing: { line: 252 } });
+const VIEN_TAT_CA: CacVien = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
+const oN = (text: string[], rong: number, o: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; span?: number } = {}) =>
+  o2(text.map((x) => doanN(x, o)), rong, VIEN_TAT_CA, o.span ?? 1);
+
+function tieuDeBangRong(t: ThongTinDe, dacTa: DacTa, tieuDe: string): Paragraph[] {
+  return [
+    doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`${tieuDe} ${t.tieuDeKy.replace(/^KTĐK /, 'KIỂM TRA ĐỊNH KÌ ')}`, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`MÔN: ${t.tenMon.toUpperCase()} - LỚP 4`, { bold: true })], { align: AlignmentType.CENTER, sau: 100 }),
+  ];
+}
+
+interface NhomMaTran { ten: string; mach: string; yccd: string[]; cau: string[]; m: Record<1 | 2 | 3, { tn: number; tl: number }>; diem: number }
+
+/** Gom các dòng đặc tả theo (phần, mạch, nội dung) để dựng bảng ma trận. */
+function gomMaTran(dacTa: DacTa): NhomMaTran[] {
+  const ds = new Map<string, NhomMaTran>();
+  for (const r of dacTa.dong) {
+    const khoa = `${r.baiKiemTra}|${r.phan ?? ''}|${r.mach}|${r.noiDung ?? ''}`;
+    let n = ds.get(khoa);
+    if (!n) {
+      n = { ten: [r.phan ?? r.baiKiemTra].join(''), mach: [r.mach, r.noiDung].filter(Boolean).join(' – '), yccd: [], cau: [], m: { 1: { tn: 0, tl: 0 }, 2: { tn: 0, tl: 0 }, 3: { tn: 0, tl: 0 } }, diem: 0 };
+      ds.set(khoa, n);
+    }
+    if (r.yccd && !n.yccd.includes(r.yccd)) n.yccd.push(r.yccd);
+    n.cau.push(r.cau);
+    n.m[r.muc][r.hinhThuc === 'TN' ? 'tn' : 'tl'] += r.soCauTinh;
+    n.diem += r.diem;
+  }
+  return [...ds.values()];
+}
+
+function bangMaTran(dacTa: DacTa): Table {
+  const w = [3000, 4800, 1500, 700, 700, 700, 700, 700, 700, RONG_NGANG - 3000 - 4800 - 1500 - 700 * 6 - 900, 900];
+  const hang = (cells: { t: string[]; w: number; b?: boolean; a?: (typeof AlignmentType)[keyof typeof AlignmentType]; span?: number }[]) =>
+    new TableRow({ cantSplit: true, children: cells.map((c) => oN(c.t, c.w, { bold: c.b, align: c.a, span: c.span })) });
+  const giua = AlignmentType.CENTER;
+  const rows: TableRow[] = [
+    hang([{ t: ['Mạch kiến thức, nội dung'], w: w[0], b: true, a: giua }, { t: ['Yêu cầu cần đạt'], w: w[1], b: true, a: giua }, { t: ['Câu số'], w: w[2], b: true, a: giua },
+      { t: ['Mức 1 (TN | TL)'], w: w[3] + w[4], b: true, a: giua, span: 2 }, { t: ['Mức 2 (TN | TL)'], w: w[5] + w[6], b: true, a: giua, span: 2 }, { t: ['Mức 3 (TN | TL)'], w: w[7] + w[8], b: true, a: giua, span: 2 },
+      { t: ['Số câu'], w: w[9], b: true, a: giua }, { t: ['Điểm'], w: w[10], b: true, a: giua }]),
+  ];
+  const so = (n: number) => (n ? String(n) : '');
+  let tong = { c: 0, d: 0, m: { 1: 0, 2: 0, 3: 0 } as Record<1 | 2 | 3, number> };
+  let phanHienTai = '';
+  for (const n of gomMaTran(dacTa)) {
+    if (n.ten !== phanHienTai) {
+      phanHienTai = n.ten;
+      rows.push(hang([{ t: [n.ten], w: RONG_NGANG, b: true, span: 11 }]));
+    }
+    const soCau = ([1, 2, 3] as const).reduce((a, k) => a + n.m[k].tn + n.m[k].tl, 0);
+    tong.c += soCau;
+    tong.d += n.diem;
+    ([1, 2, 3] as const).forEach((k) => { tong.m[k] += n.m[k].tn + n.m[k].tl; });
+    rows.push(hang([
+      { t: [n.mach], w: w[0] }, { t: n.yccd, w: w[1] }, { t: [n.cau.join(', ')], w: w[2], a: giua },
+      { t: [so(n.m[1].tn)], w: w[3], a: giua }, { t: [so(n.m[1].tl)], w: w[4], a: giua },
+      { t: [so(n.m[2].tn)], w: w[5], a: giua }, { t: [so(n.m[2].tl)], w: w[6], a: giua },
+      { t: [so(n.m[3].tn)], w: w[7], a: giua }, { t: [so(n.m[3].tl)], w: w[8], a: giua },
+      { t: [so(soCau)], w: w[9], a: giua }, { t: [fmtDiem(Math.round(n.diem * 100) / 100)], w: w[10], a: giua },
+    ]));
+  }
+  rows.push(hang([
+    { t: ['Tổng số câu'], w: w[0] + w[1] + w[2], b: true, a: AlignmentType.RIGHT, span: 3 },
+    { t: [String(tong.m[1])], w: w[3] + w[4], b: true, a: giua, span: 2 }, { t: [String(tong.m[2])], w: w[5] + w[6], b: true, a: giua, span: 2 }, { t: [String(tong.m[3])], w: w[7] + w[8], b: true, a: giua, span: 2 },
+    { t: [String(tong.c)], w: w[9], b: true, a: giua }, { t: [fmtDiem(Math.round(tong.d * 100) / 100)], w: w[10], b: true, a: giua },
+  ]));
+  return new Table({ width: { size: RONG_NGANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows });
+}
+
+function bangDacTa(dacTa: DacTa): Table {
+  const w = [800, 2600, 4400, 700, 1100, 1000, 1100, 1700, RONG_NGANG - 800 - 2600 - 4400 - 700 - 1100 - 1000 - 1100 - 1700];
+  const dau = ['Câu', 'Mạch, nội dung', 'Yêu cầu cần đạt', 'Mức', 'Hình thức', 'Điểm', 'Tuần', 'Bài học (PPCT)', 'Trang SGK'];
+  const rows: TableRow[] = [new TableRow({ cantSplit: true, children: dau.map((h, i) => oN([h], w[i], { bold: true, align: AlignmentType.CENTER })) })];
+  const xep = [...dacTa.dong].sort((a, b) => (Number(a.cau) || 1e9) - (Number(b.cau) || 1e9));
+  for (const r of xep) {
+    rows.push(new TableRow({
+      cantSplit: true,
+      children: [
+        oN([`${r.cau}${r.yNho ? ` (${r.yNho.join(', ')})` : ''}`], w[0], { align: AlignmentType.CENTER }),
+        oN([r.noiDung ?? r.mach], w[1]),
+        oN([r.yccd], w[2]),
+        oN([String(r.muc)], w[3], { align: AlignmentType.CENTER }),
+        oN([`${r.hinhThuc}${r.dang ? ` (${r.dang})` : ''}`], w[4], { align: AlignmentType.CENTER }),
+        oN([fmtDiem(r.diem)], w[5], { align: AlignmentType.CENTER }),
+        oN([r.tuan == null ? '' : String(r.tuan)], w[6], { align: AlignmentType.CENTER }),
+        oN([r.baiHoc], w[7]),
+        oN([r.trangSgk], w[8]),
+      ],
+    }));
+  }
+  return new Table({ width: { size: RONG_NGANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows });
+}
+
+function chuKyHieuTruong(): Table {
+  const w = Math.floor(RONG_NGANG / 2);
+  const o1 = (a: string, b: string) => o2([doan([tr(a, { bold: true })], { align: AlignmentType.CENTER }), doan([tr(b, { italics: true })], { align: AlignmentType.CENTER })], w);
+  return new Table({
+    width: { size: RONG_NGANG, type: WidthType.DXA },
+    columnWidths: [w, RONG_NGANG - w],
+    layout: TableLayoutType.FIXED,
+    rows: [new TableRow({ cantSplit: true, children: [o1('HIỆU TRƯỞNG', '(Ký, ghi rõ họ tên)'), o1('TỔ TRƯỞNG', '(Ký, ghi rõ họ tên)')] })],
   });
+}
+
+/** Một tệp: Ma trận, Bản đặc tả, Đề, Hướng dẫn chấm. `dacTa` là bản đã xác nhận mà đề kế thừa. */
+export function dungHoSoDe(t: ThongTinDe, dacTa: DacTa, de: DeKiemTra): Document {
+  const maTran: ISectionOptions = { properties: TRANG_NGANG, children: [...tieuDeBangRong(t, dacTa, 'MA TRẬN ĐỀ'), bangMaTran(dacTa), doan('', { sau: 120 }), chuKyHieuTruong()] };
+  const dacTaPhan: ISectionOptions = { properties: TRANG_NGANG, children: [...tieuDeBangRong(t, dacTa, 'BẢN ĐẶC TẢ ĐỀ'), bangDacTa(dacTa)] };
+  const phanDe = de.ma_mon === 'TIENG_VIET' && de.tiengViet ? cacPhanTiengViet(t, de) : cacPhanDe(t, de);
+  return new Document({ ...TAI_LIEU, title: `Hồ sơ đề kiểm tra - ${t.tenMon}`, sections: [maTran, dacTaPhan, ...phanDe] });
 }
