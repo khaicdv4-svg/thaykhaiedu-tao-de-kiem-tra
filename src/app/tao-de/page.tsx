@@ -8,7 +8,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, FilePlus2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, Download, FilePlus2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
@@ -70,6 +70,10 @@ export default function TaoDePage() {
   const [thongBao, setThongBao] = useState<string | null>(null);
   const [dangGui, setDangGui] = useState(false);
   const [deCu, setDeCu] = useState<DeKiemTra | null>(null); // đề theo đặc tả cũ
+  const [truong, setTruong] = useState('TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN');
+  const [namHoc, setNamHoc] = useState('2026 - 2027');
+  const [phut, setPhut] = useState(35);
+  const [dangXuat, setDangXuat] = useState(false);
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -161,6 +165,29 @@ export default function TaoDePage() {
     if (r.j.ban) setTrangThai(r.j.ban.trangThai);
     if (r.j.kiemDinh) setKetQua(r.j.kiemDinh);
     setThongBao(tt === 'SAN_SANG_DUYET' ? 'Đã chuyển đề sang bước duyệt. Cả tổ cùng thấy bản này.' : 'Đã lưu đề lên hệ thống. Cả tổ cùng thấy bản này.');
+  };
+
+  const xuatWord = async () => {
+    setDangXuat(true);
+    try {
+      const q = new URLSearchParams({ mon: maMon, ky, truong, namHoc, phut: String(phut) });
+      const r = await fetch(`/api/de-kiem-tra/xuat?${q}`);
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { error?: string };
+        setThongBao(`Chưa xuất được: ${j.error ?? 'lỗi không rõ.'}`);
+      } else {
+        const url = URL.createObjectURL(await r.blob());
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `De-${maMon}-${ky}.docx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setThongBao('Đã xuất tệp Word (đề và hướng dẫn chấm) từ bản đề đã lưu. Nếu vừa sửa, thầy bấm Lưu bản nháp trước khi xuất.');
+      }
+    } catch {
+      setThongBao('Chưa xuất được: không kết nối được hệ thống.');
+    }
+    setDangXuat(false);
   };
 
   const tenMon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? maMon;
@@ -320,6 +347,24 @@ export default function TaoDePage() {
               <Link href="/tests" className={nutChinh}>Sang bước 5: Duyệt đề</Link>
             </div>
           )}
+
+          <div className="the-tke p-4 flex flex-wrap items-end gap-3 text-sm">
+            <label className="flex-1 min-w-60">
+              <span className="block text-slate-600 mb-1">Tên trường (in ở đầu đề)</span>
+              <input aria-label="Tên trường" className={o} value={truong} onChange={(e) => setTruong(e.target.value)} />
+            </label>
+            <label>
+              <span className="block text-slate-600 mb-1">Năm học</span>
+              <input aria-label="Năm học" className={`${o} w-32`} value={namHoc} onChange={(e) => setNamHoc(e.target.value)} />
+            </label>
+            <label>
+              <span className="block text-slate-600 mb-1">Thời gian (phút)</span>
+              <input aria-label="Thời gian làm bài" type="number" min={5} max={120} className={`${o} w-28`} value={phut} onChange={(e) => setPhut(Number(e.target.value) || 35)} />
+            </label>
+            <button type="button" className={nutPhu} disabled={dangXuat} onClick={() => void xuatWord()}>
+              {dangXuat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Xuất Word (đề + hướng dẫn chấm)
+            </button>
+          </div>
 
           <div className="flex flex-wrap justify-between gap-2">
             <Link href={`/dac-ta?mon=${maMon}&ky=${ky}`} className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về đặc tả</Link>
