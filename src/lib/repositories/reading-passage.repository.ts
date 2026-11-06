@@ -26,6 +26,10 @@ export interface CreateReadingPassageInput {
   genre?: string;
   theme?: string;
   status?: PassageReviewStatus;
+  /** Kì kiểm tra, loại bài, thể loại (cột đã có trong bảng reading_passages). */
+  assessmentPeriod?: string;
+  readingUse?: string;
+  literaryForm?: string;
 }
 
 export class ReadingPassageRepository {
@@ -141,6 +145,9 @@ export class ReadingPassageRepository {
         genre: input.genre?.trim() || null,
         theme: input.theme?.trim() || null,
         status: input.status || 'DRAFT',
+        assessment_period: input.assessmentPeriod || null,
+        reading_use: input.readingUse || null,
+        literary_form: input.literaryForm || null,
         created_by: user.id,
       })
       .select('*')

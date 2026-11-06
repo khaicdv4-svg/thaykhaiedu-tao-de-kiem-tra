@@ -49,3 +49,25 @@ describe('Form nhập tay: khung độ dài lấy từ bộ não', () => {
     });
   });
 });
+
+import { danhGiaTheoBai } from '@/core/reading-passages/do-dai';
+
+describe('Trang danh sách: đánh giá bài theo kì đã gắn cho bài', () => {
+  it('bài chưa gắn kì hoặc loại bài thì chưa đánh giá', () => {
+    expect(danhGiaTheoBai({ wordCount: 85 })).toBeNull();
+    expect(danhGiaTheoBai({ wordCount: 85, assessmentPeriod: 'GIUA_HK1' })).toBeNull();
+  });
+
+  it('đọc thành tiếng giữa HKI 85 tiếng là đủ, dùng nguyên bài', () => {
+    const d = danhGiaTheoBai({ wordCount: 85, assessmentPeriod: 'GIUA_HK1', readingUse: 'DOC_THANH_TIENG' });
+    expect(d?.mau).toBe('xanh');
+  });
+
+  it('đọc hiểu theo bộ não của tổ, không theo khung cũ 250–320', () => {
+    const bn: BoNao = boNaoTrong();
+    bn.ky.GIUA_HK1 = { ky: 'GIUA_HK1', tocDo: null, doDai: { MIEU_TA: [180, 200] }, chuDiem: [] };
+    // 190 tiếng: khung cũ báo lệch chuẩn, bộ não báo đúng
+    const d = danhGiaTheoBai({ wordCount: 190, assessmentPeriod: 'GIUA_HK1', readingUse: 'DOC_HIEU', literaryForm: 'MIEU_TA' }, bn);
+    expect(d?.mau).toBe('xanh');
+  });
+});

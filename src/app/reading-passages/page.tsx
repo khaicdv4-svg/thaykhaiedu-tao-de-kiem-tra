@@ -27,7 +27,7 @@ import { EmptyPassagesState } from '@/components/reading-passages/EmptyPassagesS
 import { useBoNao } from '@/lib/hooks/useBoNao';
 import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, TEN_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { goiYCatDoan, type DoanCat } from '@/core/reading-passages/cat-doan';
-import { danhGiaDoDai } from '@/core/reading-passages/do-dai';
+import { danhGiaDoDai, danhGiaTheoBai } from '@/core/reading-passages/do-dai';
 
 const TEN_TRANG_THAI: Record<string, string> = { DRAFT: 'Nháp', PENDING_REVIEW: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
 const TEN_KIEU_NGAT: Record<string, string> = { CUOI_CAU: 'ngắt cuối câu', CUOI_DONG: 'ngắt cuối dòng', DAU_PHAY: 'ngắt ở dấu phẩy', GIUA_CAU: 'ngắt giữa câu' };
@@ -57,7 +57,8 @@ export default function ReadingPassagesPage() {
   const quyDinh = useMemo(() => (quyKy ? khoangDoDai(quyLoai, quyKy, quyTheLoai, boNao) : null), [quyKy, quyLoai, quyTheLoai, boNao]);
 
   /** Đánh giá số tiếng của bài theo quy định của kì đang chọn. */
-  const danhGia = (p: ReadingPassage) => (quyKy ? danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai, boNao) : null);
+  // Không chọn kì để lọc thì đánh giá theo kì, loại bài, thể loại đã gắn cho chính bài đó (theo bộ não).
+  const danhGia = (p: ReadingPassage) => (quyKy ? danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai, boNao) : danhGiaTheoBai(p, boNao));
 
   const danhSachHienThi = useMemo(() => {
     const tu = tuTieng.trim() ? Number(tuTieng) : null;
@@ -303,8 +304,6 @@ export default function ReadingPassagesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {danhSachHienThi.map((p) => {
             const config = READING_PASSAGE_CONFIG[p.passageType] || READING_PASSAGE_CONFIG.ORAL_READING;
-            const isExact = p.toleranceStatus === 'EXACT';
-            const isInRange = p.toleranceStatus === 'IN_RANGE';
             const dg = danhGia(p);
 
             return (
@@ -325,14 +324,10 @@ export default function ReadingPassagesPage() {
                             : dg.mau === 'vang'
                             ? 'bg-amber-100 text-amber-800 border-amber-300'
                             : 'bg-rose-100 text-rose-800 border-rose-300'
-                          : isExact
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
-                          : isInRange
-                          ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300'
-                          : 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
+                          : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-300'
                       }`}
                     >
-                      {p.wordCount} tiếng ({dg ? dg.nhan : isExact ? 'Chuẩn' : isInRange ? 'Trong dung sai' : 'Lệch chuẩn'})
+                      {p.wordCount} tiếng ({dg ? dg.nhan : 'chưa gắn kì, chưa đánh giá'})
                     </span>
                   </div>
 
