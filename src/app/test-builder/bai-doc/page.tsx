@@ -58,7 +58,7 @@ export default function ChonBaiDocPage() {
         <p className="text-sm text-slate-600">1 bài đọc hiểu và 4 bài đọc thành tiếng, lấy từ kho bài đã duyệt. Không chọn cùng một bài cho hai phần.</p>
       </div>
 
-      <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+      <section className="the-tke p-5 space-y-3">
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-2">Kì kiểm tra
             <select className={o} value={ky} onChange={(e) => setKy(e.target.value as KyKiemTraBaiDoc)}>

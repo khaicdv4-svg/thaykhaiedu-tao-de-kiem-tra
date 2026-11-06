@@ -3,12 +3,14 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Sparkles, FilePlus, Copy, Clock, CheckCircle2 } from 'lucide-react';
+import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 
 export default function TestBuilderPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-8">
+      <TienTrinh5Buoc buocHienTai={1} choBam />
       {/* Header Banner */}
-      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="the-tke p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start space-x-4">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/80 shrink-0">
             <Sparkles className="w-7 h-7" />

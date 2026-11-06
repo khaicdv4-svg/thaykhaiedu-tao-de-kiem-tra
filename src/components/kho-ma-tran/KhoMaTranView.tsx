@@ -31,7 +31,7 @@ const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYS
 const VAI_TRO_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const MOI_LAN_GUI = 8;
 
-const nutChinh = 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300';
+const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
 const o = 'rounded-lg border border-slate-300 px-2 py-1.5 text-sm bg-white';
 
@@ -219,7 +219,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-8">
-      <div className="bg-white rounded-xl p-6 border border-slate-200">
+      <div className="the-tke p-6">
         <h1 className="text-xl font-bold text-slate-900">{TEN_LOAI_MA_TRAN[loai]}</h1>
         <p className="text-sm text-slate-600 mt-1">
           {loai === 'CHUNG'
@@ -254,7 +254,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
 
       {/* Xem và sửa trước khi lưu */}
       {cho.length > 0 && (
-        <div className="bg-white rounded-xl p-6 border border-slate-200 space-y-4">
+        <div className="the-tke p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Kiểm tra trước khi lưu ({canLuu.length}/{cho.length} file)</h2>
             <p className="text-sm text-slate-600">App đã đoán môn{loai === 'CHUNG' ? ', kì' : ''} từ tên thư mục và tên file. Ô nào sai thì chọn lại. Bỏ dấu tích để không lưu file đó.</p>
@@ -317,7 +317,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
       )}
 
       {/* Bảng môn × kì */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+      <div className="the-tke overflow-x-auto">
         {dangTai ? (
           <div className="p-8 text-center text-sm text-slate-500"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />Đang tải...</div>
         ) : (
@@ -359,7 +359,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
 
       {/* Chi tiết một ô: các phiên bản */}
       {oDangXem && (
-        <div className="bg-white rounded-xl p-6 border border-slate-200 space-y-3">
+        <div className="the-tke p-6 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">
               {tenMon(dangXem[0]?.maMon ?? '')}{dangXem[0]?.ky ? ` – ${tenKy(dangXem[0].ky)}` : ''}: các phiên bản

@@ -1,54 +1,105 @@
-import React from 'react';
+'use client';
+
+/**
+ * ThayKhaiEdu - Đầu trang chủ: thẻ số liệu thật, nút "Tạo đề kiểm tra mới", "Kho đề của tôi",
+ * "Tiếp tục bản nháp" và thanh tiến trình 5 bước.
+ * Số liệu đọc thẳng từ cơ sở dữ liệu của trường; chưa đọc được thì hiện "–", không dùng số mẫu.
+ */
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, Plus, Layers, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { DEFAULT_APP_CONFIG } from '@/core/config/app-config';
+import { BookOpenCheck, FileText, FolderOpen, History, Layers, Plus, Table2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
+
+interface SoLieu {
+  deDaTao: number | null;
+  baiDocDaDuyet: number | null;
+  maTranDaXacNhan: number | null;
+  monDaNhapPpct: number | null;
+}
+
+const THE: { khoa: keyof SoLieu; ten: string; ghiChu: string; icon: typeof FileText; mau: string; href: string }[] = [
+  { khoa: 'deDaTao', ten: 'Đề đã tạo', ghiChu: 'trong kho đề của trường', icon: FileText, mau: 'from-blue-500 to-indigo-500', href: '/tests' },
+  { khoa: 'baiDocDaDuyet', ten: 'Bài đọc đã duyệt', ghiChu: 'kho ngữ liệu Tiếng Việt', icon: BookOpenCheck, mau: 'from-violet-500 to-fuchsia-500', href: '/reading-passages' },
+  { khoa: 'maTranDaXacNhan', ten: 'Ma trận chung đã xác nhận', ghiChu: 'môn × kì kiểm tra', icon: Table2, mau: 'from-amber-400 to-orange-500', href: '/ma-tran-chung' },
+  { khoa: 'monDaNhapPpct', ten: 'Môn đã nhập PPCT', ghiChu: 'phân phối chương trình', icon: Layers, mau: 'from-emerald-400 to-teal-500', href: '/sources' },
+];
+
+async function dem(bang: string, loc?: (q: any) => any): Promise<number | null> {
+  const supabase = createClient();
+  if (!supabase) return null;
+  let q = supabase.from(bang).select('id', { count: 'exact', head: true });
+  if (loc) q = loc(q);
+  const { count, error } = await q;
+  return error ? null : count ?? 0;
+}
 
 export function WelcomeBanner() {
+  const [so, setSo] = useState<SoLieu>({ deDaTao: null, baiDocDaDuyet: null, maTranDaXacNhan: null, monDaNhapPpct: null });
+
+  useEffect(() => {
+    let huy = false;
+    Promise.all([
+      dem('tests'),
+      dem('reading_passages', (q) => q.eq('status', 'APPROVED')),
+      dem('tai_lieu_ma_tran', (q) => q.eq('loai', 'CHUNG').eq('trang_thai', 'DA_XAC_NHAN')),
+      dem('curriculum_sources'),
+    ]).then(([a, b, c, d]) => {
+      if (!huy) setSo({ deDaTao: a, baiDocDaDuyet: b, maTranDaXacNhan: c, monDaNhapPpct: d });
+    });
+    return () => { huy = true; };
+  }, []);
+
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-700 via-indigo-700 to-slate-900 p-6 sm:p-8 text-white shadow-md">
-      {/* Background Decorative Element */}
-      <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute right-20 -top-10 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+    <div className="space-y-5">
+      {/* Thẻ số liệu */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        {THE.map((t) => {
+          const Icon = t.icon;
+          const gt = so[t.khoa];
+          return (
+            <Link key={t.khoa} href={t.href} className="the-tke p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 hover:-translate-y-0.5 transition">
+              <div className={`w-12 h-12 rounded-2xl bg-linear-to-br ${t.mau} text-white flex items-center justify-center shadow-md shrink-0`}>
+                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-600 leading-snug">{t.ten}</div>
+                <div className="text-2xl font-extrabold text-slate-900 leading-tight">{gt === null ? '–' : gt.toLocaleString('vi-VN')}</div>
+                <div className="text-xs text-slate-400 leading-snug">{t.ghiChu}</div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
 
-      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="max-w-2xl space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-medium text-blue-100 backdrop-blur-xs">
-            <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-            <span>Nền tảng kiểm định & Tạo đề kiểm tra AI định kỳ</span>
+      {/* Tiến trình 5 bước */}
+      <TienTrinh5Buoc choBam />
+
+      {/* Lối vào chính */}
+      <div className="the-tke p-6 sm:p-8 relative overflow-hidden">
+        <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-violet-200/40 blur-3xl pointer-events-none" />
+        <div className="absolute right-24 -bottom-20 w-56 h-56 rounded-full bg-blue-200/40 blur-3xl pointer-events-none" />
+        <div className="relative flex flex-col lg:flex-row lg:items-center gap-6">
+          <div className="flex-1 space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Tạo đề kiểm tra lớp 1–5</h1>
+            <p className="text-slate-600 max-w-2xl">
+              Lập đề theo ma trận và bản đặc tả đã xác nhận, bám yêu cầu cần đạt và phạm vi đã học. AI làm giúp phần nặng, thầy cô xem và quyết định.
+            </p>
           </div>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
-            Chào mừng Thầy/Cô đến với {DEFAULT_APP_CONFIG.brandName}
-          </h1>
-
-          <p className="text-sm text-blue-100/90 leading-relaxed font-normal">
-            Hệ thống hỗ trợ Giáo viên Tiểu học khởi tạo, kiểm định, kiểm tra chéo, phê duyệt và xuất hồ sơ đề kiểm tra định kỳ (Khối 1 - 5) bám sát Chuẩn YCCĐ GDPT.
-          </p>
-        </div>
-
-        {/* Action CTAs */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0">
-          <Link href="/test-builder">
-            <Button
-              size="lg"
-              className="bg-white hover:bg-slate-100 text-blue-700 border-white shadow-md font-semibold cursor-pointer"
-              icon={<Plus className="w-5 h-5 text-blue-600" />}
-            >
-              Tạo đề mới
-            </Button>
-          </Link>
-
-          <Link href="/sources">
-            <Button
-              size="lg"
-              variant="ghost"
-              className="text-white hover:bg-white/10 border border-white/20 font-medium cursor-pointer"
-              icon={<Layers className="w-4 h-4 text-blue-200" />}
-            >
-              Chương trình & Nguồn
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <Link href="/test-builder" className="nut-tke text-base px-7 py-4">
+              <Plus className="w-5 h-5" /> Tạo đề kiểm tra mới
+            </Link>
+            <div className="flex gap-3">
+              <Link href="/tests" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
+                <FolderOpen className="w-4 h-4" /> Kho đề của tôi
+              </Link>
+              <Link href="/tests" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
+                <History className="w-4 h-4" /> Tiếp tục bản nháp
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

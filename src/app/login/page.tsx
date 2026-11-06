@@ -67,13 +67,13 @@ function LoginForm() {
       <div className="w-full max-w-md">
         {/* Logo & Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-br from-violet-600 via-indigo-600 to-blue-500 text-white shadow-lg shadow-indigo-500/30 mb-4">
             <School className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             ThayKhaiEdu
           </h1>
-          <p className="text-sm font-medium text-blue-600 mt-1">
+          <p className="text-sm font-bold chu-tke mt-1">
             Xưởng sản xuất đề kiểm tra AI – Khối 4
           </p>
           <p className="text-xs text-slate-500 mt-1">
@@ -147,7 +147,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full mt-2 inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow transition disabled:opacity-50"
+              className="nut-tke w-full mt-2 text-sm"
             >
               {isPending ? (
                 <>

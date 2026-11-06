@@ -27,6 +27,7 @@ import {
 import type { MaTranChung, MaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 import { MatrixPreview } from '@/components/matrices/MatrixPreview';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
+import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 
 const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
 
@@ -91,7 +92,7 @@ function Stepper({ buoc, xong }: { buoc: number; xong: boolean[] }) {
   );
 }
 
-const nutChinh = 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300';
+const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
 
 export default function MatricesPage() {
@@ -171,7 +172,8 @@ export default function MatricesPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-8">
-      <div className="bg-white rounded-xl p-6 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <TienTrinh5Buoc buocHienTai={2} daXong={[1]} choBam />
+      <div className="the-tke p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
             <Grid className="w-7 h-7" />
@@ -186,7 +188,7 @@ export default function MatricesPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl p-4 border border-slate-200">
+      <div className="the-tke p-4">
         <Stepper buoc={buoc} xong={xong} />
       </div>
 
@@ -194,7 +196,7 @@ export default function MatricesPage() {
 
       {/* Bước 1: chọn môn */}
       {buoc === 0 && (
-        <div className="bg-white rounded-xl p-6 border border-slate-200 space-y-4">
+        <div className="the-tke p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Chọn môn kiểm tra</h2>
             <p className="text-sm text-slate-600">Kì kiểm tra: Cuối học kì I, năm học 2026 – 2027, Lớp 4.</p>
@@ -226,7 +228,7 @@ export default function MatricesPage() {
       {/* Bước 2: ma trận chung */}
       {buoc === 1 && mtc && kqChung && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl p-6 border border-slate-200 space-y-3">
+          <div className="the-tke p-6 space-y-3">
             <h2 className="text-lg font-semibold text-slate-900">Ma trận chung của tổ – {mtc.mon}</h2>
             <p className="text-sm text-slate-600">Đây là khung tổ đã thống nhất. Ma trận riêng giữ nguyên số câu, mức, hình thức và điểm của từng câu.</p>
             {mtc.van_de_can_xac_nhan && mtc.van_de_can_xac_nhan.length > 0 && (
@@ -255,7 +257,7 @@ export default function MatricesPage() {
       {buoc === 2 && mtc && mtr && (
         <div className="space-y-4">
           {nhomLuaChon.length > 0 && (
-            <div className="bg-white rounded-xl p-6 border border-slate-200 space-y-4">
+            <div className="the-tke p-6 space-y-4">
               {nhomLuaChon.map((nhom) => (
                 <fieldset key={nhom.ma}>
                   <legend className="font-semibold text-slate-900 mb-2">{nhom.ten}</legend>
@@ -272,7 +274,7 @@ export default function MatricesPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl p-6 border border-slate-200">
+          <div className="the-tke p-6">
             <h2 className="text-lg font-semibold text-slate-900">Chọn yêu cầu cần đạt cho từng câu</h2>
             <p className="text-sm text-slate-600 mb-4">Mỗi câu gắn đúng một YCCĐ. Câu chỉ có một YCCĐ đã được chọn sẵn.</p>
             {!chonDuPhuongAn ? (
@@ -313,7 +315,7 @@ export default function MatricesPage() {
             )}
           </div>
 
-          {ketQua && <div className="bg-white rounded-xl p-6 border border-slate-200"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra ma trận riêng" /></div>}
+          {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra ma trận riêng" /></div>}
 
           <div className="flex flex-wrap justify-between gap-2">
             <button type="button" className={nutPhu} onClick={() => setBuoc(1)}><ArrowLeft className="w-4 h-4" /> Quay lại</button>
@@ -341,7 +343,7 @@ export default function MatricesPage() {
           <div className="rounded-xl border border-slate-200 overflow-hidden">
             <MatrixPreview maTran={banTrinhBay} />
           </div>
-          {ketQua && !ketQua.hopLe && <div className="bg-white rounded-xl p-6 border border-slate-200"><ValidationPanel ketQua={ketQua} /></div>}
+          {ketQua && !ketQua.hopLe && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} /></div>}
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={daXemTruoc} onChange={(e) => setDaXemTruoc(e.target.checked)} />
             Tôi đã xem kĩ ma trận riêng ở trên.

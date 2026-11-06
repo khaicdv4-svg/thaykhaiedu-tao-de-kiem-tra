@@ -35,7 +35,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       {/* Top Banner */}
-      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="the-tke p-6 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center space-x-2.5">
             <h1 className="text-xl font-bold text-slate-900">Quản trị & Cài đặt Hệ thống</h1>

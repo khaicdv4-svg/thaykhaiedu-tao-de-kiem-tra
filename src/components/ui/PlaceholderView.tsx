@@ -22,7 +22,7 @@ export function PlaceholderView({
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-8">
       {/* Header Banner */}
-      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="the-tke p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start space-x-4">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/80 shrink-0">
             <Icon className="w-7 h-7" />

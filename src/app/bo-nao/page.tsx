@@ -15,7 +15,7 @@ import { docChuTuDocx } from '@/core/utils/docx-text';
 import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
-const nutChinh = 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300';
+const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 const VAI_TRO_SUA = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const THE_LOAI_DOC_HIEU: TheLoaiBaiDoc[] = ['TRUYEN', 'MIEU_TA', 'THO', 'VAN_BAN_THONG_TIN'];
@@ -147,7 +147,7 @@ export default function BoNaoPage() {
       {thongBao && <div className={`rounded-lg border p-3 text-sm ${thongBao.loai === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{thongBao.text}</div>}
       {!duocSua && !dangTai && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Thầy cô chỉ xem được. Tổ trưởng mới tải và sửa.</div>}
 
-      <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+      <section className="the-tke p-5 space-y-4">
         <h2 className="text-base font-semibold text-slate-900">1. Ma trận chung (môn Tiếng Việt)</h2>
         <p className="text-sm text-slate-600">Chọn một hoặc nhiều file .docx (mỗi kì một file). App đọc ra độ dài bài đọc, tốc độ đọc và chủ điểm để thầy xem lại.</p>
         <input ref={maTranRef} type="file" multiple accept=".docx" className="hidden" onChange={(e) => docFileMaTran(e.target.files)} />
@@ -200,7 +200,7 @@ export default function BoNaoPage() {
         </div>
       </section>
 
-      <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+      <section className="the-tke p-5 space-y-3">
         <h2 className="text-base font-semibold text-slate-900">2. Quy định riêng của tổ</h2>
         <p className="text-sm text-slate-600">Viết các quy định của tổ (ví dụ: ưu tiên bài có tên tác giả, tránh bài có chủ đề...) hoặc tải file chữ lên. AI đọc phần này khi tìm bài và gợi ý đoạn cắt. Các quy định này chưa tự biến thành luật kiểm tra của app.</p>
         <textarea className={`${o} w-full min-h-40`} disabled={!duocSua} value={bn.quyDinhRieng} onChange={(e) => setBn({ ...bn, quyDinhRieng: e.target.value })} placeholder="Ví dụ: Bài đọc thành tiếng nên có lời thoại ngắn; không dùng bài về thiên tai cho giữa học kì I." />

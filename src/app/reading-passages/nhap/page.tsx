@@ -17,7 +17,7 @@ import { TheBaiDoc, type BaiDocSua } from '@/components/kho-bai-doc/TheBaiDoc';
 
 type Tab = 'FILE' | 'AI';
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
-const nutChinh = 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300';
+const nutChinh = 'nut-tke text-sm';
 
 interface KetQuaPhanTich {
   tieuDe: string; noiDung: string; tacGia: string; nguon: string; nguonUrl: string;
@@ -153,7 +153,7 @@ export default function NhapKhoBaiDocPage() {
       </div>
 
       {tab === 'FILE' && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="the-tke p-5 space-y-4">
           <div
             className="rounded-xl border-2 border-dashed border-slate-300 p-6 text-center cursor-pointer hover:border-blue-400"
             onClick={() => fileRef.current?.click()}
@@ -187,7 +187,7 @@ export default function NhapKhoBaiDocPage() {
       )}
 
       {tab === 'AI' && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="the-tke p-5 space-y-4">
           {ai && !ai.daCauHinh && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               Chưa dùng được AI: {ai.lyDo ?? 'chưa cấu hình'}{' '}

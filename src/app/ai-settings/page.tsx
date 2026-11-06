@@ -24,7 +24,7 @@ import {
 } from '@/core/services/ai/cau-hinh-ai';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
-const nutChinh = 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300';
+const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 const VAI_TRO_SUA = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
@@ -32,7 +32,7 @@ type KetQuaThu = { dang: boolean; ok?: boolean; text?: string };
 
 function Muc({ so, ten, icon: Icon, children }: { so: number; ten: string; icon: typeof KeyRound; children: React.ReactNode }) {
   return (
-    <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+    <section className="the-tke p-5 space-y-4">
       <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
         <Icon className="w-4 h-4 text-blue-600" /> {so}. {ten}
       </h2>
