@@ -35,3 +35,11 @@ Kết quả trên bản sao đủ dự án: `tsc --noEmit` 0 lỗi, `vitest` 100
 3. **PDF:** chưa đọc trực tiếp; giáo viên lưu thành .docx hoặc dán chữ.
 4. `PassageFormModal` (thêm tay) và `READING_PASSAGE_CONFIG` vẫn dùng khung độ dài cũ (đọc hiểu 250 – 320). Nên chuyển sang `quy-dinh.ts`.
 5. Xưởng tạo đề phải gọi `kiemTraDieuKienTaoDe()` trước khi tạo câu hỏi.
+
+## Điều chỉnh điều kiện chọn bài (06/11/2026, thầy Khái chốt)
+
+Tách hai bước để dễ tìm bài hơn:
+
+- **Đề xuất** (AI tìm, tải file): đúng chủ điểm, phù hợp nội dung, số tiếng gần quy định. Bài dài hơn vẫn đề xuất, tổ cắt một đoạn trọn ý (cả đọc thành tiếng lẫn đọc hiểu). Thể loại ưu tiên đúng loại, khác loại cùng nhóm văn học/thông tin vẫn được. Thiếu tác giả, link vẫn hiện để tổ xem.
+- **Chọn vào kho / vào đề** (`kiemTraBaiDoc`, chặn): bắt buộc tác giả; có link thì link phải mở được và đúng bài; không có link thì ghi tên sách và số trang.
+- SGK Tiếng Việt 4 **Cánh Diều, Chân trời sáng tạo được phép dùng và nên tìm**. Chỉ chặn SGK Tiếng Việt 4 Kết nối tri thức đang dạy (theo nguồn ghi, theo tên bài, theo nội dung trùng).

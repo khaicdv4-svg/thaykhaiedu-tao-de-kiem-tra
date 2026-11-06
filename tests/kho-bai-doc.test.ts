@@ -75,7 +75,7 @@ describe('Kiểm tra bài đọc', () => {
     tieuDe: 'Cái diều giấy',
     noiDung: motBai(85),
     tacGia: 'Lê Văn Thử',
-    nguon: 'Tuyển tập truyện thiếu nhi, NXB Thử nghiệm',
+    nguon: 'Tuyển tập truyện thiếu nhi, NXB Thử nghiệm, trang 15',
     loai: 'DOC_THANH_TIENG',
     ky: 'CUOI_HK1',
     theLoai: 'TRUYEN',
@@ -88,13 +88,29 @@ describe('Kiểm tra bài đọc', () => {
     expect(kq.soTieng).toBe(85);
   });
 
-  it('thiếu tác giả, nguồn; nguồn là SGK; chưa xếp chỗ → chặn', () => {
-    const kq = kiemTraBaiDoc({ tieuDe: 'X', noiDung: motBai(85), tacGia: '', nguon: 'Sách Tiếng Việt 4 Cánh Diều' });
+  it('thiếu tác giả, nguồn; nguồn là SGK đang dạy; chưa xếp chỗ → chặn', () => {
+    const kq = kiemTraBaiDoc({ tieuDe: 'X', noiDung: motBai(85), tacGia: '', nguon: 'Tiếng Việt 4, tập một, Kết nối tri thức, trang 20' });
     const s = kq.loi.join(' | ');
     expect(s).toContain('Thiếu tác giả');
-    expect(s).toContain('sách giáo khoa');
+    expect(s).toContain('Kết nối tri thức đang dạy');
     expect(s).toContain('Chưa chọn loại bài');
     expect(s).toContain('Chưa chọn chủ điểm');
+  });
+
+  it('SGK Cánh Diều, Chân trời sáng tạo được dùng; sách in không link phải có trang', () => {
+    expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, tập một, Cánh Diều, trang 25' }).loi).toEqual([]);
+    expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, Chân trời sáng tạo, tr. 41' }).loi).toEqual([]);
+    expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, Cánh Diều' }).loi.join(' ')).toContain('số trang');
+    // Có link đã kiểm thì không cần trang
+    expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Báo Nhi Đồng', nguonUrl: 'https://vidu.vn/a', trangThaiLink: 'CON_TON_TAI' }).loi).toEqual([]);
+  });
+
+  it('đọc hiểu dài hơn quy định: cho qua, nhắc cắt đoạn; ngắn hơn: chặn', () => {
+    const dh = { ...hopLe, loai: 'DOC_HIEU' as const };
+    const dai = kiemTraBaiDoc({ ...dh, noiDung: motBai(400) });
+    expect(dai.loi).toEqual([]);
+    expect(dai.canhBao.some((c) => c.includes('Cắt một đoạn'))).toBe(true);
+    expect(kiemTraBaiDoc({ ...dh, noiDung: motBai(150) }).loi.some((l) => l.includes('150 tiếng'))).toBe(true);
   });
 
   it('độ dài: ngoài ±5 thì chặn, trong ±5 thì cảnh báo', () => {
@@ -102,7 +118,7 @@ describe('Kiểm tra bài đọc', () => {
     // đọc thành tiếng: bài dài hơn quy định vẫn qua, chỉ cảnh báo vì sẽ cắt đoạn
     const dai = kiemTraBaiDoc({ ...hopLe, noiDung: motBai(96) });
     expect(dai.loi).toEqual([]);
-    expect(dai.canhBao.some((c) => c.includes('cắt một đoạn'))).toBe(true);
+    expect(dai.canhBao.some((c) => c.includes('Cắt một đoạn'))).toBe(true);
     const kq = kiemTraBaiDoc({ ...hopLe, noiDung: motBai(93) });
     expect(kq.loi).toEqual([]);
     expect(kq.canhBao.some((c) => c.includes('93 tiếng'))).toBe(true);
@@ -148,7 +164,9 @@ describe('Chỗ cắm AI', () => {
   it('lời nhắc tìm bài có đủ quy định của tổ', () => {
     const p = loiNhacTimBaiDoc({ loai: 'DOC_HIEU', ky: 'CUOI_HK1', chuDiem: 'Niềm vui sáng tạo', theLoai: 'TRUYEN', soBai: 3 });
     expect(p).toContain('280 – 300 tiếng');
-    expect(p).toContain('Không lấy bài có trong SGK');
+    expect(p).toContain('Không lấy bài trong SGK Tiếng Việt 4 Kết nối tri thức');
+    expect(p).toContain('Cánh Diều');
+    expect(p).toContain('số trang');
     expect(p).toContain('Anh Ba');
   });
 });

@@ -10,13 +10,14 @@ import type { BoNao } from '@/core/bo-nao/bo-nao';
 import { countVietnameseSyllables } from '@/core/utils/vietnamese-word-counter';
 import {
   DANH_SACH_KY,
-  DAU_HIEU_SGK_KHAC,
+  CO_SO_TRANG,
   NGUONG_TRUNG_SGK,
   TEN_LOAI,
   TEN_MIEN_NGUON_PHU,
   TEN_THE_LOAI,
   khoangDoDai,
   chuDiemCuaKy,
+  laNguonSgkDangDay,
   type KhoangDoDai,
   type KyKiemTraBaiDoc,
   type LoaiBaiDoc,
@@ -122,12 +123,16 @@ export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = [], boN
   if (!b.tieuDe?.trim()) loi.push('Thiếu tên bài.');
   if (!b.noiDung?.trim()) loi.push('Thiếu nội dung bài đọc.');
   if (!b.tacGia?.trim()) loi.push('Thiếu tác giả. Bài đọc phải là tác phẩm có thật, ghi đúng tác giả.');
-  if (!b.nguon?.trim() && !b.nguonUrl?.trim()) loi.push('Thiếu nguồn (sách, báo hoặc trang web).');
+  if (!b.nguon?.trim() && !b.nguonUrl?.trim()) loi.push('Thiếu nguồn: cần link, hoặc tên sách và trang.');
+  // Sách in, không có link: phải ghi tên sách và số trang
+  else if (!b.nguonUrl?.trim() && !CO_SO_TRANG.test(b.nguon || '')) {
+    loi.push('Không có link thì ghi tên sách và số trang (ví dụ: Tiếng Việt 4, tập một, Cánh Diều, trang 25).');
+  }
 
-  // Nguồn không được là SGK
+  // Không lấy từ SGK Tiếng Việt 4 Kết nối tri thức đang dạy. SGK Cánh Diều, Chân trời sáng tạo được phép.
   const nguonGop = `${b.nguon || ''} ${b.nguonUrl || ''}`;
-  if (DAU_HIEU_SGK_KHAC.some((re) => re.test(nguonGop))) {
-    loi.push('Nguồn ghi là sách giáo khoa. Không lấy bài đọc từ SGK đang dạy hay SGK bộ khác.');
+  if (laNguonSgkDangDay(nguonGop)) {
+    loi.push('Nguồn là SGK Tiếng Việt 4 Kết nối tri thức đang dạy, học sinh đã học. Chọn bài khác (SGK Cánh Diều, Chân trời sáng tạo thì được).');
   }
 
   // Link
@@ -161,9 +166,9 @@ export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = [], boN
     khoang = khoangDoDai(b.loai, b.ky, b.theLoai, boNao);
     if (!khoang) {
       canhBao.push(`Tổ chưa quy định độ dài cho ${TEN_LOAI[b.loai].toLowerCase()} thể loại ${TEN_THE_LOAI[b.theLoai].toLowerCase()}.`);
-    } else if (b.loai === 'DOC_THANH_TIENG' && soTieng > khoang.max + khoang.dungSai) {
-      // Bài dài vẫn dùng được: tổ cho phép cắt một đoạn đủ số tiếng (xem cat-doan.ts).
-      canhBao.push(`Bài có ${soTieng} tiếng, dài hơn quy định (${khoang.min} – ${khoang.max}). Khi soạn đề sẽ cắt một đoạn đủ số tiếng.`);
+    } else if (soTieng > khoang.max + khoang.dungSai) {
+      // Bài dài vẫn dùng được: cắt một đoạn trọn ý đủ số tiếng (xem cat-doan.ts), cả đọc thành tiếng lẫn đọc hiểu.
+      canhBao.push(`Bài có ${soTieng} tiếng, dài hơn quy định (${khoang.min} – ${khoang.max}). Cắt một đoạn trọn ý đủ số tiếng rồi lưu thành bài mới.`);
     } else if (soTieng < khoang.min - khoang.dungSai || soTieng > khoang.max + khoang.dungSai) {
       loi.push(`Bài có ${soTieng} tiếng; quy định ${khoang.min} – ${khoang.max} tiếng, lệch tối đa ±${khoang.dungSai}.`);
     } else if (soTieng < khoang.min || soTieng > khoang.max) {

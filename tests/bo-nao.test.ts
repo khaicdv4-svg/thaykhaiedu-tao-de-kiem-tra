@@ -52,7 +52,7 @@ describe('bộ não áp dụng vào quy định', () => {
   });
   it('kiểm tra bài đọc dùng số của bộ não', () => {
     const noiDung = Array.from({ length: 270 }, (_, i) => `t${i}`).join(' ');
-    const bai = { tieuDe: 'A', noiDung, tacGia: 'B', nguon: 'Sách C', loai: 'DOC_HIEU' as const, ky: 'CUOI_HK1' as const, theLoai: 'TRUYEN' as const, chuDiem: 'Chắp cánh ước mơ' };
+    const bai = { tieuDe: 'A', noiDung, tacGia: 'B', nguon: 'Sách C, trang 12', loai: 'DOC_HIEU' as const, ky: 'CUOI_HK1' as const, theLoai: 'TRUYEN' as const, chuDiem: 'Chắp cánh ước mơ' };
     expect(kiemTraBaiDoc(bai).loi).toEqual([]);
     const l = kiemTraBaiDoc(bai, [], bn).loi.join(' | ');
     expect(l).toContain('270 tiếng');

@@ -49,6 +49,7 @@ export default function ReadingPassagesPage() {
   const [doanCat, setDoanCat] = useState<DoanCat[] | null>(null);
   const [daChep, setDaChep] = useState<number | null>(null);
   const [kyCat, setKyCat] = useState<KyKiemTraBaiDoc>('GIUA_HK1');
+  const [loaiCat, setLoaiCat] = useState<LoaiBaiDoc>('DOC_THANH_TIENG');
   // Lọc theo quy định độ dài của kì kiểm tra (để trống = không lọc theo quy định)
   const [quyKy, setQuyKy] = useState<KyKiemTraBaiDoc | ''>('');
   const [quyLoai, setQuyLoai] = useState<LoaiBaiDoc>('DOC_HIEU');
@@ -84,8 +85,14 @@ export default function ReadingPassagesPage() {
     if (p?.assessmentPeriod) setKyCat(p.assessmentPeriod as KyKiemTraBaiDoc);
   };
 
-  const catDoan = (p: ReadingPassage, ky: KyKiemTraBaiDoc = kyCat) => {
-    const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN', boNao) ?? { min: 80, max: 85, dungSai: 5 };
+  /** Khoảng số tiếng để cắt: đọc thành tiếng theo tốc độ đọc; đọc hiểu theo thể loại của bài. */
+  const khoangCat = (p: ReadingPassage | null, ky: KyKiemTraBaiDoc, loai: LoaiBaiDoc) => {
+    const tl = (p?.genre && p.genre in TEN_THE_LOAI ? p.genre : 'TRUYEN') as TheLoaiBaiDoc;
+    return khoangDoDai(loai, ky, tl, boNao);
+  };
+
+  const catDoan = (p: ReadingPassage, ky: KyKiemTraBaiDoc = kyCat, loai: LoaiBaiDoc = loaiCat) => {
+    const kh = khoangCat(p, ky, loai) ?? (loai === 'DOC_HIEU' ? { min: 200, max: 250, dungSai: 10 } : { min: 80, max: 85, dungSai: 5 });
     setDoanCat(goiYCatDoan(p.content, { min: kh.min, max: kh.max, dungSai: kh.dungSai }));
     setDaChep(null);
   };
@@ -425,7 +432,20 @@ export default function ReadingPassagesPage() {
 
             <div className="space-y-2 border-t pt-3">
               <div className="flex flex-wrap items-center gap-2">
-                <label className="font-semibold text-slate-600">Cắt cho kì</label>
+                <label className="font-semibold text-slate-600">Cắt cho</label>
+                <select
+                  aria-label="Loại bài cần cắt"
+                  value={loaiCat}
+                  onChange={(e) => {
+                    setLoaiCat(e.target.value as LoaiBaiDoc);
+                    catDoan(selectedPassageForView, kyCat, e.target.value as LoaiBaiDoc);
+                  }}
+                  className="px-2 py-1 rounded-lg border border-slate-300 bg-white"
+                >
+                  <option value="DOC_THANH_TIENG">Đọc thành tiếng</option>
+                  <option value="DOC_HIEU">Đọc hiểu</option>
+                </select>
+                <label className="font-semibold text-slate-600">kì</label>
                 <select
                   value={kyCat}
                   onChange={(e) => {
@@ -438,7 +458,7 @@ export default function ReadingPassagesPage() {
                 </select>
                 <span className="text-slate-500">
                   {(() => {
-                    const kh = khoangDoDai('DOC_THANH_TIENG', kyCat, 'TRUYEN', boNao);
+                    const kh = khoangCat(selectedPassageForView, kyCat, loaiCat);
                     return kh ? `Quy định: ${kh.min}–${kh.max} tiếng (lệch tối đa ±${kh.dungSai})` : '';
                   })()}
                 </span>
@@ -448,10 +468,10 @@ export default function ReadingPassagesPage() {
                 onClick={() => catDoan(selectedPassageForView)}
                 className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold"
               >
-                Cắt đoạn đọc thành tiếng
+                Cắt đoạn {loaiCat === 'DOC_HIEU' ? 'đọc hiểu' : 'đọc thành tiếng'}
               </button>
               {doanCat && doanCat.length === 0 && (
-                <p className="text-amber-700">Bài này chưa đủ số tiếng để cắt đoạn đọc thành tiếng.</p>
+                <p className="text-amber-700">Bài này chưa đủ số tiếng để cắt đoạn {loaiCat === 'DOC_HIEU' ? 'đọc hiểu' : 'đọc thành tiếng'}.</p>
               )}
               {doanCat?.map((d, i) => (
                 <div key={i} className="rounded-lg border border-slate-200 p-3 space-y-1.5">

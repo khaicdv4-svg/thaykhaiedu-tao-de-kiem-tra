@@ -104,5 +104,15 @@ export const NGUONG_TRUNG_SGK = { chan: 30, canhBao: 10 } as const;
 /** Trang web chỉ nên làm nguồn phụ (đề thi, lời giải); nguồn chính phải là sách, báo, tác giả. */
 export const TEN_MIEN_NGUON_PHU = ['loigiaihay', 'vndoc', 'lazi', 'vietjack', 'tuyensinh247', 'hoc247', 'toploigiai', 'khoahoc.vietjack'];
 
-/** Dấu hiệu nguồn lấy từ SGK bộ khác hoặc SGK đang dạy. */
-export const DAU_HIEU_SGK_KHAC = [/c[aá]nh di[eề]u/i, /ch[aâ]n tr[oờ]i s[aá]ng t[aạ]o/i, /s[aá]ch gi[aá]o khoa/i, /\bSGK\b/, /s[aá]ch ti[eế]ng vi[eệ]t\s*\d/i];
+/**
+ * Nguồn là SGK Tiếng Việt 4 Kết nối tri thức đang dạy: không dùng (học sinh đã học).
+ * SGK Cánh Diều, Chân trời sáng tạo được phép và nên tìm (thầy Khái chốt 06/11/2026).
+ */
+const KNTT = /k[eế]t n[oố]i tri th[uứ]c/i;
+const TV4 = /ti[eế]ng vi[eệ]t\s*(l[oớ]p\s*)?4\b|\bl[oớ]p\s*4\b/i;
+export function laNguonSgkDangDay(nguon: string): boolean {
+  return KNTT.test(nguon) && TV4.test(nguon);
+}
+
+/** Nguồn là sách in (không có link) phải ghi số trang, ví dụ "trang 25", "tr. 25". */
+export const CO_SO_TRANG = /\b(trang|tr\.?)\s*\d+/i;
