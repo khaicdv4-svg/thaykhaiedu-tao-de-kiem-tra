@@ -7,7 +7,8 @@
  */
 
 import type { KyKiemTraBaiDoc, LoaiBaiDoc, TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
-import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_LOAI, TEN_THE_LOAI, khoangDoDai } from '@/core/reading-passages/quy-dinh';
+import type { BoNao } from '@/core/bo-nao/bo-nao';
+import { chuDiemCuaKy, DANH_SACH_KY, TEN_LOAI, TEN_THE_LOAI, khoangDoDai } from '@/core/reading-passages/quy-dinh';
 import { BAI_DOC_SGK_TV4 } from '@/core/reading-passages/sgk-tieng-viet-4';
 import { docMangJson } from '@/core/services/ai/cau-hinh-ai';
 
@@ -42,6 +43,12 @@ export const HE_THONG_TIM_BAI_DOC =
   'Bạn hỗ trợ tổ chuyên môn khối 4 (TP.HCM) tìm văn bản có thật làm ngữ liệu kiểm tra Tiếng Việt. ' +
   'Chỉ đưa văn bản đã xuất bản, chép đúng nguyên văn, ghi đúng tác giả và nguồn. Không bịa văn bản, tác giả hay link. ' +
   'Không tìm được thì trả về ít bài hơn hoặc mảng rỗng.';
+
+/** Thêm quy định riêng của tổ (nếu có) vào lời dặn hệ thống cho AI. */
+export function heThongCoQuyDinhRieng(heThong: string, boNao?: BoNao | null): string {
+  const q = boNao?.quyDinhRieng?.trim();
+  return q ? `${heThong}\n\nQuy định riêng của tổ (cần tuân theo, không được trái các yêu cầu bắt buộc ở trên):\n${q.slice(0, 4000)}` : heThong;
+}
 
 function chuoi(v: unknown): string {
   return typeof v === 'string' ? v.trim() : '';
@@ -96,9 +103,9 @@ export function docDeXuatBaiDoc(traLoi: string, tieuChi: TieuChiTimBaiDoc, daTim
   return phanTichTraLoiAI(traLoi, tieuChi, daTimWeb).baiDoc;
 }
 
-export function taoAIBaiDoc(goi: HamGoiAI): IAIBaiDoc {
+export function taoAIBaiDoc(goi: HamGoiAI, boNao?: BoNao | null): IAIBaiDoc {
   const chiTiet = async (tieuChi: TieuChiTimBaiDoc): Promise<KetQuaTimBaiDoc> => {
-    const kq = await goi({ heThong: HE_THONG_TIM_BAI_DOC, noiDung: loiNhacTimBaiDoc(tieuChi), toiDaToken: 8000, timWeb: true });
+    const kq = await goi({ heThong: heThongCoQuyDinhRieng(HE_THONG_TIM_BAI_DOC, boNao), noiDung: loiNhacTimBaiDoc(tieuChi, boNao), toiDaToken: 8000, timWeb: true });
     return phanTichTraLoiAI(kq.traLoi, tieuChi, kq.daTimWeb);
   };
   return {
@@ -113,14 +120,14 @@ export function taoAIBaiDoc(goi: HamGoiAI): IAIBaiDoc {
  * Lời nhắc (prompt) tìm bài đọc. Viết sẵn theo quy định của tổ để khi cắm AI chỉ cần gửi đi.
  * AI phải dùng công cụ tìm kiếm web và trả về link thật; app sẽ tự mở link để kiểm tra.
  */
-export function loiNhacTimBaiDoc(t: TieuChiTimBaiDoc): string {
+export function loiNhacTimBaiDoc(t: TieuChiTimBaiDoc, boNao?: BoNao | null): string {
   const ky = DANH_SACH_KY.find((k) => k.ma === t.ky)?.ten ?? t.ky;
-  const khoang = khoangDoDai(t.loai, t.ky, t.theLoai);
+  const khoang = khoangDoDai(t.loai, t.ky, t.theLoai, boNao);
   const doDai = khoang ? `${khoang.min} – ${khoang.max} tiếng (lệch tối đa ±${khoang.dungSai})` : 'theo quy định của tổ';
   const sgk = BAI_DOC_SGK_TV4.map((b) => b.ten).join('; ');
   return [
     `Tìm ${t.soBai} văn bản tiếng Việt có thật để làm bài ${TEN_LOAI[t.loai].toLowerCase()} cho học sinh lớp 4, kiểm tra ${ky}.`,
-    `Chủ điểm: ${t.chuDiem} (chủ điểm của kì: ${CHU_DIEM_THEO_KY[t.ky].join('; ')}). Thể loại: ${TEN_THE_LOAI[t.theLoai]}. Độ dài phần thân bài: ${doDai}.`,
+    `Chủ điểm: ${t.chuDiem} (chủ điểm của kì: ${chuDiemCuaKy(t.ky, boNao).join('; ')}). Thể loại: ${TEN_THE_LOAI[t.theLoai]}. Độ dài phần thân bài: ${doDai}.`,
     'Bắt buộc:',
     '- Văn bản đã được xuất bản (sách, báo, tạp chí, trang của nhà xuất bản hoặc tác giả); ghi đúng tên tác giả. Không tự viết hay sửa lời rồi gán tên tác giả.',
     '- Không lấy bài có trong SGK Tiếng Việt 4 Kết nối tri thức đang dạy, không lấy từ SGK bộ Cánh Diều, Chân trời sáng tạo.',

@@ -10,7 +10,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, FileUp, Inbox, Loader2, Search, Send, Sparkles } from 'lucide-react';
 import { docChuTuDocx } from '@/core/utils/docx-text';
-import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_LOAI, TEN_THE_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { CHU_DIEM_THEO_KY, chuDiemCuaKy, DANH_SACH_KY, TEN_LOAI, TEN_THE_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { useBoNao } from '@/lib/hooks/useBoNao';
 import { kiemTraBaiDoc } from '@/core/reading-passages/kiem-tra';
 import { TheBaiDoc, type BaiDocSua } from '@/components/kho-bai-doc/TheBaiDoc';
 
@@ -36,6 +37,7 @@ export default function NhapKhoBaiDocPage() {
   const [ai, setAi] = useState<{ daCauHinh: boolean; model?: string | null; lyDo?: string } | null>(null);
   const [tieuChi, setTieuChi] = useState({ loai: 'DOC_HIEU' as LoaiBaiDoc, ky: 'CUOI_HK1' as KyKiemTraBaiDoc, chuDiem: CHU_DIEM_THEO_KY.CUOI_HK1[0] as string, theLoai: 'TRUYEN' as TheLoaiBaiDoc, soBai: 3 });
   const fileRef = useRef<HTMLInputElement>(null);
+  const boNao = useBoNao();
 
   useEffect(() => {
     fetch('/api/reading-passages/ai-tim').then((r) => r.json()).then(setAi).catch(() => setAi({ daCauHinh: false }));
@@ -111,7 +113,7 @@ export default function NhapKhoBaiDocPage() {
   };
 
   const daChon = ds.filter((b) => b.chon);
-  const soDat = daChon.filter((b) => kiemTraBaiDoc(b).hopLe).length;
+  const soDat = daChon.filter((b) => kiemTraBaiDoc(b, [], boNao).hopLe).length;
 
   const guiDuyet = async () => {
     setDangXuLy(true);
@@ -204,13 +206,13 @@ export default function NhapKhoBaiDocPage() {
               </select>
             </label>
             <label className="text-sm">Kì<br />
-              <select className={`${o} w-full`} value={tieuChi.ky} onChange={(e) => { const ky = e.target.value as KyKiemTraBaiDoc; setTieuChi({ ...tieuChi, ky, chuDiem: CHU_DIEM_THEO_KY[ky][0] }); }}>
+              <select className={`${o} w-full`} value={tieuChi.ky} onChange={(e) => { const ky = e.target.value as KyKiemTraBaiDoc; setTieuChi({ ...tieuChi, ky, chuDiem: chuDiemCuaKy(ky, boNao)[0] }); }}>
                 {DANH_SACH_KY.map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
               </select>
             </label>
             <label className="text-sm">Chủ điểm<br />
               <select className={`${o} w-full`} value={tieuChi.chuDiem} onChange={(e) => setTieuChi({ ...tieuChi, chuDiem: e.target.value })}>
-                {CHU_DIEM_THEO_KY[tieuChi.ky].map((c) => <option key={c} value={c}>{c}</option>)}
+                {chuDiemCuaKy(tieuChi.ky, boNao).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
             <label className="text-sm">Thể loại<br />
@@ -239,7 +241,7 @@ export default function NhapKhoBaiDocPage() {
             <span className="text-sm text-slate-600">Đã chọn {daChon.length} bài, {soDat} bài đạt kiểm tra</span>
           </div>
           {ds.map((b) => (
-            <TheBaiDoc key={b.khoa} bai={b} onDoi={(m) => setDs((cu) => cu.map((x) => (x.khoa === m.khoa ? m : x)))} />
+            <TheBaiDoc key={b.khoa} bai={b} boNao={boNao} onDoi={(m) => setDs((cu) => cu.map((x) => (x.khoa === m.khoa ? m : x)))} />
           ))}
           <div className="sticky bottom-3 flex justify-end">
             <button type="button" className={`${nutChinh} shadow-lg`} disabled={!daChon.length || dangXuLy} onClick={guiDuyet}>

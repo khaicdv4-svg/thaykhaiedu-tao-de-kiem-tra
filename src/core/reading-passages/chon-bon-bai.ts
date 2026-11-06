@@ -8,7 +8,8 @@
 
 import { catDoanTotNhat, type DoanCat, type KieuNgat } from '@/core/reading-passages/cat-doan';
 import { laCungBai } from '@/core/reading-passages/cung-bai';
-import { CHU_DIEM_THEO_KY, khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import type { BoNao } from '@/core/bo-nao/bo-nao';
+import { chuDiemCuaKy, khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 export interface UngVienBaiDoc {
   id: string;
@@ -43,16 +44,16 @@ function diemChatLuong(d: DoanCat): number {
 export function chonBonBaiDocThanhTieng(
   ky: KyKiemTraBaiDoc,
   kho: UngVienBaiDoc[],
-  tuyChon: { baiDocHieuId?: string | null; baiDocHieuTieuDe?: string | null; chiDaDuyet?: boolean } = {},
+  tuyChon: { baiDocHieuId?: string | null; baiDocHieuTieuDe?: string | null; chiDaDuyet?: boolean; boNao?: BoNao | null } = {},
 ): KetQuaChonBonBai {
   const { baiDocHieuId = null, baiDocHieuTieuDe = null, chiDaDuyet = true } = tuyChon;
   // Bài đọc hiểu: có thể chỉ biết id, nên tìm thêm tên trong kho để loại cả đoạn trích cùng bài.
   const hieu = { id: baiDocHieuId ?? undefined, tieuDe: baiDocHieuTieuDe ?? kho.find((b) => b.id === baiDocHieuId)?.tieuDe ?? '' };
-  const q = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN')!;
+  const q = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN', tuyChon.boNao)!;
   const baiDoc: BaiDocThanhTiengDuocChon[] = [];
   const thieu: string[] = [];
 
-  for (const chuDiem of CHU_DIEM_THEO_KY[ky]) {
+  for (const chuDiem of chuDiemCuaKy(ky, tuyChon.boNao)) {
     const ungVien = kho
       .filter((b) => b.chuDiem === chuDiem && !laCungBai(hieu, b) && !baiDoc.some((d) => laCungBai(d, b)) && (!chiDaDuyet || b.trangThai === 'APPROVED'))
       .map((b) => ({ b, doan: catDoanTotNhat(b.noiDung, { min: q.min, max: q.max, dungSai: q.dungSai }) }))

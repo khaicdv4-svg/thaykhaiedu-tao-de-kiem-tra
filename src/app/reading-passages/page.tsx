@@ -24,6 +24,7 @@ import {
 } from '@/types/reading-passage';
 import { PassageFormModal } from '@/components/reading-passages/PassageFormModal';
 import { EmptyPassagesState } from '@/components/reading-passages/EmptyPassagesState';
+import { useBoNao } from '@/lib/hooks/useBoNao';
 import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, TEN_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { goiYCatDoan, type DoanCat } from '@/core/reading-passages/cat-doan';
 import { danhGiaDoDai } from '@/core/reading-passages/do-dai';
@@ -33,6 +34,7 @@ const TEN_KIEU_NGAT: Record<string, string> = { CUOI_CAU: 'ngắt cuối câu', 
 const TAT_CA_CHU_DIEM = Object.values(CHU_DIEM_THEO_KY).flat();
 
 export default function ReadingPassagesPage() {
+  const boNao = useBoNao();
   const [passages, setPassages] = useState<ReadingPassage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,17 +54,17 @@ export default function ReadingPassagesPage() {
   const [quyLoai, setQuyLoai] = useState<LoaiBaiDoc>('DOC_HIEU');
   const [quyTheLoai, setQuyTheLoai] = useState<TheLoaiBaiDoc>('TRUYEN');
 
-  const quyDinh = useMemo(() => (quyKy ? khoangDoDai(quyLoai, quyKy, quyTheLoai) : null), [quyKy, quyLoai, quyTheLoai]);
+  const quyDinh = useMemo(() => (quyKy ? khoangDoDai(quyLoai, quyKy, quyTheLoai, boNao) : null), [quyKy, quyLoai, quyTheLoai, boNao]);
 
   /** Đánh giá số tiếng của bài theo quy định của kì đang chọn. */
-  const danhGia = (p: ReadingPassage) => (quyKy ? danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai) : null);
+  const danhGia = (p: ReadingPassage) => (quyKy ? danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai, boNao) : null);
 
   const danhSachHienThi = useMemo(() => {
     const tu = tuTieng.trim() ? Number(tuTieng) : null;
     const den = denTieng.trim() ? Number(denTieng) : null;
     return passages.filter((p) => {
       if (quyKy && quyDinh) {
-        if (!danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai)?.dungDuoc) return false;
+        if (!danhGiaDoDai(p.wordCount, quyLoai, quyKy, quyTheLoai, boNao)?.dungDuoc) return false;
         if (quyLoai === 'DOC_HIEU' && p.literaryForm && p.literaryForm !== quyTheLoai) return false;
       }
       if (locKy !== 'ALL' && (locKy === 'CHUA_CO' ? !!p.assessmentPeriod : p.assessmentPeriod !== locKy)) return false;
@@ -72,7 +74,7 @@ export default function ReadingPassagesPage() {
       if (den !== null && !Number.isNaN(den) && p.wordCount > den) return false;
       return true;
     });
-  }, [passages, locKy, locChuDiem, locTrangThai, tuTieng, denTieng, quyDinh, quyKy, quyLoai, quyTheLoai]);
+  }, [passages, locKy, locChuDiem, locTrangThai, tuTieng, denTieng, quyDinh, quyKy, quyLoai, quyTheLoai, boNao]);
 
   const moXem = (p: ReadingPassage | null) => {
     setSelectedPassageForView(p);
@@ -82,7 +84,7 @@ export default function ReadingPassagesPage() {
   };
 
   const catDoan = (p: ReadingPassage, ky: KyKiemTraBaiDoc = kyCat) => {
-    const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN') ?? { min: 80, max: 85, dungSai: 5 };
+    const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN', boNao) ?? { min: 80, max: 85, dungSai: 5 };
     setDoanCat(goiYCatDoan(p.content, { min: kh.min, max: kh.max, dungSai: kh.dungSai }));
     setDaChep(null);
   };
@@ -441,7 +443,7 @@ export default function ReadingPassagesPage() {
                 </select>
                 <span className="text-slate-500">
                   {(() => {
-                    const kh = khoangDoDai('DOC_THANH_TIENG', kyCat, 'TRUYEN');
+                    const kh = khoangDoDai('DOC_THANH_TIENG', kyCat, 'TRUYEN', boNao);
                     return kh ? `Quy định: ${kh.min}–${kh.max} tiếng (lệch tối đa ±${kh.dungSai})` : '';
                   })()}
                 </span>

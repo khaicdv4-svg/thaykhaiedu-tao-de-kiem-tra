@@ -8,7 +8,7 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Link2, Loader2, XCircle } from 'lucide-react';
 import {
-  CHU_DIEM_THEO_KY,
+  chuDiemCuaKy,
   CHU_DIEM_TV4,
   DANH_SACH_KY,
   TEN_LOAI,
@@ -17,6 +17,7 @@ import {
   type LoaiBaiDoc,
   type TheLoaiBaiDoc,
 } from '@/core/reading-passages/quy-dinh';
+import type { BoNao } from '@/core/bo-nao/bo-nao';
 import { kiemTraBaiDoc, type BaiDocCanKiem, type TrangThaiLink } from '@/core/reading-passages/kiem-tra';
 
 export interface BaiDocSua extends BaiDocCanKiem {
@@ -41,6 +42,7 @@ export function TheBaiDoc({
   chiXem = false,
   hanhDong,
   phuTro,
+  boNao,
 }: {
   bai: BaiDocSua;
   onDoi?: (b: BaiDocSua) => void;
@@ -48,17 +50,19 @@ export function TheBaiDoc({
   hanhDong?: React.ReactNode;
   /** Khối phụ hiện trên nút hành động (ví dụ gợi ý cắt đoạn, nút lưu). */
   phuTro?: React.ReactNode;
+  /** Bộ não chuyên môn của trường (null: dùng số mặc định). */
+  boNao?: BoNao | null;
 }) {
   const [moNoiDung, setMoNoiDung] = useState(false);
   const [dangKiemLink, setDangKiemLink] = useState(false);
-  const kq = useMemo(() => kiemTraBaiDoc(bai), [bai]);
+  const kq = useMemo(() => kiemTraBaiDoc(bai, [], boNao), [bai, boNao]);
   const doi = (p: Partial<BaiDocSua>) => {
     if (!onDoi) return;
     // Đổi link thì phải kiểm lại
     const linkMoi = 'nguonUrl' in p && p.nguonUrl !== bai.nguonUrl;
     onDoi({ ...bai, ...p, ...(linkMoi ? { trangThaiLink: 'CHUA_KIEM' as const } : {}) });
   };
-  const chuDiemDuocChon = bai.ky ? CHU_DIEM_THEO_KY[bai.ky] : CHU_DIEM_TV4.map((c) => c.ten);
+  const chuDiemDuocChon = bai.ky ? chuDiemCuaKy(bai.ky, boNao) : CHU_DIEM_TV4.map((c) => c.ten);
 
   const kiemLink = async () => {
     if (!bai.nguonUrl) return;
@@ -119,7 +123,7 @@ export function TheBaiDoc({
         </select>
         <select className={o} aria-label="Kì kiểm tra" disabled={chiXem} value={bai.ky ?? ''} onChange={(e) => {
           const ky = (e.target.value || null) as KyKiemTraBaiDoc | null;
-          doi({ ky, chuDiem: ky && bai.chuDiem && !(CHU_DIEM_THEO_KY[ky] as string[]).includes(bai.chuDiem) ? null : bai.chuDiem });
+          doi({ ky, chuDiem: ky && bai.chuDiem && !chuDiemCuaKy(ky, boNao).includes(bai.chuDiem) ? null : bai.chuDiem });
         }}>
           <option value="">– Kì –</option>
           {DANH_SACH_KY.map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}

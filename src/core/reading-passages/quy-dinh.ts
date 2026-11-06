@@ -4,6 +4,8 @@
  * Mọi con số ở đây là của tổ; sửa ở một chỗ này, các nơi khác dùng chung.
  */
 
+import type { BoNao } from '@/core/bo-nao/bo-nao';
+
 export type KyKiemTraBaiDoc = 'GIUA_HK1' | 'CUOI_HK1' | 'GIUA_HK2' | 'CUOI_NAM';
 export type LoaiBaiDoc = 'DOC_THANH_TIENG' | 'DOC_HIEU';
 export type TheLoaiBaiDoc = 'TRUYEN' | 'MIEU_TA' | 'THO' | 'VAN_BAN_THONG_TIN' | 'KICH' | 'KHAC';
@@ -75,10 +77,25 @@ const DOC_HIEU: Record<KyKiemTraBaiDoc, Partial<Record<TheLoaiBaiDoc, [number, n
 };
 
 /** Khoảng độ dài quy định; null khi tổ chưa quy định cho thể loại đó. */
-export function khoangDoDai(loai: LoaiBaiDoc, ky: KyKiemTraBaiDoc, theLoai: TheLoaiBaiDoc): KhoangDoDai | null {
-  if (loai === 'DOC_THANH_TIENG') return DOC_THANH_TIENG[ky];
+export function khoangDoDai(loai: LoaiBaiDoc, ky: KyKiemTraBaiDoc, theLoai: TheLoaiBaiDoc, boNao?: BoNao | null): KhoangDoDai | null {
+  const rieng = boNao?.ky[ky];
+  if (loai === 'DOC_THANH_TIENG') {
+    if (rieng?.tocDo) return { ...rieng.tocDo, dungSai: boNao!.dungSai.thanhTieng, donVi: 'tiếng' };
+    return DOC_THANH_TIENG[ky];
+  }
+  // Kì đã có trong bộ não: theo ma trận của tổ; thể loại ma trận không ghi thì coi là chưa quy định.
+  if (rieng && Object.keys(rieng.doDai).length > 0) {
+    const k = rieng.doDai[theLoai];
+    return k ? { min: k[0], max: k[1], dungSai: boNao!.dungSai.docHieu, donVi: 'tiếng' } : null;
+  }
   const k = DOC_HIEU[ky][theLoai];
   return k ? { min: k[0], max: k[1], dungSai: 10, donVi: 'tiếng' } : null;
+}
+
+/** Chủ điểm của kì: theo bộ não nếu đã tải ma trận, không thì theo mặc định. */
+export function chuDiemCuaKy(ky: KyKiemTraBaiDoc, boNao?: BoNao | null): string[] {
+  const cd = boNao?.ky[ky]?.chuDiem;
+  return cd && cd.length > 0 ? cd : CHU_DIEM_THEO_KY[ky];
 }
 
 /** Ngưỡng trùng với bài đọc SGK đang dạy (chủ dự án chốt 05/11/2026). */

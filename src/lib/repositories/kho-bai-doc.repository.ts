@@ -4,6 +4,7 @@
  */
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { docBoNaoNeuCo } from '@/lib/repositories/bo-nao.repository';
 import { kiemTraBaiDoc, type BaiDocCanKiem, type TrangThaiLink, type VanBanSgk } from '@/core/reading-passages/kiem-tra';
 import type { KyKiemTraBaiDoc, LoaiBaiDoc, TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
@@ -90,8 +91,9 @@ export async function layVanBanSgkTiengViet(): Promise<VanBanSgk[]> {
 export async function luuVaoHangCho(ds: BaiDocNhapKho[]): Promise<{ choDuyet: number; banNhap: number; ids: string[] }> {
   const { supabase, user, orgId } = await layNguoiDung();
   const sgk = await layVanBanSgkTiengViet();
+  const boNao = await docBoNaoNeuCo();
   const rows = ds.map((b) => {
-    const kq = kiemTraBaiDoc(b, sgk);
+    const kq = kiemTraBaiDoc(b, sgk, boNao);
     return {
       organization_id: orgId,
       title: b.tieuDe.trim(),
@@ -172,6 +174,7 @@ export async function duyetBaiDoc(id: string, hanhDong: 'DUYET' | 'TU_CHOI', ghi
     const kq = kiemTraBaiDoc(
       { tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, nguonUrl: b.nguonUrl ?? '', loai: b.loai, ky: b.ky, theLoai: b.theLoai, chuDiem: b.chuDiem, trangThaiLink: b.trangThaiLink },
       await layVanBanSgkTiengViet(),
+      await docBoNaoNeuCo(),
     );
     if (!kq.hopLe) throw new Error(`Chưa duyệt được, còn lỗi: ${kq.loi.join(' ')}`);
   }
@@ -207,6 +210,7 @@ export async function suaBaiDocChoDuyet(id: string, d: ThayDoiBaiDoc) {
   const kq = kiemTraBaiDoc(
     { ...d, nguonUrl: d.nguonUrl, trangThaiLink: (cu.source_check_status ?? 'CHUA_KIEM') as TrangThaiLink },
     await layVanBanSgkTiengViet(),
+    await docBoNaoNeuCo(),
   );
   const { error } = await supabase
     .from('reading_passages')

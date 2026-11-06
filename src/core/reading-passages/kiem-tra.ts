@@ -6,9 +6,9 @@
  * canhBao  → cho dùng nhưng tổ trưởng cần xem.
  */
 
+import type { BoNao } from '@/core/bo-nao/bo-nao';
 import { countVietnameseSyllables } from '@/core/utils/vietnamese-word-counter';
 import {
-  CHU_DIEM_THEO_KY,
   DANH_SACH_KY,
   DAU_HIEU_SGK_KHAC,
   NGUONG_TRUNG_SGK,
@@ -16,6 +16,7 @@ import {
   TEN_MIEN_NGUON_PHU,
   TEN_THE_LOAI,
   khoangDoDai,
+  chuDiemCuaKy,
   type KhoangDoDai,
   type KyKiemTraBaiDoc,
   type LoaiBaiDoc,
@@ -112,7 +113,7 @@ export function lamSachUrl(url: string): string {
 // Kiểm tra trọn gói
 // ---------------------------------------------------------------------------
 
-export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = []): KetQuaKiemTraBaiDoc {
+export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = [], boNao?: BoNao | null): KetQuaKiemTraBaiDoc {
   const loi: string[] = [];
   const canhBao: string[] = [];
   const soTieng = countVietnameseSyllables(b.noiDung || '');
@@ -149,15 +150,15 @@ export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = []): Ke
   if (!b.ky) loi.push('Chưa chọn kì kiểm tra.');
   if (!b.theLoai) loi.push('Chưa chọn thể loại.');
   if (!b.chuDiem) loi.push('Chưa chọn chủ điểm.');
-  if (b.ky && b.chuDiem && !(CHU_DIEM_THEO_KY[b.ky] as string[]).includes(b.chuDiem)) {
+  if (b.ky && b.chuDiem && !chuDiemCuaKy(b.ky, boNao).includes(b.chuDiem)) {
     const tenKy = DANH_SACH_KY.find((k) => k.ma === b.ky)?.ten ?? b.ky;
-    loi.push(`Chủ điểm "${b.chuDiem}" không thuộc ${tenKy} (${CHU_DIEM_THEO_KY[b.ky].join('; ')}).`);
+    loi.push(`Chủ điểm "${b.chuDiem}" không thuộc ${tenKy} (${chuDiemCuaKy(b.ky, boNao).join('; ')}).`);
   }
 
   // Độ dài
   let khoang: KhoangDoDai | null = null;
   if (b.loai && b.ky && b.theLoai) {
-    khoang = khoangDoDai(b.loai, b.ky, b.theLoai);
+    khoang = khoangDoDai(b.loai, b.ky, b.theLoai, boNao);
     if (!khoang) {
       canhBao.push(`Tổ chưa quy định độ dài cho ${TEN_LOAI[b.loai].toLowerCase()} thể loại ${TEN_THE_LOAI[b.theLoai].toLowerCase()}.`);
     } else if (b.loai === 'DOC_THANH_TIENG' && soTieng > khoang.max + khoang.dungSai) {

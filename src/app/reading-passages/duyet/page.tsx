@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, FilePlus2, Loader2, RefreshCw, Save, XCircle } from 'lucide-react';
 import { TheBaiDoc, type BaiDocSua } from '@/components/kho-bai-doc/TheBaiDoc';
+import { useBoNao } from '@/lib/hooks/useBoNao';
 import { GoiYCat } from '@/components/kho-bai-doc/GoiYCat';
 import { kiemTraBaiDoc } from '@/core/reading-passages/kiem-tra';
 import type { TrangThaiLink } from '@/core/reading-passages/kiem-tra';
@@ -27,6 +28,7 @@ export default function HangChoDuyetPage() {
   const [dangXuLy, setDangXuLy] = useState<string | null>(null);
   const [lyDo, setLyDo] = useState<Record<string, string>>({});
   const [sua, setSua] = useState<Record<string, BaiDocSua>>({});
+  const boNao = useBoNao();
   const [thongBao, setThongBao] = useState<{ loai: 'ok' | 'loi'; text: string } | null>(null);
 
   const tai = async (yenLang = false) => {
@@ -103,13 +105,14 @@ export default function HangChoDuyetPage() {
 
   const the = (b: BaiTrongKho, coNut: boolean) => {
     const bai = sua[b.id] ?? baiGoc(b);
-    const kq = kiemTraBaiDoc(bai);
+    const kq = kiemTraBaiDoc(bai, [], boNao);
     const quaDai = bai.loai === 'DOC_THANH_TIENG' && !!bai.ky && kq.canhBao.some((c) => c.includes('cắt một đoạn'));
     const daSua = !!sua[b.id];
     return (
     <TheBaiDoc
       key={b.id}
       bai={bai}
+      boNao={boNao}
       onDoi={(nb) => setSua({ ...sua, [b.id]: nb })}
       hanhDong={coNut ? (
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">

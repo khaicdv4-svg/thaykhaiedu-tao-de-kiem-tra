@@ -3,6 +3,7 @@ import { loiNhacTimBaiDoc, taoAIBaiDoc, type TieuChiTimBaiDoc } from '@/core/ser
 import { phanTichBaiDoc } from '@/core/reading-passages/phan-tich';
 import { kiemTraBaiDoc } from '@/core/reading-passages/kiem-tra';
 import { layVanBanSgkTiengViet } from '@/lib/repositories/kho-bai-doc.repository';
+import { docBoNaoNeuCo } from '@/lib/repositories/bo-nao.repository';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 
 /** Tìm web có thể mất vài phút. */
@@ -19,18 +20,19 @@ export async function POST(req: NextRequest) {
   const tt = await trangThaiViecAI('TIM_BAI_DOC');
   if (!tt.daCauHinh) {
     return NextResponse.json(
-      { error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}`, loiNhac: loiNhacTimBaiDoc(tieuChi) },
+      { error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}`, loiNhac: loiNhacTimBaiDoc(tieuChi, await docBoNaoNeuCo()) },
       { status: 503 },
     );
   }
   try {
-    const ai = taoAIBaiDoc((y) => goiAITheoViec('TIM_BAI_DOC', { ...y, choToiDa: 240_000 }));
+    const boNao = await docBoNaoNeuCo();
+    const ai = taoAIBaiDoc((y) => goiAITheoViec('TIM_BAI_DOC', { ...y, choToiDa: 240_000 }), boNao);
     const sgk = await layVanBanSgkTiengViet().catch(() => []);
     const { baiDoc: deXuat, chanDoan } = await ai.timBaiDocChiTiet({ ...tieuChi, soBai: Math.min(Math.max(tieuChi.soBai || 3, 1), 8) });
     const baiDoc = deXuat.map((d) => {
       const pt = phanTichBaiDoc(d, { loai: tieuChi.loai, ky: tieuChi.ky });
       const bai = { ...pt, theLoai: d.theLoai || pt.theLoai, chuDiem: (d.chuDiem as typeof pt.chuDiem) || pt.chuDiem, ghiChu: [d.lyDoPhuHop, ...pt.ghiChu] };
-      return { ...bai, kiemTra: kiemTraBaiDoc(bai, sgk) };
+      return { ...bai, kiemTra: kiemTraBaiDoc(bai, sgk, boNao) };
     });
     return NextResponse.json({ success: true, baiDoc, model: tt.model, chanDoan });
   } catch (err) {

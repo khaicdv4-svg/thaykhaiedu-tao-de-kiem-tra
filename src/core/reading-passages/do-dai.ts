@@ -3,6 +3,7 @@
  * Độ dài thay đổi theo thời điểm kiểm tra (xem khoangDoDai trong quy-dinh.ts).
  */
 
+import type { BoNao } from '@/core/bo-nao/bo-nao';
 import type { KyKiemTraBaiDoc, LoaiBaiDoc, TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { khoangDoDai } from '@/core/reading-passages/quy-dinh';
 
@@ -14,8 +15,8 @@ export interface DanhGiaDoDai {
 }
 
 /** null khi tổ chưa quy định độ dài cho thể loại đó ở kì này. */
-export function danhGiaDoDai(soTieng: number, loai: LoaiBaiDoc, ky: KyKiemTraBaiDoc, theLoai: TheLoaiBaiDoc): DanhGiaDoDai | null {
-  const kh = khoangDoDai(loai, ky, theLoai);
+export function danhGiaDoDai(soTieng: number, loai: LoaiBaiDoc, ky: KyKiemTraBaiDoc, theLoai: TheLoaiBaiDoc, boNao?: BoNao | null): DanhGiaDoDai | null {
+  const kh = khoangDoDai(loai, ky, theLoai, boNao);
   if (!kh) return null;
   const { min, max, dungSai } = kh;
   if (loai === 'DOC_THANH_TIENG') {

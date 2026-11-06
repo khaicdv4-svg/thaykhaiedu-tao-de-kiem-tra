@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { goiYCatDoan } from '@/core/reading-passages/cat-doan';
 import { khoangDoDai, type KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { HE_THONG_CHON_DOAN, docLuaChonAI, loiNhacChonDoan } from '@/core/reading-passages/goi-y-cat-ai';
+import { docBoNaoNeuCo } from '@/lib/repositories/bo-nao.repository';
+import { heThongCoQuyDinhRieng } from '@/core/services/ai/reading-passage-ai';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 
 export const maxDuration = 120;
@@ -14,7 +16,8 @@ export async function POST(req: NextRequest) {
   try {
     const { tieuDe, noiDung, ky } = (await req.json()) as { tieuDe?: string; noiDung?: string; ky?: KyKiemTraBaiDoc };
     if (!noiDung?.trim() || !ky) return NextResponse.json({ error: 'Thiếu nội dung bài hoặc kì kiểm tra.' }, { status: 400 });
-    const q = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN')!;
+    const boNao = await docBoNaoNeuCo();
+    const q = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN', boNao)!;
     const doan = goiYCatDoan(noiDung, { min: q.min, max: q.max, dungSai: q.dungSai, toiDa: 5 });
     if (doan.length === 0) return NextResponse.json({ success: true, doan: [], quyDinh: q, aiChon: null });
 
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
     const tt = await trangThaiViecAI('TIM_BAI_DOC');
     if (tt.daCauHinh && doan.length > 1) {
       try {
-        const kq = await goiAITheoViec('TIM_BAI_DOC', { heThong: HE_THONG_CHON_DOAN, noiDung: loiNhacChonDoan(tieuDe ?? '', doan), toiDaToken: 400, timWeb: false });
+        const kq = await goiAITheoViec('TIM_BAI_DOC', { heThong: heThongCoQuyDinhRieng(HE_THONG_CHON_DOAN, boNao), noiDung: loiNhacChonDoan(tieuDe ?? '', doan), toiDaToken: 400, timWeb: false });
         const c = docLuaChonAI(kq.traLoi, doan.length);
         if (c) aiChon = { ...c, model: tt.model };
         else aiLoi = 'AI trả lời không đúng dạng, dùng thứ tự của code.';

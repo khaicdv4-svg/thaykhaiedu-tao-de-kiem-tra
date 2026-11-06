@@ -15,6 +15,7 @@ import {
   FileSpreadsheet,
   Settings,
   Bot,
+  Brain,
 } from 'lucide-react';
 import { UserRole } from '@/types/permissions';
 
@@ -120,6 +121,15 @@ export const MAIN_NAVIGATION: NavItem[] = [
     icon: Settings,
     description: 'Cấu hình đơn vị trường, phân quyền giáo viên và tham số hệ thống',
     allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+  },
+  {
+    id: 'bo-nao',
+    title: 'Bộ não chuyên môn',
+    href: '/bo-nao',
+    iconName: 'Brain',
+    icon: Brain,
+    description: 'Tải ma trận chung và quy định riêng của tổ để app dùng làm căn cứ',
+    allowedRoles: ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
     id: 'ai-settings',
