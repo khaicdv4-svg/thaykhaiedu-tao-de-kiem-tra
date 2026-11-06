@@ -20,6 +20,8 @@ export interface CreateReadingPassageInput {
   grade?: number;
   content: string;
   targetWordCountMin?: number;
+  /** Dung sai (tiếng) lấy từ bộ não; không gửi thì dùng mặc định theo loại bài. */
+  dungSai?: number;
   targetWordCountMax?: number;
   genre?: string;
   theme?: string;
@@ -118,7 +120,8 @@ export class ReadingPassageRepository {
       input.content,
       input.passageType,
       input.targetWordCountMin,
-      input.targetWordCountMax
+      input.targetWordCountMax,
+      input.dungSai
     );
 
     const { data, error } = await supabase

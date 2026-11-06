@@ -55,7 +55,8 @@ export function analyzeReadingPassageLength(
   text: string,
   passageType: ReadingPassageType,
   customMin?: number,
-  customMax?: number
+  customMax?: number,
+  customTolerance?: number
 ): WordCountAnalysis {
   const wordCount = countVietnameseSyllables(text);
   const normalized = (text || '').normalize('NFC').trim();
@@ -67,7 +68,7 @@ export function analyzeReadingPassageLength(
   const config = READING_PASSAGE_CONFIG[passageType] || READING_PASSAGE_CONFIG.ORAL_READING;
   const targetMin = customMin !== undefined && customMin > 0 ? customMin : config.standardMinWordsGrade4;
   const targetMax = customMax !== undefined && customMax > 0 ? customMax : config.standardMaxWordsGrade4;
-  const tolerance = config.wordCountTolerance;
+  const tolerance = customTolerance !== undefined && customTolerance >= 0 ? customTolerance : config.wordCountTolerance;
 
   const allowedMin = Math.max(0, targetMin - tolerance);
   const allowedMax = targetMax + tolerance;

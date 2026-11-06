@@ -5,6 +5,15 @@ import {
   ToleranceStatus,
 } from '@/types/reading-passage';
 import { analyzeReadingPassageLength } from '@/core/utils/vietnamese-word-counter';
+import { useBoNao } from '@/lib/hooks/useBoNao';
+import {
+  DANH_SACH_KY,
+  TEN_THE_LOAI,
+  khoangDoDai,
+  type KyKiemTraBaiDoc,
+  type LoaiBaiDoc,
+  type TheLoaiBaiDoc,
+} from '@/core/reading-passages/quy-dinh';
 import { X, CheckCircle, AlertTriangle, FileText, Info } from 'lucide-react';
 
 interface PassageFormModalProps {
@@ -28,11 +37,20 @@ export function PassageFormModal({
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [ky, setKy] = useState<KyKiemTraBaiDoc>('GIUA_HK1');
+  const [theLoai, setTheLoai] = useState<TheLoaiBaiDoc>('TRUYEN');
+  const boNao = useBoNao();
+
+  // Khung độ dài lấy từ bộ não của tổ (ma trận đã tải), không gõ cứng
+  const loaiBaiDoc: LoaiBaiDoc | null =
+    passageType === 'ORAL_READING' ? 'DOC_THANH_TIENG' : passageType === 'COMPREHENSION_READING' ? 'DOC_HIEU' : null;
+  const khoang = loaiBaiDoc ? khoangDoDai(loaiBaiDoc, ky, theLoai, boNao) : null;
+  const chuaCoKhung = loaiBaiDoc !== null && khoang === null;
 
   // Phân tích độ dài trực tiếp theo thời gian thực
   const analysis = useMemo(() => {
-    return analyzeReadingPassageLength(content, passageType);
-  }, [content, passageType]);
+    return analyzeReadingPassageLength(content, passageType, khoang?.min, khoang?.max, khoang?.dungSai);
+  }, [content, passageType, khoang?.min, khoang?.max, khoang?.dungSai]);
 
   if (!isOpen) return null;
 
@@ -71,6 +89,7 @@ export function PassageFormModal({
           content: content.trim(),
           targetWordCountMin: analysis.targetMin,
           targetWordCountMax: analysis.targetMax,
+          dungSai: khoang?.dungSai,
           genre: genre.trim() || undefined,
           theme: theme.trim() || undefined,
           status: 'PENDING_REVIEW',
@@ -146,14 +165,56 @@ export function PassageFormModal({
                 onChange={(e) => setPassageType(e.target.value as ReadingPassageType)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-blue-500 font-medium"
               >
-                <option value="ORAL_READING">Đọc thành tiếng (80 - 100 tiếng, ±5 tiếng)</option>
-                <option value="COMPREHENSION_READING">Đọc hiểu (250 - 320 tiếng, ±10 tiếng)</option>
+                <option value="ORAL_READING">Đọc thành tiếng (khung theo bộ não)</option>
+                <option value="COMPREHENSION_READING">Đọc hiểu (khung theo bộ não)</option>
                 <option value="POETRY">Thơ ca (50 - 120 tiếng)</option>
                 <option value="PROSE">Văn xuôi (100 - 350 tiếng)</option>
                 <option value="OTHER">Ngữ liệu khác</option>
               </select>
             </div>
           </div>
+
+          {/* Hàng 1b: Kì kiểm tra & thể loại để lấy đúng khung độ dài từ bộ não */}
+          {loaiBaiDoc && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Kì kiểm tra <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={ky}
+                  onChange={(e) => setKy(e.target.value as KyKiemTraBaiDoc)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-blue-500"
+                >
+                  {DANH_SACH_KY.map((k) => (
+                    <option key={k.ma} value={k.ma}>{k.ten}</option>
+                  ))}
+                </select>
+              </div>
+              {loaiBaiDoc === 'DOC_HIEU' && (
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Thể loại <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={theLoai}
+                    onChange={(e) => setTheLoai(e.target.value as TheLoaiBaiDoc)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-blue-500"
+                  >
+                    {(Object.keys(TEN_THE_LOAI) as TheLoaiBaiDoc[]).map((tl) => (
+                      <option key={tl} value={tl}>{TEN_THE_LOAI[tl]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {chuaCoKhung && (
+                <p className="sm:col-span-2 text-amber-700 text-xs flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  Bộ não chưa có quy định độ dài cho kì và thể loại này. Đang dùng khung mặc định của app, nên kiểm tra lại.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Hàng 2: Tác giả & Nguồn trích dẫn (BẮT BUỘC) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
