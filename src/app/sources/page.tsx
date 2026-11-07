@@ -17,7 +17,6 @@ import { PipelineStepper } from '@/components/sources/PipelineStepper';
 import { DiscrepancySummaryTable } from '@/components/sources/DiscrepancySummaryTable';
 import { TwoColumnPreview } from '@/components/sources/TwoColumnPreview';
 import { ProvenanceSelector } from '@/components/sources/ProvenanceSelector';
-import { DocxXlsxImportTab } from '@/components/sources/DocxXlsxImportTab';
 import { ScannedPdfManualTab } from '@/components/sources/ScannedPdfManualTab';
 import { PpctPdfTab } from '@/components/sources/PpctPdfTab';
 import { EmptySourcesState } from '@/components/sources/EmptySourcesState';
@@ -558,7 +557,7 @@ export default function SourcesPage() {
       )}
 
       {/* TAB 2: NHẬP TỪ WORD / EXCEL */}
-      {activeTab === 'docx_xlsx' && <DocxXlsxImportTab />}
+      {activeTab === 'docx_xlsx' && <PpctPdfTab loai="bang" />}
 
       {activeTab === 'pdf_ppct' && <PpctPdfTab />}
 

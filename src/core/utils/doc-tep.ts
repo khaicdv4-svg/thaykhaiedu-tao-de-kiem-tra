@@ -1,7 +1,7 @@
 /**
  * Đọc chữ từ file trên trình duyệt: .docx, .pdf (có lớp chữ), .txt/.md. PDF scan ảnh không có chữ nên không đọc được.
  */
-import { docChuTuDocx } from './docx-text';
+import { docChuTuDocx, docBangTuDocx, docChuTuXlsx } from './docx-text';
 
 type PdfJs = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 
@@ -45,4 +45,13 @@ export async function docChuTuTep(f: File, theoDoi?: (trang: number, tong: numbe
   if (ten.endsWith('.pdf')) return docChuTuPdf(await f.arrayBuffer(), theoDoi);
   if (ten.endsWith('.txt') || ten.endsWith('.md')) return f.text();
   throw new Error('Chỉ nhận file .docx, .pdf (có lớp chữ), .txt. File .doc cũ thầy lưu lại thành .docx.');
+}
+
+/** Word/Excel/CSV chứa bảng PPCT: giữ bảng, mỗi hàng một dòng, ô cách nhau dấu Tab. */
+export async function docBangTuTep(f: File): Promise<string> {
+  const ten = f.name.toLowerCase();
+  if (ten.endsWith('.docx')) return docBangTuDocx(await f.arrayBuffer());
+  if (ten.endsWith('.xlsx')) return docChuTuXlsx(await f.arrayBuffer());
+  if (ten.endsWith('.csv') || ten.endsWith('.txt')) return (await f.text()).replace(/^\uFEFF/, '').split(/\r?\n/).map((d) => (d.includes('\t') ? d : d.split(/[;,](?=(?:[^"]*"[^"]*")*[^"]*$)/).map((x) => x.replace(/^"|"$/g, '').trim()).join('\t'))).join('\n');
+  throw new Error('Chỉ nhận file .docx, .xlsx, .csv. File .doc hoặc .xls cũ thầy lưu lại thành .docx hoặc .xlsx.');
 }

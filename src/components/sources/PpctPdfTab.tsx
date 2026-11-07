@@ -8,7 +8,7 @@ import React, { useMemo, useState } from 'react';
 import { CheckCircle2, FileUp, Loader2, TriangleAlert } from 'lucide-react';
 import { docBangPpct, taoBackupHub } from '@/core/chuong-trinh/ppct-tu-pdf';
 import { chiaPhan } from '@/core/chuong-trinh/trich-yccd';
-import { docChuTuPdf } from '@/core/utils/doc-tep';
+import { docBangTuTep, docChuTuPdf } from '@/core/utils/doc-tep';
 import { moPdfLamAnh, type PdfAnh } from '@/core/utils/pdf-anh';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
@@ -20,7 +20,7 @@ const MON = [
 ] as const;
 const NAM_HOC = '2026-2027';
 
-export function PpctPdfTab() {
+export function PpctPdfTab({ loai = 'pdf' }: { loai?: 'pdf' | 'bang' }) {
   const [mon, setMon] = useState<string>('subj-toan4');
   const [tep, setTep] = useState<{ ten: string; chu: string | null; buf: ArrayBuffer } | null>(null);
   const [anhDoc, setAnhDoc] = useState<PdfAnh | null>(null);
@@ -37,13 +37,19 @@ export function PpctPdfTab() {
   const chonTep = async (f: File) => {
     setTb(null); setChu(''); setXacNhan(false);
     try {
+      if (loai === 'bang') {
+        const van = await docBangTuTep(f);
+        setTep({ ten: f.name, chu: van, buf: new ArrayBuffer(0) });
+        setAnhDoc(null); setTu(''); setDen('');
+        return;
+      }
       const buf = await f.arrayBuffer();
       let van: string | null = null;
       try { van = await docChuTuPdf(buf.slice(0)); } catch { van = null; }
       setTep({ ten: f.name, chu: van, buf });
       setAnhDoc(van ? null : await moPdfLamAnh(buf.slice(0)));
       setTu(''); setDen('');
-    } catch (e) { setTep(null); setTb({ loai: 'loi', text: `Không mở được PDF: ${e instanceof Error ? e.message : e}` }); }
+    } catch (e) { setTep(null); setTb({ loai: 'loi', text: `Không mở được file: ${e instanceof Error ? e.message : e}` }); }
   };
 
   const goi = async (body: Record<string, unknown>): Promise<string[]> => {
@@ -102,15 +108,15 @@ export function PpctPdfTab() {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
-        <p className="text-sm text-slate-600">Tải file PDF phân phối chương trình của một môn. PDF có chữ thì app đọc chữ; PDF ảnh quét thì AI đọc ảnh các trang thầy chọn. AI chỉ chép lại bảng, không tự thêm bài hay tính lại số tiết.</p>
+        <p className="text-sm text-slate-600">{loai === 'bang' ? 'Tải file Word (.docx), Excel (.xlsx) hoặc CSV chứa bảng phân phối chương trình của một môn. App đọc bảng rồi nhờ AI chuẩn hóa thành 4 cột (Tuần, Chủ đề, Tên bài, Số tiết); AI chỉ chép lại, không tự thêm bài hay tính lại số tiết.' : 'Tải file PDF phân phối chương trình của một môn. PDF có chữ thì app đọc chữ; PDF ảnh quét thì AI đọc ảnh các trang thầy chọn. AI chỉ chép lại bảng, không tự thêm bài hay tính lại số tiết.'}</p>
         <div className="flex flex-wrap items-center gap-2">
           <select aria-label="Môn" className={o} value={mon} onChange={(e) => { setMon(e.target.value); setXacNhan(false); }}>
             {MON.map(([ma, ten]) => <option key={ma} value={ma}>{ten}</option>)}
           </select>
-          <label className={`${nutPhu} cursor-pointer`}><FileUp className="w-4 h-4" /> Chọn PDF PPCT
-            <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void chonTep(f); e.target.value = ''; }} />
+          <label className={`${nutPhu} cursor-pointer`}><FileUp className="w-4 h-4" /> {loai === 'bang' ? 'Chọn file Word / Excel / CSV' : 'Chọn PDF PPCT'}
+            <input type="file" accept={loai === 'bang' ? '.docx,.xlsx,.csv,.txt' : '.pdf,application/pdf'} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void chonTep(f); e.target.value = ''; }} />
           </label>
-          {tep && <span className="text-sm text-slate-600">{tep.ten} — {tep.chu ? 'PDF có chữ' : `PDF ảnh quét${anhDoc ? `, ${anhDoc.soTrang} trang` : ''}`}</span>}
+          {tep && <span className="text-sm text-slate-600">{tep.ten} — {loai === 'bang' ? 'đã đọc bảng' : tep.chu ? 'PDF có chữ' : `PDF ảnh quét${anhDoc ? `, ${anhDoc.soTrang} trang` : ''}`}</span>}
         </div>
         {tep && !tep.chu && anhDoc && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
