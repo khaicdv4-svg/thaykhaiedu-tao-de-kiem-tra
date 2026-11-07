@@ -46,6 +46,7 @@ import {
 interface BanDacTaApi { id: string; phienBan: number | null; duLieu: DacTa }
 interface BanDeApi { id: string; trangThai: TrangThaiDe; dacTaId: string; phienBanDacTa: number; duLieu: DeKiemTra }
 
+
 const NHAN_TRANG_THAI: Record<TrangThaiDe, { ten: string; mau: string }> = {
   BAN_NHAP: { ten: 'Đang soạn', mau: 'bg-slate-100 text-slate-700 border-slate-200' },
   CAN_KIEM_TRA: { ten: 'Đã kiểm tra, chưa chuyển duyệt', mau: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -54,6 +55,21 @@ const NHAN_TRANG_THAI: Record<TrangThaiDe, { ten: string; mau: string }> = {
   CAN_KIEM_TRA_LAI: { ten: 'Cần kiểm tra lại', mau: 'bg-amber-50 text-amber-800 border-amber-200' },
   DA_DUYET: { ten: 'Đã duyệt', mau: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   TRA_LAI: { ten: 'Bị trả lại, cần sửa', mau: 'bg-red-50 text-red-700 border-red-200' },
+  DANG_THAM_DINH: { ten: 'Đang thẩm định', mau: 'bg-sky-50 text-sky-700 border-sky-200' },
+  DA_XAC_NHAN_TO: { ten: 'Tổ trưởng đã xác nhận', mau: 'bg-teal-50 text-teal-700 border-teal-200' },
+  CHO_BGH_DUYET: { ten: 'Chờ Ban giám hiệu duyệt', mau: 'bg-violet-50 text-violet-700 border-violet-200' },
+  DA_PHAT_HANH: { ten: 'Đã phát hành', mau: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  DA_LUU_TRU: { ten: 'Đã lưu trữ', mau: 'bg-slate-100 text-slate-600 border-slate-200' },
+};
+
+const GHI_CHU_KHOA: Partial<Record<TrangThaiDe, string>> = {
+  SAN_SANG_DUYET: 'Đề đã gửi thẩm định. Nếu sửa, đề được thu hồi về bản nháp và phải gửi lại.',
+  DANG_THAM_DINH: 'Đề đang được thẩm định. Nếu sửa, đề được thu hồi về bản nháp và phải gửi lại.',
+  DA_XAC_NHAN_TO: 'Tổ trưởng đã xác nhận, đề đang chờ chuyển lên Ban giám hiệu nên chưa sửa được. Cần sửa thì nhờ người duyệt yêu cầu chỉnh sửa.',
+  CHO_BGH_DUYET: 'Đề đang chờ Ban giám hiệu duyệt nên chưa sửa được. Cần sửa thì nhờ Ban giám hiệu yêu cầu chỉnh sửa.',
+  DA_DUYET: 'Đề đã được duyệt. Sửa đề sẽ tạo phiên bản mới, bản đã duyệt cũ vẫn giữ nguyên.',
+  DA_PHAT_HANH: 'Đề đã phát hành. Sửa đề sẽ tạo phiên bản mới, bản đã phát hành cũ vẫn giữ nguyên.',
+  DA_LUU_TRU: 'Đề đã lưu trữ.',
 };
 
 const nutChinh = 'nut-tke text-sm';
@@ -80,6 +96,7 @@ export default function TaoDePage() {
   const [dacTaBan, setDacTaBan] = useState<BanDacTaApi | null>(null); // đặc tả đã xác nhận mới nhất
   const [de, setDe] = useState<DeKiemTra | null>(null);
   const [trangThai, setTrangThai] = useState<TrangThaiDe>('BAN_NHAP');
+  const [deId, setDeId] = useState<string | null>(null);
   const [ketQua, setKetQua] = useState<KetQuaKiemDinhDe | null>(null);
   const [thongBao, setThongBao] = useState<string | null>(null);
   const [dangGui, setDangGui] = useState(false);
@@ -127,6 +144,7 @@ export default function TaoDePage() {
     if (!moiNhat) { setDangTai(false); return; }
     if (!d.ok) { setLoiTai(d.j.error ?? 'Không đọc được đề kiểm tra.'); setDangTai(false); return; }
     const ban = d.j.de;
+    setDeId(ban?.id ?? null);
     if (ban) {
       setDe(maMon === 'TIENG_VIET' && !ban.duLieu.tiengViet ? { ...ban.duLieu, tiengViet: taoNoiDungTiengVietRong() } : ban.duLieu);
       setTrangThai(ban.trangThai);
@@ -306,16 +324,16 @@ export default function TaoDePage() {
     });
     setDangGui(false);
     if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa lưu được: ${r.j.error}`); return; }
-    if (r.j.ban) setTrangThai(r.j.ban.trangThai);
+    if (r.j.ban) { setTrangThai(r.j.ban.trangThai); setDeId(r.j.ban.id); }
     if (r.j.kiemDinh) setKetQua(r.j.kiemDinh);
-    setThongBao(tt === 'SAN_SANG_DUYET' ? 'Đã chuyển đề sang bước duyệt. Cả tổ cùng thấy bản này.' : 'Đã lưu đề lên hệ thống. Cả tổ cùng thấy bản này.');
+    setThongBao(tt === 'SAN_SANG_DUYET' ? 'Đã gửi đề đi thẩm định. Theo dõi nhận xét và các bước duyệt ở Kho đề.' : 'Đã lưu đề lên hệ thống. Đề của thầy/cô chỉ mình thầy/cô xem, đến khi chia sẻ hoặc gửi thẩm định.');
   };
 
   const xuatWord = async (hoSo = false) => {
     setDangXuat(true);
     try {
       try { localStorage.setItem('tke.truong', truong); localStorage.setItem('tke.namHoc', namHoc); localStorage.setItem('tke.phut', String(phut)); } catch { /* bỏ qua */ }
-      const q = new URLSearchParams({ mon: maMon, ky, truong, namHoc, phut: String(phut), ...(hoSo ? { goi: 'hoso' } : {}) });
+      const q = new URLSearchParams({ mon: maMon, ky, ...(deId ? { id: deId } : {}), truong, namHoc, phut: String(phut), ...(hoSo ? { goi: 'hoso' } : {}) });
       const r = await fetch(`/api/de-kiem-tra/xuat?${q}`);
       if (!r.ok) {
         const j = (await r.json().catch(() => ({}))) as { error?: string };
@@ -639,10 +657,16 @@ export default function TaoDePage() {
 
           {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra đề" /></div>}
 
-          {trangThai === 'SAN_SANG_DUYET' && (
+          {GHI_CHU_KHOA[trangThai] && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-emerald-900">
-              <span>Đề đã chuyển sang bước duyệt. Sửa bất kì câu nào, đề sẽ chuyển sang &quot;Cần kiểm tra lại&quot;.</span>
-              <Link href={`/tests?mon=${maMon}&ky=${ky}`} className={nutChinh}>Sang bước 5: Duyệt đề</Link>
+              <span>{GHI_CHU_KHOA[trangThai]}</span>
+              <Link href="/tests" className={nutChinh}>Mở Kho đề</Link>
+            </div>
+          )}
+          {trangThai === 'TRA_LAI' && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-red-900">
+              <span>Đề bị trả lại. Xem nhận xét ở Kho đề, sửa xong thì bấm gửi thẩm định lại.</span>
+              <Link href="/tests" className={nutChinh}>Xem nhận xét</Link>
             </div>
           )}
 

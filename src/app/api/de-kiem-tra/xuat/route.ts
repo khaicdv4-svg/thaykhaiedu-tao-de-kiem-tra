@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Packer } from 'docx';
-import { layDe, layDacTaCuaDe } from '@/lib/repositories/ma-tran-dac-ta.repository';
+import { layDe, layDeTheoId, layDacTaCuaDe } from '@/lib/repositories/ma-tran-dac-ta.repository';
 import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from '@/core/de/xuat-word';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 
@@ -13,10 +13,11 @@ const loi = (e: unknown, ma = 400) => NextResponse.json({ error: e instanceof Er
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
-    const mon = sp.get('mon') ?? '';
-    const ky = sp.get('ky') ?? '';
-    const { de } = await layDe(mon, ky);
-    if (!de) return loi('Chưa có đề để xuất. Hãy lưu đề ở bước 4 trước.', 404);
+    const id = sp.get('id');
+    const de = id ? await layDeTheoId(id) : (await layDe(sp.get('mon') ?? '', sp.get('ky') ?? '')).de;
+    const mon = de?.maMon ?? sp.get('mon') ?? '';
+    const ky = de?.ky ?? sp.get('ky') ?? '';
+    if (!de) return loi('Chưa có đề để xuất, hoặc bạn không có quyền xem đề này. Hãy lưu đề ở bước 4 trước.', 404);
 
     const tenMon = (MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === mon)?.mon ?? mon).toUpperCase();
     const namHoc = (sp.get('namHoc') ?? '2026 - 2027').slice(0, 20);

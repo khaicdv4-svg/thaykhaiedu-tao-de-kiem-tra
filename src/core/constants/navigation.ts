@@ -181,6 +181,15 @@ export const MAIN_NAVIGATION: NavItem[] = [
     allowedRoles: ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
+    id: 'phan-quyen',
+    title: 'Vai trò và ủy quyền',
+    href: '/phan-quyen',
+    iconName: 'Settings',
+    icon: Settings,
+    description: 'Cấp vai trò (tổ trưởng, Ban giám hiệu), ủy quyền thẩm định có thời hạn',
+    allowedRoles: ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+  },
+  {
     id: 'settings',
     title: 'Cài đặt hệ thống',
     href: '/settings',
