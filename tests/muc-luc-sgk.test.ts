@@ -56,3 +56,15 @@ describe('Đọc mục lục SGK', () => {
     expect(docMucLuc('  \n').loi[0]).toContain('Chưa có dòng nào');
   });
 });
+
+describe('canhBaoNhamTap', () => {
+  const d = (tuan: number | null) => ({ tuan, bai: 1, hoatDong: 'Đọc', noiDung: 'x', trang: 8 });
+  it('tuần học kì II mà chọn tập một thì cảnh báo', async () => {
+    const { canhBaoNhamTap } = await import('@/core/chuong-trinh/muc-luc-sgk');
+    expect(canhBaoNhamTap([d(19), d(30)], 1)).toContain('Tập hai');
+    expect(canhBaoNhamTap([d(1), d(17)], 2)).toContain('Tập một');
+    expect(canhBaoNhamTap([d(1), d(17)], 1)).toBeNull();
+    expect(canhBaoNhamTap([d(19), d(30)], 2)).toBeNull();
+    expect(canhBaoNhamTap([d(null)], 1)).toBeNull();
+  });
+});

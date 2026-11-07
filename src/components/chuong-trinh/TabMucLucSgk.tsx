@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Download, FileUp, Loader2, ScanText, TriangleAlert } from 'lucide-react';
-import { CSV_MAU, docMucLuc, type TietDoiChieu } from '@/core/chuong-trinh/muc-luc-sgk';
+import { CSV_MAU, canhBaoNhamTap, docMucLuc, type TietDoiChieu } from '@/core/chuong-trinh/muc-luc-sgk';
 import { DANH_SACH_MON } from '@/core/chuong-trinh/mon';
 import { moPdfLamAnh, type PdfAnh } from '@/core/utils/pdf-anh';
 
@@ -24,6 +24,7 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
   const [tiet, setTiet] = useState<TietDoiChieu[]>([]);
   const [daLuu, setDaLuu] = useState<{ tap: number }[]>([]);
   const [dangLuu, setDangLuu] = useState(false);
+  const [hoiLai, setHoiLai] = useState(false);
   const [tb, setTb] = useState<{ loai: 'ok' | 'loi'; text: string } | null>(null);
   const [pdf, setPdf] = useState<{ ten: string; doc: PdfAnh } | null>(null);
   const [tu, setTu] = useState('');
@@ -42,6 +43,8 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
 
   const kq = useMemo(() => (chu.trim() ? docMucLuc(chu, tiet) : null), [chu, tiet]);
   const soDaLuu = daLuu.filter((d) => d.tap === tap).length;
+  const nhamTap = useMemo(() => (kq ? canhBaoNhamTap(kq.dong, tap) : null), [kq, tap]);
+  useEffect(() => { setHoiLai(false); }, [chu, mon, tap]);
 
   const chonFile = async (f: File) => {
     setTb(null);
@@ -82,7 +85,7 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
     URL.revokeObjectURL(url);
   };
   const luu = async () => {
-    setDangLuu(true); setTb(null);
+    setDangLuu(true); setTb(null); setHoiLai(false);
     try {
       const r = await fetch('/api/chuong-trinh/sgk-muc-luc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon, lop: LOP, tap, chu }) });
       const j = await r.json().catch(() => ({}));
@@ -168,10 +171,20 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
               {kq.dong.length > 12 && <p className="text-xs text-slate-500 mt-1">… và {kq.dong.length - 12} dòng nữa.</p>}
             </div>
           )}
-          {duocSua && (
-            <button type="button" className={nutChinh} disabled={dangLuu || kq.loi.length > 0 || kq.dong.length === 0} onClick={() => void luu()}>
+          {nhamTap && <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 font-medium">{nhamTap}</div>}
+          {duocSua && !hoiLai && (
+            <button type="button" className={nutChinh} disabled={dangLuu || kq.loi.length > 0 || kq.dong.length === 0} onClick={() => setHoiLai(true)}>
               {dangLuu ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}{soDaLuu ? 'Lưu và thay mục lục cũ' : 'Lưu mục lục'}
             </button>
+          )}
+          {duocSua && hoiLai && (
+            <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-3 space-y-2">
+              <p className="text-sm text-slate-900">Thầy đang lưu <b>{TEN(mon)} – Tập {tap === 1 ? 'một' : 'hai'}</b> ({kq.dong.length} dòng){soDaLuu ? <>, <b>thay {soDaLuu} dòng cũ</b> của tập này</> : ''}. Đúng không?</p>
+              <div className="flex gap-2">
+                <button type="button" className={nutChinh} disabled={dangLuu} onClick={() => void luu()}>Đúng, lưu</button>
+                <button type="button" className={nutPhu} onClick={() => setHoiLai(false)}>Quay lại</button>
+              </div>
+            </div>
           )}
         </div>
       )}

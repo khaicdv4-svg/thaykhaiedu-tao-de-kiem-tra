@@ -90,3 +90,17 @@ export function docMucLuc(chu: string, tiet: TietDoiChieu[] = []): KetQuaMucLuc 
   }
   return { dong, loi, canhBao };
 }
+
+/**
+ * Tập một thường dạy học kì I (tuần 1–18), tập hai học kì II (tuần 19–35).
+ * Dữ liệu có ghi tuần mà rơi hẳn sang học kì kia thì nhắc thầy xem có chọn nhầm tập không.
+ */
+export function canhBaoNhamTap(dong: DongMucLuc[], tap: number): string | null {
+  const tuan = dong.map((d) => d.tuan).filter((t): t is number => t !== null);
+  if (!tuan.length) return null;
+  const min = Math.min(...tuan);
+  const max = Math.max(...tuan);
+  if (tap === 1 && min >= 19) return `Bảng này có tuần ${min}–${max} (học kì II) nhưng đang chọn Tập một. Có thể thầy chọn nhầm tập, nên chọn Tập hai.`;
+  if (tap === 2 && max <= 18) return `Bảng này có tuần ${min}–${max} (học kì I) nhưng đang chọn Tập hai. Có thể thầy chọn nhầm tập, nên chọn Tập một.`;
+  return null;
+}
