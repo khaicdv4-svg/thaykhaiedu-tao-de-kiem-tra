@@ -202,7 +202,7 @@ export function kiemDinhDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, d: DacTa, t
   if (Math.abs(diemMa - diemDt) > 1e-9) loi.push(`Tổng điểm đặc tả ${diemDt} khác tổng điểm ma trận ${diemMa}.`);
 
   // 3. Minh chứng từng câu
-  for (const r of d.dong) {
+  for (const r of xepDongTheoCau(d.dong)) {
     if (!r.baiHoc.trim()) loi.push(`${tenDong(r)}: chưa ghi bài học trong phân phối chương trình.`);
     if (r.tuan === null || r.tuan === undefined) loi.push(`${tenDong(r)}: chưa ghi tuần học trong phân phối chương trình.`);
     else if (!Number.isInteger(r.tuan) || r.tuan < 1 || r.tuan > 40) loi.push(`${tenDong(r)}: tuần ${r.tuan} không hợp lệ (từ 1 đến 40).`);

@@ -9,7 +9,7 @@
  */
 
 import type { DangCau, HinhThucCau, KyKiemTra, MucDo } from '@/types/matrix-template';
-import type { DacTa } from '@/core/dac-ta/dac-ta';
+import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
 import { kiemDinhTiengViet, taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 
@@ -154,7 +154,7 @@ function kiemDinhMotCau(c: CauDe): string[] {
   }
 
   if (c.hinhThuc === 'TL' && c.dang !== 'VIET' && !c.huongDanCham.trim() && c.diem > 0.5) {
-    loi.push(`${t}: câu ${c.diem} điểm cần hướng dẫn chấm chia điểm.`);
+    loi.push(`${t}: câu ${String(c.diem).replace(".", ",")} điểm cần hướng dẫn chấm chia điểm.`);
   }
   return loi;
 }
@@ -177,7 +177,7 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
   const theoKhoa = new Map(de.cau.map((c) => [c.khoa, c]));
   if (theoKhoa.size !== de.cau.length) loi.push('Đề có câu bị trùng khóa.');
 
-  for (const r of dacTa.dong) {
+  for (const r of xepDongTheoCau(dacTa.dong)) {
     const c = theoKhoa.get(r.khoa);
     const t = r.cau && /^\d+$/.test(r.cau) ? `Câu ${r.cau}` : r.cau;
     if (!c) {
@@ -189,12 +189,12 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
     }
   }
   const khoaDacTa = new Set(dacTa.dong.map((r) => r.khoa));
-  for (const c of de.cau) if (!khoaDacTa.has(c.khoa)) loi.push(`${nhanCau(c)}: không có trong đặc tả.`);
+  for (const c of xepDongTheoCau(de.cau)) if (!khoaDacTa.has(c.khoa)) loi.push(`${nhanCau(c)}: không có trong đặc tả.`);
 
   const tong = lamTron(de.cau.reduce((s, c) => s + c.diem, 0));
   if (tong !== 10) loi.push(`Tổng điểm của đề là ${tong}, cần đúng 10.`);
 
-  for (const c of de.cau) loi.push(...kiemDinhMotCau(c));
+  for (const c of xepDongTheoCau(de.cau)) loi.push(...kiemDinhMotCau(c));
 
   if (dacTa.ma_mon === 'TIENG_VIET') {
     const tv = kiemDinhTiengViet(dacTa.ky_kiem_tra as KyKiemTraBaiDoc, de.tiengViet);
@@ -204,7 +204,7 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
 
   // Câu trùng đề bài
   const daGap = new Map<string, string>();
-  for (const c of de.cau) {
+  for (const c of xepDongTheoCau(de.cau)) {
     const k = chuanHoa(c.deBai);
     if (k.length < 10) continue;
     const truoc = daGap.get(k);
@@ -212,7 +212,7 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
     else daGap.set(k, nhanCau(c));
   }
 
-  for (const c of de.cau) {
+  for (const c of xepDongTheoCau(de.cau)) {
     if (/hình|bảng|biểu đồ|sơ đồ/i.test(c.deBai) && !c.ghiChuHinh.trim()) {
       canhBao.push(`${nhanCau(c)}: đề bài nhắc đến hình hoặc bảng nhưng chưa ghi mô tả để dàn trang.`);
     }

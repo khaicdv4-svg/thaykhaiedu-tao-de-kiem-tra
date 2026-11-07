@@ -96,3 +96,13 @@ describe('Xuất Word môn Tiếng Việt', () => {
     expect(loi.some((l) => /Bài đọc 3: chưa có câu hỏi/.test(l))).toBe(true);
   });
 });
+
+describe('Thông báo kiểm định theo thứ tự câu', () => {
+  it('liệt kê lỗi theo số câu tăng dần và dùng dấu phẩy cho điểm lẻ', () => {
+    const d = { ...de, cau: [...de.cau].reverse().map((c) => ({ ...c, deBai: '', dapAn: '', huongDanCham: '', diem: c.hinhThuc === 'TL' ? 1.5 : c.diem })) };
+    const kq = kiemDinhDe(dacTa, d);
+    const so = kq.loi.filter((l) => l.includes('chưa có đề bài')).map((l) => /^Câu (\d+)/.exec(l)?.[1]).filter(Boolean).map(Number);
+    expect(so).toEqual([...so].sort((a, b) => a - b));
+    expect(kq.loi.some((l) => l.includes('1.5 điểm'))).toBe(false);
+  });
+});
