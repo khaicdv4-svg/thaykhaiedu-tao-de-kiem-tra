@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import {
+  dienLaiTuPpct,
   dungLaiDacTa,
+  goiYTheoBaiPpct,
+  xepDongTheoCau,
   kiemDinhDacTa,
   layMinhChung,
   taoDacTa,
@@ -221,5 +224,33 @@ describe('Gợi ý bài, tuần chỉ khi khớp đúng', () => {
     const d2 = taoDacTa(toan, mtr, 1, { goiYTheoYccd: goiY, minhChungCu: { [d1.dong[0].khoa]: { baiHoc: 'Bài tự điền', tuan: 7, trangSgk: '', ghiChu: '' } } });
     expect(d2.dong[0].baiHoc).toBe('Bài tự điền');
     expect(d2.dong[0].tuan).toBe(7);
+  });
+});
+
+describe('Gợi ý bài, tuần theo số bài trong PPCT', () => {
+  const tiet = [
+    { tuan: 3, baiTen: 'Bài 4. Thiên nhiên vùng Trung du' },
+    { tuan: 4, baiTen: 'Bài 4. Thiên nhiên vùng Trung du' },
+    { tuan: 5, baiTen: 'Bài 14. Một bài khác' },
+  ];
+  it('khớp đúng số bài, lấy tuần đầu', () => {
+    expect(goiYTheoBaiPpct('Bài 4. Thiên nhiên vùng Trung du và miền núi phía Bắc', tiet)).toEqual({ baiHoc: 'Bài 4. Thiên nhiên vùng Trung du', tuan: 3 });
+  });
+  it('Bài 4 không nhầm với Bài 14; không có bài thì không đoán', () => {
+    expect(goiYTheoBaiPpct('Bài 1. Gì đó', tiet)).toBeUndefined();
+    expect(goiYTheoBaiPpct('Không ghi số bài', tiet)).toBeUndefined();
+  });
+  it('điền lại chỉ vào ô trống, giữ ô thầy đã điền', () => {
+    const d = { loai: 'DAC_TA', ma_mon: 'X', ky_kiem_tra: 'CUOI_HK1', phien_ban_ma_tran_rieng: 1, tuan_kiem_tra: null, dong: [
+      { cau: '1', noiDung: 'Bài 4. A', mach: 'm', yccd: '', baiHoc: '', tuan: null },
+      { cau: '2', noiDung: 'Bài 4. A', mach: 'm', yccd: '', baiHoc: 'Bài tự điền', tuan: 9 },
+    ] } as never as DacTa;
+    const kq = dienLaiTuPpct(d, new Map(), tiet);
+    expect(kq.soDong).toBe(1);
+    expect(kq.dacTa.dong[0].tuan).toBe(3);
+    expect(kq.dacTa.dong[1].baiHoc).toBe('Bài tự điền');
+  });
+  it('xếp theo số câu, câu không đánh số để cuối', () => {
+    expect(xepDongTheoCau([{ cau: 'Viết' }, { cau: '10' }, { cau: '2' }]).map((x) => x.cau)).toEqual(['2', '10', 'Viết']);
   });
 });

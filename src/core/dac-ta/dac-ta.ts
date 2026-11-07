@@ -74,6 +74,8 @@ interface TuyChonDung {
   tuanKiemTra?: number | null;
   /** Gợi ý theo YCCĐ (chuẩn hóa chữ thường). Chỉ điền vào ô còn trống. */
   goiYTheoYccd?: Map<string, GoiYMinhChung>;
+  /** PPCT của môn: dùng khi YCCĐ không có gợi ý, tìm bài theo "Bài N" ghi trong nội dung câu. */
+  tiet?: TietGoiY[];
   /** Giữ phần giáo viên đã điền (theo khóa câu) khi dựng lại sau khi ma trận đổi. */
   minhChungCu?: Record<string, MinhChungCau>;
 }
@@ -94,7 +96,7 @@ export function taoDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMaTranRi
   const dong: DongDacTa[] = cauHieuLuc(mtcGoc, mtr).map((c) => {
     const yccd = yccdCuaCau(mtr, c);
     const cu = tuyChon.minhChungCu?.[c.khoa];
-    const goiY = tuyChon.goiYTheoYccd?.get(chuanHoa(yccd));
+    const goiY = tuyChon.goiYTheoYccd?.get(chuanHoa(yccd)) ?? goiYTheoBaiPpct(c.dong.noi_dung ?? c.dong.mach, tuyChon.tiet);
     return {
       khoa: c.khoa,
       baiKiemTra: c.bai.ten,
@@ -264,4 +266,40 @@ export function taoGoiYTheoYccd(yccdKho: YccdGoiY[], tiet: TietGoiY[]): Map<stri
     kq.set(chuanHoa(y.noiDung), { baiHoc: y.bai.trim(), tuan: tuanTheoBai.get(chuanHoa(y.bai)) ?? undefined });
   }
   return kq;
+}
+
+const soBai = (s: string | null | undefined) => /(?:^|[^\p{L}\d])bài\s*(\d+)\b/iu.exec(s ?? '')?.[1];
+
+/**
+ * Tìm bài trong PPCT theo số bài ghi ở đầu nội dung câu, ví dụ "Bài 4. Thiên nhiên vùng Trung du…".
+ * Chỉ gợi ý khi PPCT có đúng bài mang số đó; không có thì để trống (không đoán).
+ */
+export function goiYTheoBaiPpct(noiDung: string | null | undefined, tiet: TietGoiY[] | undefined): GoiYMinhChung | undefined {
+  const n = soBai(noiDung);
+  if (!n || !tiet?.length) return undefined;
+  const khop = tiet.filter((t) => t.baiTen && soBai(t.baiTen) === n);
+  if (!khop.length) return undefined;
+  const tuan = khop.map((t) => t.tuan).filter((x): x is number => x !== null);
+  return { baiHoc: khop[0].baiTen!.trim(), tuan: tuan.length ? Math.min(...tuan) : undefined };
+}
+
+/** Điền lại bài, tuần từ PPCT vào các ô còn trống. Ô thầy đã điền thì giữ nguyên. */
+export function dienLaiTuPpct(d: DacTa, goiYTheoYccd: Map<string, GoiYMinhChung>, tiet: TietGoiY[]): { dacTa: DacTa; soDong: number } {
+  let soDong = 0;
+  const dong = d.dong.map((r) => {
+    const g = goiYTheoYccd.get(chuanHoa(r.yccd)) ?? goiYTheoBaiPpct(r.noiDung ?? r.mach, tiet);
+    if (!g) return r;
+    const baiHoc = r.baiHoc || g.baiHoc || '';
+    const tuan = r.tuan ?? g.tuan ?? null;
+    if (baiHoc === r.baiHoc && tuan === r.tuan) return r;
+    soDong++;
+    return { ...r, baiHoc, tuan };
+  });
+  return { dacTa: { ...d, dong }, soDong };
+}
+
+/** Thứ tự câu trong đề: số câu tăng dần, câu không đánh số (bài viết) để cuối. */
+export function xepDongTheoCau<T extends { cau: string }>(ds: T[]): T[] {
+  const so = (x: string) => (/^\d+$/.test(x) ? Number(x) : Number.POSITIVE_INFINITY);
+  return ds.map((r, i) => ({ r, i })).sort((a, b) => so(a.r.cau) - so(b.r.cau) || a.i - b.i).map((x) => x.r);
 }

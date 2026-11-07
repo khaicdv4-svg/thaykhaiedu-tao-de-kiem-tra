@@ -37,15 +37,15 @@ describe('Giai đoạn 1 - Nền tảng & Giao diện (Platform & UI Tests)', ()
     expect(hrefs).toContain('/templates');
     expect(hrefs).toContain('/dashboard');
     expect(hrefs).toContain('/test-builder');
-    expect(leaderNav.length).toBe(16);
+    expect(leaderNav.length).toBe(17);
   });
 
   it('correctly provides full menu for SCHOOL_ADMIN and SYSTEM_ADMIN', () => {
     const adminNav = getNavigationForRole('SCHOOL_ADMIN');
-    expect(adminNav.length).toBe(16);
+    expect(adminNav.length).toBe(17);
 
     const sysAdminNav = getNavigationForRole('SYSTEM_ADMIN');
-    expect(sysAdminNav.length).toBe(16);
+    expect(sysAdminNav.length).toBe(17);
   });
 
   it('ensures each navigation item has valid title, href, and icon definition', () => {

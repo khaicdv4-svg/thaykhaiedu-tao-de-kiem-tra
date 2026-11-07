@@ -354,7 +354,15 @@ export default function MatricesPage() {
     }
   };
 
-  const cauList = useMemo(() => (mtc && mtr ? danhSachCau(apDungSuaCau(mtc, mtr.sua_cau), mtr.lua_chon_da_dung) : []), [mtc, mtr]);
+  // Xếp theo số câu trong đề (câu không đánh số, như bài viết, để cuối) cho dễ rà từ câu 1.
+  const cauList = useMemo(() => {
+    if (!mtc || !mtr) return [];
+    const so = (x: string) => (/^\d+$/.test(x) ? Number(x) : Number.POSITIVE_INFINITY);
+    return danhSachCau(apDungSuaCau(mtc, mtr.sua_cau), mtr.lua_chon_da_dung)
+      .map((c, i) => ({ c, i }))
+      .sort((a, b) => so(a.c.cau.cau) - so(b.c.cau.cau) || a.i - b.i)
+      .map((x) => x.c);
+  }, [mtc, mtr]);
   const cauGoc = useMemo(() => new Map(mtc && mtr ? danhSachCau(mtc, mtr.lua_chon_da_dung).map((c) => [c.khoa, c.cau]) : []), [mtc, mtr]);
   const tongDiemSua = useMemo(() => {
     const m = new Map<string, number>();

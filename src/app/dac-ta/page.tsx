@@ -15,12 +15,14 @@ import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, khoangTuanTheoKy, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import {
+  dienLaiTuPpct,
   dungLaiDacTa,
   kiemDinhDacTa,
   taoDacTa,
   taoGoiYTheoYccd,
   trangThaiDacTaSauKhiSua,
   trangThaiDacTaSauKiemDinh,
+  xepDongTheoCau,
   type DacTa,
   type DongDacTa,
   type KetQuaKiemDinhDacTa,
@@ -138,7 +140,7 @@ export default function DacTaPage() {
   const taoMoi = () => {
     if (!mtrBan) return;
     const { ma_tran_chung: mtc, ma_tran_rieng: mtr } = mtrBan.duLieu;
-    setDacTa(taoDacTa(mtc, mtr, mtrBan.phienBan ?? 1, { tuanKiemTra, goiYTheoYccd: goiY }));
+    setDacTa(taoDacTa(mtc, mtr, mtrBan.phienBan ?? 1, { tuanKiemTra, goiYTheoYccd: goiY, tiet }));
     setTrangThai('BAN_NHAP');
     setKetQua(null);
     setDaXemTruoc(false);
@@ -198,11 +200,14 @@ export default function DacTaPage() {
   const tenMon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? maMon;
   const nhan = NHAN_TRANG_THAI[trangThai];
   const tongDiem = useMemo(() => Math.round((dacTa?.dong.reduce((s, r) => s + r.diem, 0) ?? 0) * 100) / 100, [dacTa]);
-  const nhom = useMemo(() => {
-    const m = new Map<string, DongDacTa[]>();
-    for (const r of dacTa?.dong ?? []) m.set(`${r.baiKiemTra}${r.phan ? ` – ${r.phan}` : ''}`, [...(m.get(`${r.baiKiemTra}${r.phan ? ` – ${r.phan}` : ''}`) ?? []), r]);
-    return [...m.entries()];
-  }, [dacTa]);
+  // Hiển thị theo thứ tự câu trong đề (không gom theo bài) để thầy rà từ câu 1 đến hết.
+  const nhom = useMemo((): [string, DongDacTa[]][] => (dacTa ? [['Các câu theo thứ tự trong đề', xepDongTheoCau(dacTa.dong)]] : []), [dacTa]);
+  const dienLai = () => {
+    if (!dacTa) return;
+    const kq = dienLaiTuPpct(dacTa, goiY, tiet);
+    setDacTa(kq.dacTa);
+    setThongBao(kq.soDong ? `Đã điền bài, tuần cho ${kq.soDong} câu từ phân phối chương trình. Thầy xem lại và ghi chú nếu cần.` : tiet.length ? 'Không có ô trống nào tìm được bài khớp trong phân phối chương trình. Thầy nhập tay giúp.' : 'Môn này chưa có phân phối chương trình trong hệ thống. Thầy nhập ở mục Phân phối chương trình trước.');
+  };
   const daXacNhan = trangThai === 'DA_XAC_NHAN';
 
   return (
@@ -279,6 +284,7 @@ export default function DacTaPage() {
               />
               <span className="text-xs text-slate-500">Bài dạy sau tuần này là chưa học.</span>
             </label>
+            {!daXacNhan && cheDo === 'sua' && <button type="button" className={nutPhu} onClick={dienLai}>Điền bài, tuần từ PPCT</button>}
             {phienBanXacNhan !== null && <span className="text-emerald-700">Đã có phiên bản xác nhận: {phienBanXacNhan}</span>}
           </div>
 
@@ -309,7 +315,7 @@ export default function DacTaPage() {
                           <label className="text-xs text-slate-500">Trang SGK
                             <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="tr. 45" disabled={daXacNhan} value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
                           </label>
-                          <label className="text-xs text-slate-500 sm:col-span-3">Ghi chú
+                          <label className="text-xs text-slate-500 sm:col-span-3">Ghi chú (nếu thầy có yêu cầu riêng cho câu này)
                             <input aria-label={`Ghi chú câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} value={r.ghiChu} onChange={(e) => suaDong(r.khoa, { ghiChu: e.target.value })} />
                           </label>
                         </div>
@@ -325,13 +331,13 @@ export default function DacTaPage() {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-left">
-                    {['Câu', 'Mạch, nội dung', 'YCCĐ', 'Mức', 'Hình thức, dạng', 'Điểm', 'Bài (PPCT)', 'Tuần', 'Trang SGK'].map((h) => <th key={h} className="border border-slate-300 px-2 py-1.5 font-semibold">{h}</th>)}
+                    {['Câu', 'Mạch, nội dung', 'YCCĐ', 'Mức', 'Hình thức, dạng', 'Điểm', 'Bài (PPCT)', 'Tuần', 'Trang SGK', 'Ghi chú'].map((h) => <th key={h} className="border border-slate-300 px-2 py-1.5 font-semibold">{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {nhom.map(([ten, dong]) => (
                     <React.Fragment key={ten}>
-                      <tr><td colSpan={9} className="border border-slate-300 bg-slate-100 px-2 py-1 font-semibold">{ten}</td></tr>
+                      <tr><td colSpan={10} className="border border-slate-300 bg-slate-100 px-2 py-1 font-semibold">{ten}</td></tr>
                       {dong.map((r) => (
                         <tr key={r.khoa} className="align-top">
                           <td className="border border-slate-300 px-2 py-1.5 whitespace-nowrap">{r.cau}{r.yNho ? ` (${r.yNho.join(', ')})` : ''}</td>
@@ -343,11 +349,12 @@ export default function DacTaPage() {
                           <td className="border border-slate-300 px-2 py-1.5">{r.baiHoc}</td>
                           <td className="border border-slate-300 px-2 py-1.5 text-center">{r.tuan}</td>
                           <td className="border border-slate-300 px-2 py-1.5 whitespace-nowrap">{r.trangSgk}</td>
+                          <td className="border border-slate-300 px-2 py-1.5">{r.ghiChu}</td>
                         </tr>
                       ))}
                     </React.Fragment>
                   ))}
-                  <tr className="font-semibold"><td colSpan={5} className="border border-slate-300 px-2 py-1.5 text-right">Tổng</td><td className="border border-slate-300 px-2 py-1.5 text-right">{fmtDiem(tongDiem)}</td><td colSpan={3} className="border border-slate-300" /></tr>
+                  <tr className="font-semibold"><td colSpan={5} className="border border-slate-300 px-2 py-1.5 text-right">Tổng</td><td className="border border-slate-300 px-2 py-1.5 text-right">{fmtDiem(tongDiem)}</td><td colSpan={4} className="border border-slate-300" /></tr>
                 </tbody>
               </table>
             </div>

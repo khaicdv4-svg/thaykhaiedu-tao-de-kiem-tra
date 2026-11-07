@@ -543,8 +543,8 @@ function bangMaTran(dacTa: DacTa): Table {
 }
 
 function bangDacTa(dacTa: DacTa): Table {
-  const w = [800, 2600, 4400, 700, 1100, 1000, 1100, 1700, RONG_NGANG - 800 - 2600 - 4400 - 700 - 1100 - 1000 - 1100 - 1700];
-  const dau = ['Câu', 'Mạch, nội dung', 'Yêu cầu cần đạt', 'Mức', 'Hình thức', 'Điểm', 'Tuần', 'Bài học (PPCT)', 'Trang SGK'];
+  const w = [700, 2300, 3900, 600, 1000, 800, 800, 1700, 1100, RONG_NGANG - 700 - 2300 - 3900 - 600 - 1000 - 800 - 800 - 1700 - 1100];
+  const dau = ['Câu', 'Mạch, nội dung', 'Yêu cầu cần đạt', 'Mức', 'Hình thức', 'Điểm', 'Tuần', 'Bài học (PPCT)', 'Trang SGK', 'Ghi chú'];
   const rows: TableRow[] = [new TableRow({ cantSplit: true, children: dau.map((h, i) => oN([h], w[i], { bold: true, align: AlignmentType.CENTER })) })];
   const xep = [...dacTa.dong].sort((a, b) => (Number(a.cau) || 1e9) - (Number(b.cau) || 1e9));
   for (const r of xep) {
@@ -560,6 +560,7 @@ function bangDacTa(dacTa: DacTa): Table {
         oN([r.tuan == null ? '' : String(r.tuan)], w[6], { align: AlignmentType.CENTER }),
         oN([r.baiHoc], w[7]),
         oN([r.trangSgk], w[8]),
+        oN([r.ghiChu], w[9]),
       ],
     }));
   }
