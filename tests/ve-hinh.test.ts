@@ -55,3 +55,30 @@ describe('khung hình trong đề bài', () => {
   });
   void Packer;
 });
+
+describe('yêu cầu hình từ đặc tả', () => {
+  it('đi từ đặc tả sang đề, giữ khi dựng lại đặc tả, và vào lời nhắc vẽ', async () => {
+    const { MAU_MA_TRAN_CHUNG } = await import('../src/core/matrix/templates');
+    const { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong } = await import('../src/core/matrix/matrix-template');
+    const { taoDacTa, layMinhChung } = await import('../src/core/dac-ta/dac-ta');
+    const { taoDeTuDacTa } = await import('../src/core/de/de');
+    const { loiNhacVeHinh } = await import('../src/core/de/ve-hinh');
+    const mtc = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'LS_DL')!;
+    const lc: Record<string, string> = {};
+    for (const n of cacNhomLuaChon(mtc)) lc[n.ma] = n.phuong_an[0].ma;
+    const mtr = taoMaTranRiengRong(mtc);
+    mtr.lua_chon_da_dung = lc;
+    mtr.cau_hoi = danhSachCau(mtc, lc).map((c) => ({ khoa: c.khoa, yccd: c.dong.yccd[0] }));
+    mtr.trang_thai = 'DA_XAC_NHAN';
+    const d1 = taoDacTa(mtc, mtr, 1, { tuanKiemTra: 9 });
+    const khoa = d1.dong[0].khoa;
+    const mc = layMinhChung(d1);
+    mc[khoa] = { ...mc[khoa], hinhKem: 'PHUONG_AN', moTaHinh: '4 góc A, B, C, D' };
+    const d2 = taoDacTa(mtc, mtr, 1, { tuanKiemTra: 9, minhChungCu: mc });
+    expect(d2.dong.find((r) => r.khoa === khoa)?.hinhKem).toBe('PHUONG_AN');
+    const de = taoDeTuDacTa(d2, 1);
+    expect(de.cau.find((c) => c.khoa === khoa)?.yeuCauHinh).toEqual({ kieu: 'PHUONG_AN', moTa: '4 góc A, B, C, D' });
+    expect(de.cau.filter((c) => c.yeuCauHinh)).toHaveLength(1);
+    expect(loiNhacVeHinh({ tenMon: 'Toán', deBai: 'x', luaChon: [], moTa: '', kieu: 'PHUONG_AN' })).toContain('4 hình');
+  });
+});

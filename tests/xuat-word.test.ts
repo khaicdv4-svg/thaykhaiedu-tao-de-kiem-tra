@@ -116,4 +116,12 @@ describe('Thông báo kiểm định theo thứ tự câu', () => {
     expect(xml).toContain('[Hình 2: chưa có ảnh]');
     expect(xml).not.toContain('[Hình 1]');
   });
+
+  it('câu trắc nghiệm chỉ hiện đáp án, không hiện hướng dẫn chấm', async () => {
+    const d3 = { ...de, cau: de.cau.map((c) => (c.hinhThuc === 'TN' ? { ...c, huongDanCham: 'GHI CHU CHAM TRAC NGHIEM' } : c)) };
+    expect(d3.cau.some((c) => c.hinhThuc === 'TN')).toBe(true);
+    const buf = await Packer.toBuffer(dungTaiLieuDe(tt, d3));
+    const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+    expect(xml).not.toContain('GHI CHU CHAM TRAC NGHIEM');
+  });
 });

@@ -49,6 +49,29 @@ export async function xuLyAnhDe(f: File): Promise<HinhCau> {
   return canvasSangHinh(veLenCanvas(bm, bm.width, bm.height), f.name.replace(/\.[^.]+$/, ''), f.name);
 }
 
+/** Cắt viền trắng thừa quanh hình, chỉ chừa lề nhỏ, để hình sát đề bài và dàn trang gọn. */
+function catVienTrang(canvas: HTMLCanvasElement, le = 10): HTMLCanvasElement {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  const { width: w, height: h } = canvas;
+  const d = ctx.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4] < 235) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return canvas;
+  x0 = Math.max(0, x0 - le); y0 = Math.max(0, y0 - le); x1 = Math.min(w - 1, x1 + le); y1 = Math.min(h - 1, y1 + le);
+  const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+  if (cw >= w && ch >= h) return canvas;
+  const ra = document.createElement('canvas');
+  ra.width = cw; ra.height = ch;
+  const c2 = ra.getContext('2d');
+  if (!c2) return canvas;
+  c2.fillStyle = '#fff'; c2.fillRect(0, 0, cw, ch);
+  c2.drawImage(canvas, x0, y0, cw, ch, 0, 0, cw, ch);
+  return ra;
+}
+
 /** Đổi mã SVG đã làm sạch (từ AI vẽ) thành hình đen trắng để lưu trong đề. Độ phân giải gấp đôi cho nét sắc. */
 export async function svgSangHinh(svg: string, rong: number, cao: number, moTa: string): Promise<HinhCau> {
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
@@ -64,7 +87,7 @@ export async function svgSangHinh(svg: string, rong: number, cao: number, moTa: 
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const h = canvasSangHinh(canvas, 'AI vẽ', 'Hình AI vẽ');
+    const h = canvasSangHinh(catVienTrang(canvas), 'AI vẽ', 'Hình AI vẽ');
     return { ...h, moTa };
   } finally { URL.revokeObjectURL(url); }
 }

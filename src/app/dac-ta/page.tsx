@@ -27,6 +27,8 @@ import {
   type DacTa,
   type DongDacTa,
   type KetQuaKiemDinhDacTa,
+  type KieuHinhKem,
+  TEN_KIEU_HINH,
   type MinhChungCau,
   type MucLucSgk,
   type TrangThaiDacTa,
@@ -325,6 +327,16 @@ export default function DacTaPage() {
                           <label className="text-xs text-slate-500">Trang SGK
                             <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="tr. 45" disabled={daXacNhan} value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
                           </label>
+                          <label className="text-xs text-slate-500 sm:col-span-1">Hình kèm theo
+                            <select aria-label={`Hình kèm theo câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} value={r.hinhKem ?? 'KHONG'} onChange={(e) => suaDong(r.khoa, { hinhKem: e.target.value as KieuHinhKem })}>
+                              {(Object.keys(TEN_KIEU_HINH) as KieuHinhKem[]).map((k) => <option key={k} value={k}>{TEN_KIEU_HINH[k]}</option>)}
+                            </select>
+                          </label>
+                          {(r.hinhKem ?? 'KHONG') !== 'KHONG' && (
+                            <label className="text-xs text-slate-500 sm:col-span-2">Mô tả hình cần có (ngắn gọn)
+                              <input aria-label={`Mô tả hình câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="Ví dụ: 4 góc nhọn, vuông, tù, bẹt; nhãn A, B, C, D" disabled={daXacNhan} value={r.moTaHinh ?? ''} onChange={(e) => suaDong(r.khoa, { moTaHinh: e.target.value })} />
+                            </label>
+                          )}
                           <label className="text-xs text-slate-500 sm:col-span-3">Ghi chú (nếu thầy có yêu cầu riêng cho câu này)
                             <input aria-label={`Ghi chú câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} value={r.ghiChu} onChange={(e) => suaDong(r.khoa, { ghiChu: e.target.value })} />
                           </label>
@@ -359,7 +371,7 @@ export default function DacTaPage() {
                           <td className="border border-slate-300 px-2 py-1.5">{r.baiHoc}</td>
                           <td className="border border-slate-300 px-2 py-1.5 text-center">{r.tuan}</td>
                           <td className="border border-slate-300 px-2 py-1.5 whitespace-nowrap">{r.trangSgk}</td>
-                          <td className="border border-slate-300 px-2 py-1.5">{r.ghiChu}</td>
+                          <td className="border border-slate-300 px-2 py-1.5">{r.ghiChu}{(r.hinhKem ?? 'KHONG') !== 'KHONG' && <div className="text-violet-800">Hình: {TEN_KIEU_HINH[r.hinhKem!]}{r.moTaHinh ? ` (${r.moTaHinh})` : ''}</div>}</td>
                         </tr>
                       ))}
                     </React.Fragment>

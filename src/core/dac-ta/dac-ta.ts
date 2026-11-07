@@ -16,12 +16,28 @@ import { apDungSuaCau, danhSachCau, laCauBaiViet } from '@/core/matrix/matrix-te
 export type TrangThaiDacTa = 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'DA_XAC_NHAN' | 'CAN_XAC_NHAN_LAI';
 
 /** Phần giáo viên điền (không lấy từ ma trận). Giữ nguyên khi dựng lại đặc tả. */
+/** Hình đi kèm câu mà giáo viên yêu cầu từ bước đặc tả, để bước tạo đề dàn trang đúng ngay từ đầu. */
+export type KieuHinhKem = 'KHONG' | 'MINH_HOA' | 'PHUONG_AN' | 'SO_DO' | 'BIEU_DO' | 'BANG' | 'TIA_SO';
+export const TEN_KIEU_HINH: Record<KieuHinhKem, string> = {
+  KHONG: 'Không cần hình',
+  MINH_HOA: 'Hình minh họa cho đề bài',
+  PHUONG_AN: 'Hình cho từng phương án A, B, C, D',
+  SO_DO: 'Sơ đồ',
+  BIEU_DO: 'Biểu đồ',
+  BANG: 'Bảng số liệu',
+  TIA_SO: 'Tia số',
+};
+
 export interface MinhChungCau {
   baiHoc: string;
   tuan: number | null;
   /** Ví dụ "tr. 45" hoặc "tr. 45–46". Để trống nếu chưa đối chiếu. */
   trangSgk: string;
   ghiChu: string;
+  /** Hình kèm theo yêu cầu cho câu này (đặc tả cũ chưa có: coi như không cần). */
+  hinhKem?: KieuHinhKem;
+  /** Mô tả ngắn hình cần có, ví dụ "4 góc nhọn, vuông, tù, bẹt". */
+  moTaHinh?: string;
 }
 
 export interface DongDacTa extends MinhChungCau {
@@ -115,6 +131,8 @@ export function taoDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMaTranRi
       tuan: cu?.tuan ?? goiY?.tuan ?? null,
       trangSgk: cu?.trangSgk ?? '',
       ghiChu: cu?.ghiChu ?? '',
+      hinhKem: cu?.hinhKem ?? 'KHONG',
+      moTaHinh: cu?.moTaHinh ?? '',
     };
   });
   return {
@@ -129,7 +147,7 @@ export function taoDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMaTranRi
 
 /** Lấy phần giáo viên đã điền ra khỏi một đặc tả, để dựng lại mà không mất. */
 export function layMinhChung(d: DacTa): Record<string, MinhChungCau> {
-  return Object.fromEntries(d.dong.map((r) => [r.khoa, { baiHoc: r.baiHoc, tuan: r.tuan, trangSgk: r.trangSgk, ghiChu: r.ghiChu }]));
+  return Object.fromEntries(d.dong.map((r) => [r.khoa, { baiHoc: r.baiHoc, tuan: r.tuan, trangSgk: r.trangSgk, ghiChu: r.ghiChu, hinhKem: r.hinhKem ?? 'KHONG', moTaHinh: r.moTaHinh ?? '' }]));
 }
 
 /**

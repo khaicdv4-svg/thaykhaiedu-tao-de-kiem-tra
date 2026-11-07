@@ -7,22 +7,33 @@
 export const HE_THONG_VE_HINH = `Bạn là họa sĩ vẽ hình minh họa cho đề kiểm tra tiểu học Việt Nam, vẽ bằng mã SVG.
 Quy tắc bắt buộc:
 - Chỉ vẽ phần hình mà đề bài cần cho học sinh nhìn. TUYỆT ĐỐI không vẽ hay đánh dấu đáp án, không viết đáp án vào hình.
-- Hình ĐEN TRẮNG vì đề in trắng đen: nền trắng (một rect trắng phủ toàn hình), nét đen đậm (stroke="#000", stroke-width từ 2 đến 3), được tô xám nhạt (#d9d9d9) cho vùng cần phân biệt. Không dùng màu khác.
+- Hình ĐEN TRẮNG vì đề in trắng đen: nền trắng (một rect trắng phủ toàn hình), nét đen đậm (stroke="#000", stroke-width từ 2 đến 3). Mặc định KHÔNG tô nền (fill="none"); chỉ tô xám rất nhạt (#e6e6e6) khi đề thật sự cần phân biệt vùng (ví dụ phần tô màu của phân số). Không dùng màu khác.
 - Dùng viewBox="0 0 W H" với W không quá 480 và H không quá 300. Chữ, số, nhãn (A, B, C, D, 1, 2…) dùng font-family="Times New Roman" cỡ từ 16 trở lên.
 - Số lượng đồ vật trong hình phải ĐÚNG như đề bài (đề nói 5 quả táo thì vẽ đúng 5 quả). Xếp thẳng hàng, đều đặn, không chồng lên nhau.
 - Lớp 1-2: hình rất đơn giản, to, rõ, đồ vật quen thuộc (quả, hoa, con vật, hình khối cơ bản) vẽ bằng các hình cơ bản.
 - Hình học: vẽ đúng số đo và tỉ lệ (góc vuông đúng 90°, góc tù lớn hơn 90°, góc nhọn bé hơn 90°, đoạn thẳng đúng độ dài tương đối).
+- Hình phải kín khung: vẽ sát mép viewBox, chỉ chừa lề khoảng 8 đơn vị, không để khoảng trắng thừa phía trên hay hai bên.
+- Các hình cùng loại (các góc, các hình khối...) phải CÙNG cỡ: cạnh dài bằng nhau, cao bằng nhau, đặt trên cùng một đường đáy.
 - Cần nhiều hình (ví dụ 4 góc A, B, C, D): vẽ chung trong MỘT svg, xếp đều thành một hàng hoặc lưới, có nhãn dưới mỗi hình, khoảng cách đều nhau.
 - Chỉ dùng thẻ: svg, g, rect, circle, ellipse, line, polyline, polygon, path, text, tspan. Không script, không style, không ảnh, không href, không url().
 - Chỉ trả về mã SVG, bắt đầu bằng <svg và kết thúc bằng </svg>, không giải thích.
 - Nếu đề bài không cần hình hoặc không thể vẽ đúng, chỉ trả về một dòng: KHONG_VE: lí do ngắn.`;
 
-export function loiNhacVeHinh(p: { tenMon: string; deBai: string; luaChon: string[]; moTa: string }): string {
+const HUONG_DAN_KIEU: Record<string, string> = {
+  MINH_HOA: 'Kiểu hình giáo viên yêu cầu: hình minh họa cho đề bài. Một hình gọn, đặt giữa, rộng khoảng 300–400 đơn vị.',
+  PHUONG_AN: 'Kiểu hình giáo viên yêu cầu: hình cho từng phương án A, B, C, D. Vẽ đúng 4 hình trong MỘT svg, xếp một hàng ngang (viewBox khoảng 480×170), bốn ô rộng bằng nhau, mỗi hình đặt giữa ô của nó, nhãn A, B, C, D ngay dưới mỗi hình.',
+  SO_DO: 'Kiểu hình giáo viên yêu cầu: sơ đồ. Các ô chữ nhật nối bằng mũi tên hoặc đoạn thẳng, chữ ngắn trong ô, dàn đều.',
+  BIEU_DO: 'Kiểu hình giáo viên yêu cầu: biểu đồ (cột hoặc tranh) có trục, nhãn, vạch chia đều, số liệu đúng như đề bài.',
+  BANG: 'Kiểu hình giáo viên yêu cầu: bảng số liệu kẻ ô, hàng tiêu đề rõ, số liệu đúng như đề bài.',
+  TIA_SO: 'Kiểu hình giáo viên yêu cầu: tia số có vạch chia đều, số ghi dưới vạch, mũi tên ở đầu tia.',
+};
+
+export function loiNhacVeHinh(p: { tenMon: string; deBai: string; luaChon: string[]; moTa: string; kieu?: string }): string {
   const lc = p.luaChon.some((x) => x.trim()) ? `\nCác phương án (chỉ để biết hình cần thể hiện gì, KHÔNG vẽ đáp án): ${p.luaChon.map((x, i) => `${'ABCD'[i] ?? i + 1}. ${x}`).join(' | ')}` : '';
   return `Môn ${p.tenMon}, lớp 4.
 Đề bài (bỏ qua các dòng dạng [Hình n], đó chỉ là vị trí chèn hình): ${p.deBai.replace(/\[Hình\s*\d+\]/gi, '').trim()}${lc}
 ${p.moTa.trim() ? `Mô tả của giáo viên về hình cần vẽ: ${p.moTa.trim()}` : 'Giáo viên không mô tả thêm: hãy tự xác định hình cần vẽ từ đề bài.'}
-Vẽ hình minh họa.`;
+${p.kieu && HUONG_DAN_KIEU[p.kieu] ? HUONG_DAN_KIEU[p.kieu] + '\n' : ''}Vẽ hình.`;
 }
 
 const THE_CHO_PHEP = new Set(['svg', 'g', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'path', 'text', 'tspan']);

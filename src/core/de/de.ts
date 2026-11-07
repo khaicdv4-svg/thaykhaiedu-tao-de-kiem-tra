@@ -9,7 +9,7 @@
  */
 
 import type { DangCau, HinhThucCau, KyKiemTra, MucDo } from '@/types/matrix-template';
-import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
+import { xepDongTheoCau, type DacTa, type KieuHinhKem } from '@/core/dac-ta/dac-ta';
 import { kiemDinhTiengViet, taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 
@@ -51,10 +51,15 @@ export interface NoiDungCau {
   hinh?: HinhCau[];
 }
 
+/** Yêu cầu hình lấy từ đặc tả (không sửa ở bước tạo đề). */
+export interface YeuCauHinh { kieu: Exclude<KieuHinhKem, 'KHONG'>; moTa: string }
+
 export interface CauDe extends NoiDungCau {
   khoa: string;
   cau: string;
   yNho: string[] | null;
+  /** Hình kèm theo mà đặc tả yêu cầu. */
+  yeuCauHinh?: YeuCauHinh;
   muc: MucDo;
   hinhThuc: HinhThucCau;
   dang: DangCau | null;
@@ -169,6 +174,7 @@ export function taoDeTuDacTa(dacTa: DacTa, phienBanDacTa: number, noiDungCu: Rec
       dang: r.dang,
       diem: r.diem,
       yccd: r.yccd,
+      ...(r.hinhKem && r.hinhKem !== 'KHONG' ? { yeuCauHinh: { kieu: r.hinhKem, moTa: r.moTaHinh ?? '' } } : {}),
       ...(noiDungCu[r.khoa] ?? { ...NOI_DUNG_RONG, luaChon: luaChonMau(r.dang, r.yNho) }),
     })),
   };

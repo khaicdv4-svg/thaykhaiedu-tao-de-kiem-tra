@@ -13,6 +13,7 @@ import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
 import { XemTruocDe } from '@/components/de/XemTruocDe';
+import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
 import { svgSangHinh, xuLyAnhDe } from '@/core/utils/anh-de';
 import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
@@ -218,14 +219,14 @@ export default function TaoDePage() {
     suaCau(c.khoa, { hinh: ds, deBai });
   };
 
-  const moVeAI = (c: CauDe, dich: number | null) => setVeAI((v) => ({ ...v, [c.khoa]: { moTa: (dich !== null ? c.hinh?.[dich]?.moTa : v[c.khoa]?.moTa) ?? '', dich, mo: true } }));
+  const moVeAI = (c: CauDe, dich: number | null) => setVeAI((v) => ({ ...v, [c.khoa]: { moTa: (dich !== null ? c.hinh?.[dich]?.moTa : v[c.khoa]?.moTa) ?? c.yeuCauHinh?.moTa ?? '', dich, mo: true } }));
   const veHinhAI = async (c: CauDe) => {
     const cu = veAI[c.khoa];
     if (!cu) return;
     setVeAI((v) => ({ ...v, [c.khoa]: { ...cu, dang: true, loi: undefined, xem: undefined } }));
     const r = await goiJson<{ svg?: string; rong?: number; cao?: number }>('/api/de-kiem-tra/ve-hinh', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mon: maMon, deBai: c.deBai, luaChon: c.luaChon, moTa: cu.moTa }),
+      body: JSON.stringify({ mon: maMon, deBai: c.deBai, luaChon: c.luaChon, moTa: cu.moTa || c.yeuCauHinh?.moTa || '', kieu: c.yeuCauHinh?.kieu }),
     });
     if (!r.ok || !r.j.svg) { setVeAI((v) => ({ ...v, [c.khoa]: { ...cu, loi: r.j.error ?? 'AI chưa vẽ được.' } })); return; }
     try {
@@ -421,6 +422,14 @@ export default function TaoDePage() {
                             <Wand2 className="w-3.5 h-3.5" /> AI vẽ hình theo đề bài
                           </button>
                         </div>
+                        {c.yeuCauHinh && (
+                          <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+                            Đặc tả yêu cầu: <b>{TEN_KIEU_HINH[c.yeuCauHinh.kieu]}</b>{c.yeuCauHinh.moTa ? ` (${c.yeuCauHinh.moTa})` : ''}. Bấm &quot;AI vẽ hình theo đề bài&quot;, AI sẽ vẽ đúng kiểu này và xếp vào đề.
+                            {c.yeuCauHinh.kieu === 'PHUONG_AN' && c.dang === 'NLC' && (
+                              <button type="button" className="ml-2 rounded border border-violet-300 bg-white px-2 py-0.5 font-medium" onClick={() => suaCau(c.khoa, { luaChon: ['Hình A', 'Hình B', 'Hình C', 'Hình D'] })}>Đổi phương án thành Hình A–D</button>
+                            )}
+                          </div>
+                        )}
                         <p className="text-xs text-slate-500">Muốn hình nằm đúng chỗ: đặt con trỏ vào đề bài rồi bấm &quot;Thêm khung hình&quot;. Khung hiện thành dòng [Hình 1] trong đề bài, sau đó thầy tải hình hoặc nhờ AI vẽ vào khung. Hình không có khung sẽ in thành một hàng dưới đề bài. Tối đa {TOI_DA_HINH_MOT_CAU} hình, app tự chuyển đen trắng.</p>
                         {loiHinh[c.khoa] && <div className="text-xs text-red-700">{loiHinh[c.khoa]}</div>}
 
@@ -513,8 +522,9 @@ export default function TaoDePage() {
                         </label>
                       )}
 
+                      {c.hinhThuc === 'TL' && (<>
                       <label className="block text-xs text-slate-500">
-                        {c.dang === 'VIET' || c.hinhThuc === 'TL' ? 'Hướng dẫn chấm (từng bước làm, điểm từng ý, lưu ý chấm)' : 'Hướng dẫn chấm (nếu cần)'}
+                        Hướng dẫn chấm (từng bước làm, điểm từng ý, lưu ý chấm)
                         <textarea aria-label={`Hướng dẫn chấm ${nhanCau(c)}`} rows={c.hinhThuc === 'TL' ? 4 : 2} className={`${o} mt-0.5`} placeholder={c.hinhThuc === 'TL' && c.dang !== 'VIET' ? 'Ví dụ:\nĐổi 3 tấn = 3 000 kg (0,5 điểm)\nĐổi 5 yến = 50 kg; 3 000 + 50 = 3 050 kg (0,5 điểm)\nLưu ý chấm: thiếu đơn vị trừ 0,25 điểm.' : ''} value={c.huongDanCham} onChange={(e) => suaCau(c.khoa, { huongDanCham: e.target.value })} />
                       </label>
                       {c.dang !== 'VIET' && c.deBai.trim() && c.dapAn.trim() && (
@@ -535,6 +545,7 @@ export default function TaoDePage() {
                           )}
                         </div>
                       )}
+                      </>)}
                       <label className="block text-xs text-slate-500">Hình, bảng, bài đọc đi kèm (mô tả để dàn trang)
                         <input aria-label={`Hình đi kèm ${nhanCau(c)}`} className={`${o} mt-0.5`} value={c.ghiChuHinh} onChange={(e) => suaCau(c.khoa, { ghiChuHinh: e.target.value })} />
                       </label>

@@ -280,7 +280,7 @@ function bangDapAn(cau: CauDe[]): Table {
     const ps: Paragraph[] = [];
     const dapAn = dapAnHienThi(c).trim();
     const lamRo = c.hinhThuc === 'TL' && c.dang !== 'VIET';
-    const dongCham = c.huongDanCham.split(/\n+/).filter((x) => x.trim());
+    const dongCham = c.hinhThuc === 'TL' ? c.huongDanCham.split(/\n+/).filter((x) => x.trim()) : [];
     if (dapAn) ps.push(doan([tr(lamRo ? 'Đáp án: ' : '', { bold: true }), tr(dapAn, { bold: lamRo })], { dong: DAN_CAU }));
     if (lamRo && dongCham.length) ps.push(doan([tr('Cách chấm:', { bold: true })], { dong: DAN_CAU, truoc: 40 }));
     for (const d of dongCham) ps.push(doan(d, { dong: DAN_CAU, thut: lamRo ? 200 : 0 }));

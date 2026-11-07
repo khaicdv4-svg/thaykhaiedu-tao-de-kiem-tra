@@ -113,7 +113,7 @@ export function XemTruocDe({ de, truong, tenMon, phut }: { de: DeKiemTra; truong
                     <td className="border border-black p-1.5 leading-[1.5]">
                       {da && <div>{lamRo && <b>Đáp án: </b>}{lamRo ? <b>{da}</b> : da}</div>}
                       {lamRo && c.huongDanCham.trim() && <div className="font-bold mt-1">Cách chấm:</div>}
-                      {dong(c.huongDanCham).map((d, i) => <div key={i} className={lamRo ? 'pl-3' : ''}>{d}</div>)}
+                      {(c.hinhThuc === 'TL') && dong(c.huongDanCham).map((d, i) => <div key={i} className={lamRo ? 'pl-3' : ''}>{d}</div>)}
                     </td>
                     <td className="border border-black p-1 text-center">{fmt(c.diem)}</td>
                   </tr>
