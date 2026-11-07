@@ -216,3 +216,32 @@ describe('AI tìm nguồn', () => {
     expect(s).toContain('Không tìm thấy');
   });
 });
+
+import { chonUngVien, docKetQuaDuckDuckGo, htmlSangChu, taoTruyVan, trangKhopBai, trichQuanhBai } from '@/core/reading-passages/tim-nguon-web';
+
+describe('tìm nguồn bằng web do app tự làm', () => {
+  const bai = Array.from({ length: 60 }, (_, i) => `tu${i}x`).join(' ');
+  it('tạo câu tìm có tên bài và câu nguyên văn', () => {
+    const q = taoTruyVan({ tieuDe: 'Mùa thu', tacGia: 'Huỳnh Thị Thu Hương', noiDung: bai });
+    expect(q.length).toBeGreaterThanOrEqual(3);
+    expect(q[0]).toContain('mùa thu');
+  });
+  it('trang khớp khi thấy ít nhất 2 trong 3 cụm, không khớp khi chỉ cùng tên', () => {
+    expect(trangKhopBai(`Lời giới thiệu ${bai} Theo báo Nhi Đồng`, bai).khop).toBe(true);
+    expect(trangKhopBai('Mùa thu là bài thơ hay lắm', bai).khop).toBe(false);
+  });
+  it('trích đoạn quanh bài có chữ Theo', () => {
+    expect(trichQuanhBai(`Đầu trang. ${bai}\nTheo Báo Nhi Đồng`, bai)).toContain('Theo Báo Nhi Đồng');
+  });
+  it('gộp ứng viên, bỏ mạng xã hội, xếp trang lặp lên trước', () => {
+    const a = { title: 'a', url: 'https://a.vn/1', snippet: '' };
+    const b = { title: 'b', url: 'https://b.vn/1', snippet: '' };
+    const fb = { title: 'f', url: 'https://facebook.com/x', snippet: '' };
+    expect(chonUngVien([[a, fb], [b, a]]).map((x) => x.url)).toEqual(['https://a.vn/1', 'https://b.vn/1']);
+  });
+  it('đọc DuckDuckGo và html', () => {
+    const h = '<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fa.vn%2Fbai&rut=1">Bài &amp; thơ</a><a class="result__snippet">đoạn</a>';
+    expect(docKetQuaDuckDuckGo(h)[0]).toMatchObject({ url: 'https://a.vn/bai', title: 'Bài & thơ' });
+    expect(htmlSangChu('<title>T</title><script>x</script><p>Xin chào</p>').vanBan).toContain('Xin chào');
+  });
+});

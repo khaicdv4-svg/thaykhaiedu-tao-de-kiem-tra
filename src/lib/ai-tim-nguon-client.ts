@@ -33,10 +33,7 @@ export async function aiTimNguonChoBai(bai: BaiDocSua): Promise<KetQuaTimNguon> 
   }).then((x) => x.json());
   if (r.error) return { bai, daTim: false, thongBao: r.error };
   if (!r.daTimThay) {
-    const cd = r.chanDoan as { daTimWeb: boolean; soLanTim: number; lyDoDung: string | null; giay: number; doDaiTraLoi: number; trichDau: string } | undefined;
-    const chiTiet = cd
-      ? ` [Chi tiết: ${cd.daTimWeb ? `AI đã tìm web ${cd.soLanTim} lần` : 'cổng không báo có tìm web'}, ${cd.giay} giây${cd.lyDoDung ? `, dừng vì ${cd.lyDoDung}` : ''}${cd.trichDau && cd.doDaiTraLoi < 400 ? `. AI trả lời: ${cd.trichDau}` : ''}]`
-      : '';
+    const chiTiet = '';
     return { bai, daTim: false, thongBao: `${r.ghiChu || 'AI không tìm thấy nguồn.'}${chiTiet}` };
   }
 

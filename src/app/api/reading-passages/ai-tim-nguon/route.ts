@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { HE_THONG_TIM_NGUON, docNguonAI, loiNhacTimNguon } from '@/core/reading-passages/tim-nguon-ai';
+import { HE_THONG_TIM_NGUON, docNguonAI, loiNhacDocTrang } from '@/core/reading-passages/tim-nguon-ai';
 import { laDuongDanWeb, lamSachUrl } from '@/core/reading-passages/kiem-tra';
 import { heThongCoQuyDinhRieng } from '@/core/services/ai/reading-passage-ai';
 import { docBoNaoNeuCo } from '@/lib/repositories/bo-nao.repository';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 import { kiemTraLinkNguon } from '@/lib/kiem-tra-link-nguon';
+import { timTrangChuaBai } from '@/lib/tim-web';
 
-/** Tìm web có thể mất vài phút. */
-export const maxDuration = 300;
+/** Tìm web và mở trang mất vài chục giây. */
+export const maxDuration = 120;
 
 /**
  * AI tìm nguồn cho một bài đọc đã có chữ. Link AI đưa ra được mở thử ngay ở đây;
@@ -20,30 +21,29 @@ export async function POST(req: NextRequest) {
     const tt = await trangThaiViecAI('TIM_NGUON');
     if (!tt.daCauHinh) return NextResponse.json({ error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}` }, { status: 503 });
 
+    // Bước 1: máy tự tìm web và mở trang, chỉ giữ trang thật sự chứa bài
+    const web = await timTrangChuaBai({ tieuDe: tieuDe ?? '', tacGia, noiDung });
+    const tomTatWeb = `Đã tìm ${web.soCauTim} câu bằng ${web.nhaCungCap === 'TAVILY' ? 'Tavily' : 'DuckDuckGo'}, ${web.soUngVien} trang ứng viên, mở được ${web.soTrangMo}, ${web.trang.length} trang có đúng bài.`;
+    if (web.trang.length === 0) {
+      const loi = web.soUngVien === 0
+        ? `Máy không tìm được trang nào${web.loiTimKiem.length ? ` (${web.loiTimKiem.join(' ')})` : ''}.${web.nhaCungCap === 'DUCKDUCKGO' ? ' Nên gắn khóa Tavily (miễn phí) để tìm ổn định.' : ''}`
+        : 'Không trang nào chứa đúng văn bản bài này.';
+      return NextResponse.json({ daTimThay: false, ghiChu: `${loi} ${tomTatWeb}`, chanDoan: { tomTat: tomTatWeb }, model: tt.model });
+    }
+    // Bước 2: AI chỉ đọc các trang đã kiểm để lấy tác giả và nguồn
     const boNao = await docBoNaoNeuCo();
     const kq = await goiAITheoViec('TIM_NGUON', {
       heThong: heThongCoQuyDinhRieng(HE_THONG_TIM_NGUON, boNao),
-      noiDung: loiNhacTimNguon({ tieuDe: tieuDe ?? '', tacGia, noiDung }),
-      toiDaToken: 8000,
-      timWeb: true,
-      choToiDa: 240_000,
+      noiDung: loiNhacDocTrang({ tieuDe: tieuDe ?? '', tacGia }, web.trang),
+      toiDaToken: 2000,
+      timWeb: false,
     });
-    // Thông tin giúp biết vì sao không ra kết quả (hiện cho người dùng khi không tìm thấy)
-    const chanDoan = {
-      daTimWeb: kq.daTimWeb,
-      soLanTim: kq.soLanTim ?? 0,
-      lyDoDung: kq.lyDoDung ?? null,
-      tokenRa: kq.tokenRa ?? null,
-      giay: Math.round(kq.thoiGianMs / 1000),
-      doDaiTraLoi: kq.traLoi.length,
-      trichDau: kq.traLoi.trim().slice(0, 300),
-    };
+    const chanDoan = { tomTat: tomTatWeb, trang: web.trang.map((t) => t.url), giay: Math.round(kq.thoiGianMs / 1000), trichDau: kq.traLoi.trim().slice(0, 300) };
     const n = docNguonAI(kq.traLoi);
-    // Cổng không báo đã tìm web: vẫn đọc câu trả lời (có thể cổng không gửi lại dấu vết tìm kiếm), nhưng ghi chú rõ
-    const ghiChuKhongWeb = kq.daTimWeb ? '' : 'Không xác nhận được AI đã tìm web, nguồn này có thể là AI nhớ lại: cần đối chiếu.';
+    const ghiChuKhongWeb = '';
     if (!n || !n.daTimThay) {
       const lyDo = !n
-        ? `AI trả lời không đúng dạng${kq.lyDoDung === 'max_tokens' ? ' (bị cắt giữa chừng vì hết dung lượng trả lời)' : ''}.`
+        ? 'AI trả lời không đúng dạng.'
         : n.ghiChu || 'AI không tìm thấy nguồn của bài này.';
       return NextResponse.json({ daTimThay: false, ghiChu: `${lyDo} ${ghiChuKhongWeb}`.trim(), chanDoan, model: tt.model });
     }
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       nguon: n.nguon,
       nguonUrl,
       trangThaiLink,
-      doTinCay: nguonUrl ? 'CAO' : kq.daTimWeb ? n.doTinCay : 'THAP',
+      doTinCay: nguonUrl ? 'CAO' : n.doTinCay,
       ghiChu: [n.ghiChu, ghiChuLink, ghiChuKhongWeb, !nguonUrl && n.nguon ? 'Nguồn sách in do AI tìm, máy chưa kiểm chứng được: cần đối chiếu sách.' : ''].filter(Boolean).join(' '),
       chanDoan,
       model: tt.model,

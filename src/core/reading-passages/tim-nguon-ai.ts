@@ -81,3 +81,21 @@ export function docNguonAI(traLoi: string): NguonAIDeXuat | null {
   if (!r.tacGia && !r.nguon && !r.nguonUrl) r.daTimThay = false;
   return r;
 }
+
+/** Lời nhắc khi máy đã tự tìm web: AI chỉ đọc các trang đã được đối chiếu có chứa bài, không tự tìm. */
+export function loiNhacDocTrang(
+  b: { tieuDe: string; tacGia?: string },
+  trang: { url: string; tieuDe: string; trichDoan: string }[],
+): string {
+  return [
+    `Máy đã tìm thấy ${trang.length} trang web có chứa đúng văn bản bài đọc "${b.tieuDe || '(chưa có tên)'}". Tác giả ghi sẵn: ${b.tacGia?.trim() || '(chưa có)'}.`,
+    'Chỉ dựa vào nội dung các trang dưới đây để xác định tác giả và nguồn gốc. Không dùng điều nhớ ngoài các trang này.',
+    ...trang.map((t, i) => `--- Trang ${i + 1}: ${t.url}\nTiêu đề trang: ${t.tieuDe}\nĐoạn chữ quanh bài:\n${t.trichDoan}`),
+    'Yêu cầu:',
+    '- "tacGia": tên tác giả nếu trang ghi rõ; không thấy thì để trống.',
+    '- "nguon": tên sách, báo, trang web ghi trên trang (ví dụ "Theo …", "Tiếng Việt 4, tập một, trang …"); không thấy thì để trống.',
+    '- "nguonUrl": chọn đúng một link trong các trang trên, ưu tiên trang gốc của báo hoặc sách hơn trang chép lại.',
+    'Trả về một đối tượng JSON, không kèm lời giải thích:',
+    '{"daTimThay": true, "tacGia": "", "nguon": "", "nguonUrl": "", "doTinCay": "CAO | TRUNG_BINH | THAP", "ghiChu": "nói ngắn gọn thấy thông tin ở trang nào"}',
+  ].join('\n');
+}
