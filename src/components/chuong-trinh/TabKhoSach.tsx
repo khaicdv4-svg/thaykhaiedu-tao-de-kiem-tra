@@ -56,6 +56,8 @@ export function TabKhoSach({ duocSua }: { duocSua: boolean }) {
   const taiLen = async () => {
     if (!tep) return;
     setTb(null);
+    const cu = ds.find((x) => x.mon === mon && x.loai === loai && x.tap === tap);
+    if (cu && !confirm(`Kho đã có ${loai === 'SGK' ? 'sách giáo khoa' : 'sách giáo viên'} ${TEN_MON[mon]} tập ${tap} (file "${cu.tenFile}"). Tải file này sẽ THAY cuốn đó.\n\nNếu file mới là tập khác (ví dụ "tập hai"), bấm Hủy rồi đổi ô "Tập" cho đúng.\n\nBấm OK để thay cuốn cũ.`)) return;
     try {
       setTienDo('Đang mở file…');
       const doc: PdfDocChu = await moPdfDocChu(tep.buf);
