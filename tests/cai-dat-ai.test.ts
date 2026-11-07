@@ -38,6 +38,12 @@ describe('Bộ model thêm nhanh API-LIT', () => {
     const c = { models: MODEL_MAU_APILIT, phanViec: PHAN_VIEC_DE_XUAT };
     expect(chonModelChoViec(c, 'VIEC_NHE')?.ten).toBe('Claude Haiku 5.5');
     expect(chonModelChoViec(c, 'TIM_BAI_DOC')?.ten).toBe('Claude Sonnet 5.5');
+    expect(chonModelChoViec(c, 'TIM_NGUON')?.ten).toBe('Claude Opus 5.5');
+  });
+  it('tìm nguồn chưa chọn model riêng thì dùng model của tìm bài đọc, rồi mới tới mặc định', () => {
+    const c = { models: MODEL_MAU_APILIT, phanViec: { MAC_DINH: 'm1', TIM_BAI_DOC: 'm2' } };
+    expect(chonModelChoViec(c, 'TIM_NGUON')?.ten).toBe('Claude Sonnet 5.5');
+    expect(chonModelChoViec({ ...c, phanViec: { MAC_DINH: 'm1' } }, 'TIM_NGUON')?.ten).toBe('Claude Haiku 5.5');
   });
   it('hiện giá kiểu $0,5/$2', () => {
     expect(hienGia(HAIKU)).toBe('$0,5/$2');

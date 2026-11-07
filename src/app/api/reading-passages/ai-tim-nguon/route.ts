@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
   try {
     const { tieuDe, noiDung, tacGia } = (await req.json()) as { tieuDe?: string; noiDung?: string; tacGia?: string };
     if (!noiDung?.trim()) return NextResponse.json({ error: 'Bài chưa có nội dung để AI tìm nguồn.' }, { status: 400 });
-    const tt = await trangThaiViecAI('TIM_BAI_DOC');
+    const tt = await trangThaiViecAI('TIM_NGUON');
     if (!tt.daCauHinh) return NextResponse.json({ error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}` }, { status: 503 });
 
     const boNao = await docBoNaoNeuCo();
-    const kq = await goiAITheoViec('TIM_BAI_DOC', {
+    const kq = await goiAITheoViec('TIM_NGUON', {
       heThong: heThongCoQuyDinhRieng(HE_THONG_TIM_NGUON, boNao),
       noiDung: loiNhacTimNguon({ tieuDe: tieuDe ?? '', tacGia, noiDung }),
       toiDaToken: 2000,

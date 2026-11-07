@@ -24,7 +24,7 @@ export interface ModelAI {
   giaRa?: number;
 }
 
-export type ViecAI = 'MAC_DINH' | 'VIEC_NHE' | 'TIM_BAI_DOC' | 'DOC_TEP' | 'SOAN_DE';
+export type ViecAI = 'MAC_DINH' | 'VIEC_NHE' | 'TIM_BAI_DOC' | 'TIM_NGUON' | 'DOC_TEP' | 'SOAN_DE';
 
 export interface ThongTinViec {
   ma: ViecAI;
@@ -51,6 +51,12 @@ export const DANH_SACH_VIEC: ThongTinViec[] = [
     ten: 'Tìm bài đọc',
     moTa: 'Nút "AI tìm bài đọc" trong Kho ngữ liệu Tiếng Việt. Cần tìm web để có tác giả, nguồn thật.',
     goiY: 'Nên chọn model khá, có tìm web (chuẩn Anthropic).',
+  },
+  {
+    ma: 'TIM_NGUON',
+    ten: 'Tìm nguồn bài đọc',
+    moTa: 'Nút "AI tìm nguồn" trên từng bài: tìm trên mạng tác giả, link hoặc tên sách và trang của bài đã có chữ. Khó hơn tìm bài vì phải tìm đúng văn bản.',
+    goiY: 'Nên chọn model mạnh, có tìm web (chuẩn Anthropic). Chưa chọn thì dùng model của việc "Tìm bài đọc".',
   },
   {
     ma: 'DOC_TEP',
@@ -117,6 +123,7 @@ export const PHAN_VIEC_DE_XUAT: PhanViec = {
   MAC_DINH: 'm1',
   VIEC_NHE: 'm1',
   TIM_BAI_DOC: 'm2',
+  TIM_NGUON: 'm4',
   DOC_TEP: 'm2',
   SOAN_DE: 'm2',
 };
@@ -173,9 +180,13 @@ export function kiemTraCauHinh(c: CauHinhAI): string[] {
   return loi;
 }
 
-/** Model dùng cho một việc: model riêng của việc đó, không có thì model mặc định. */
+/** Việc chưa chọn model riêng thì thử việc gần nhất trước khi về model mặc định. */
+const VIEC_THAY_THE: Partial<Record<ViecAI, ViecAI>> = { TIM_NGUON: 'TIM_BAI_DOC' };
+
+/** Model dùng cho một việc: model riêng của việc đó, không có thì việc gần nhất, rồi model mặc định. */
 export function chonModelChoViec(c: CauHinhAI, viec: ViecAI): ModelAI | null {
-  const id = c.phanViec[viec] || c.phanViec.MAC_DINH;
+  const thayThe = VIEC_THAY_THE[viec];
+  const id = c.phanViec[viec] || (thayThe && c.phanViec[thayThe]) || c.phanViec.MAC_DINH;
   return c.models.find((m) => m.id === id) ?? null;
 }
 
