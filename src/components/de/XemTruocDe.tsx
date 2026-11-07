@@ -47,7 +47,17 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
       <div className="pl-3 pb-3 space-y-1.5 leading-[1.55]">
         <div><b>{nhanCau(c)}{/^\d+$/.test(c.cau) ? '. ' : ': '}</b>{lop[0] ?? <i className="text-slate-400">(chưa có đề bài)</i>}</div>
         {lop.slice(1).map((d, i) => <div key={i}>{d}</div>)}
-        {c.ghiChuHinh.trim() && <div className="italic">[{c.ghiChuHinh.trim()}]</div>}
+        {(c.hinh ?? []).length > 0 ? (
+          <div className="flex flex-wrap items-end justify-around gap-3 py-1">
+            {(c.hinh ?? []).map((h, i) => (
+              <figure key={i} className="text-center m-0" style={{ maxWidth: `${Math.floor(96 / Math.min(4, (c.hinh ?? []).length))}%` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={h.anh} alt={h.chuThich || h.ten} className="mx-auto max-h-[200px] object-contain" />
+                {h.chuThich.trim() && <figcaption className="text-[15px]">{h.chuThich}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        ) : c.ghiChuHinh.trim() && <div className="italic">[{c.ghiChuHinh.trim()}]</div>}
         {c.dang === 'DS' ? (
           (c.yNho ?? c.luaChon.map((_, i) => String.fromCharCode(97 + i))).map((y, i) => (
             <div key={y} className="pl-3 flex justify-between gap-4"><span>{y}) {c.luaChon[i] ?? ''}</span><span className="shrink-0">Đ / S</span></div>

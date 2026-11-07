@@ -183,3 +183,22 @@ describe('Tách các ý a), b), c), d) trong đề bài', () => {
     expect(tachYTrongDeBai('Một cửa hàng có 3 tấn gạo.')).toBeNull();
   });
 });
+
+describe('Hình đi kèm câu hỏi', () => {
+  const hinhOk = { ten: 'g', chuThich: 'Hình A', anh: 'data:image/png;base64,iVBORw0KGgo=', rong: 10, cao: 10 };
+  it('hình hợp lệ không gây lỗi; hình sai định dạng hoặc quá nhiều thì báo lỗi', () => {
+    const de = dienDu(taoDeTuDacTa(dacTa, 1));
+    const sach = kiemDinhDe(dacTa, { ...de, cau: de.cau.map((c, i) => (i === 0 ? { ...c, hinh: [hinhOk] } : c)) });
+    expect(sach.loi.filter((l) => /hình/.test(l))).toEqual([]);
+    const xau = kiemDinhDe(dacTa, { ...de, cau: de.cau.map((c, i) => (i === 0 ? { ...c, hinh: [{ ...hinhOk, anh: 'http://x/y.png' }] } : c)) });
+    expect(xau.loi.some((l) => /hình không đúng định dạng/.test(l))).toBe(true);
+    const nhieu = kiemDinhDe(dacTa, { ...de, cau: de.cau.map((c, i) => (i === 0 ? { ...c, hinh: Array(7).fill(hinhOk) } : c)) });
+    expect(nhieu.loi.some((l) => /tối đa 6 hình/.test(l))).toBe(true);
+  });
+  it('dựng lại đề giữ nguyên hình của câu', () => {
+    const de = dienDu(taoDeTuDacTa(dacTa, 1));
+    const co = { ...de, cau: de.cau.map((c, i) => (i === 0 ? { ...c, hinh: [hinhOk] } : c)) };
+    const kq = dungLaiDe(dacTa, 2, co);
+    expect(kq.de.cau.find((c) => c.khoa === de.cau[0].khoa)?.hinh).toEqual([hinhOk]);
+  });
+});

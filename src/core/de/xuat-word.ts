@@ -13,6 +13,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  ImageRun,
   LeaderType,
   PageOrientation,
   type ISectionOptions,
@@ -155,6 +156,38 @@ function phuongAn(c: CauDe): (Paragraph | Table)[] {
   })];
 }
 
+/** Hình đi kèm câu: xếp ngang, tối đa 4 hình một hàng, chú thích căn giữa dưới mỗi hình. */
+function hinhCau(hinh: NonNullable<CauDe['hinh']>): Table[] {
+  const kq: Table[] = [];
+  const mot = Math.min(4, hinh.length);
+  const rong = Math.floor((RONG_NOI_DUNG - 200) / mot);
+  const toiDaPx = Math.floor((rong - 160) / 15); // 1 px = 15 twip
+  for (let i = 0; i < hinh.length; i += mot) {
+    const o = (h?: NonNullable<CauDe['hinh']>[number]) => {
+      if (!h) return o2([doan('')], rong);
+      const m = /^data:image\/(jpeg|png);base64,(.+)$/.exec(h.anh);
+      if (!m) return o2([doan('')], rong);
+      const tile = Math.min(1, toiDaPx / h.rong, 220 / h.cao);
+      const ps: Paragraph[] = [new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 40, after: 20 },
+        keepNext: true,
+        children: [new ImageRun({ type: m[1] === 'png' ? 'png' : 'jpg', data: Buffer.from(m[2], 'base64'), transformation: { width: Math.max(1, Math.round(h.rong * tile)), height: Math.max(1, Math.round(h.cao * tile)) } })],
+      })];
+      if (h.chuThich.trim()) ps.push(doan([tr(h.chuThich.trim())], { align: AlignmentType.CENTER, dong: DAN_CAU }));
+      return o2(ps, rong);
+    };
+    const hang = hinh.slice(i, i + mot);
+    kq.push(new Table({
+      width: { size: rong * mot, type: WidthType.DXA },
+      columnWidths: Array(mot).fill(rong),
+      layout: TableLayoutType.FIXED,
+      rows: [new TableRow({ cantSplit: true, children: Array.from({ length: mot }, (_, k) => o(hang[k])) })],
+    }));
+  }
+  return kq;
+}
+
 /** Các ý a), b), c), d) dàn hai cột. Đặt tính: chừa khoảng trắng để đặt tính; ý khác: mỗi ô vài dòng chấm. */
 function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean): Table {
   const rong = Math.floor((RONG_NOI_DUNG - 100) / 2);
@@ -178,7 +211,8 @@ function noiDungCau(c: CauDe, inDam = false, maMon = ''): (Paragraph | Table)[] 
     doan([tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true }), tr(dongDau[0] ?? '', { bold: inDam })], { dong: DAN_CAU }),
     ...dongDau.slice(1).map((d) => doan([tr(d, { bold: inDam })], { dong: DAN_CAU })),
   );
-  if (c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
+  if ((c.hinh ?? []).length) kq.push(...hinhCau(c.hinh!));
+  else if (c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
 
   if (c.dang === 'DS') {
     (c.yNho ?? c.luaChon.map((_, i) => String.fromCharCode(97 + i))).forEach((y, i) => {

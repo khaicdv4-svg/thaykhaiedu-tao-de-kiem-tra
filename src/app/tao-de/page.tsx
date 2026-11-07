@@ -8,11 +8,12 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Download, Eye, FilePlus2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FilePlus2, ImagePlus, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
 import { XemTruocDe } from '@/components/de/XemTruocDe';
+import { xuLyAnhDe } from '@/core/utils/anh-de';
 import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
@@ -20,6 +21,7 @@ import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
 import {
   NHAN_LUA_CHON,
+  TOI_DA_HINH_MOT_CAU,
   cauDaXong,
   dungLaiDe,
   kiemDinhDe,
@@ -81,6 +83,7 @@ export default function TaoDePage() {
   const [phut, setPhut] = useState(35);
   const [dangXuat, setDangXuat] = useState(false);
   const [xemTruoc, setXemTruoc] = useState(false);
+  const [loiHinh, setLoiHinh] = useState<Record<string, string>>({});
   const [goiY, setGoiY] = useState<Record<string, { dang?: boolean; text?: string; canh?: string }>>({});
 
   useEffect(() => {
@@ -165,6 +168,26 @@ export default function TaoDePage() {
     });
     if (!r.ok || !r.j.huongDan) { setGoiY((g) => ({ ...g, [c.khoa]: { canh: r.j.error ?? 'AI chưa trả lời được.' } })); return; }
     setGoiY((g) => ({ ...g, [c.khoa]: { text: r.j.huongDan, canh: r.j.lechDiem != null ? `Tổng điểm các ý AI ghi là ${fmtDiem(r.j.lechDiem)}, chưa bằng ${fmtDiem(c.diem)}. Thầy sửa lại điểm từng ý.` : undefined } }));
+  };
+
+  const themHinh = async (c: CauDe, files: FileList | null) => {
+    if (!files?.length) return;
+    const co = c.hinh ?? [];
+    const moi = [];
+    const loi: string[] = [];
+    for (const f of Array.from(files)) {
+      if (co.length + moi.length >= TOI_DA_HINH_MOT_CAU) { loi.push(`Mỗi câu tối đa ${TOI_DA_HINH_MOT_CAU} hình.`); break; }
+      try { moi.push(await xuLyAnhDe(f)); } catch (e) { loi.push(e instanceof Error ? e.message : String(e)); }
+    }
+    setLoiHinh((l) => ({ ...l, [c.khoa]: loi.join(' ') }));
+    if (moi.length) suaCau(c.khoa, { hinh: [...co, ...moi] });
+  };
+  const suaHinh = (c: CauDe, i: number, p: { chuThich?: string; xoa?: boolean; doi?: number }) => {
+    const ds = [...(c.hinh ?? [])];
+    if (p.xoa) ds.splice(i, 1);
+    else if (p.doi) { const j = i + p.doi; if (j >= 0 && j < ds.length) [ds[i], ds[j]] = [ds[j], ds[i]]; }
+    else ds[i] = { ...ds[i], chuThich: p.chuThich ?? ds[i].chuThich };
+    suaCau(c.khoa, { hinh: ds });
   };
 
   const suaTiengViet = (g: NoiDungTiengViet) => {
@@ -322,6 +345,35 @@ export default function TaoDePage() {
                       <label className="block text-xs text-slate-500">Đề bài
                         <textarea aria-label={`Đề bài ${nhanCau(c)}`} rows={3} className={`${o} mt-0.5 ${c.deBai.trim() ? '' : 'border-amber-400 bg-amber-50'}`} value={c.deBai} onChange={(e) => suaCau(c.khoa, { deBai: e.target.value })} />
                       </label>
+
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                            <ImagePlus className="w-3.5 h-3.5" /> Thêm hình vào câu này
+                            <input type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" aria-label={`Thêm hình ${nhanCau(c)}`} onChange={(e) => { void themHinh(c, e.target.files); e.target.value = ''; }} />
+                          </label>
+                          <span className="text-xs text-slate-500">PNG hoặc JPG, tối đa {TOI_DA_HINH_MOT_CAU} hình. App tự thu nhỏ và chuyển đen trắng để in rõ.</span>
+                        </div>
+                        {loiHinh[c.khoa] && <div className="text-xs text-red-700">{loiHinh[c.khoa]}</div>}
+                        {(c.hinh ?? []).length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                            {(c.hinh ?? []).map((h, i) => (
+                              <div key={i} className="rounded-lg border border-slate-200 p-2 space-y-1.5">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={h.anh} alt={h.chuThich || h.ten} className="mx-auto max-h-24 object-contain" />
+                                <input aria-label={`Chú thích hình ${i + 1} ${nhanCau(c)}`} className={o} placeholder="Chú thích (vd: Hình A)" value={h.chuThich} onChange={(e) => suaHinh(c, i, { chuThich: e.target.value })} />
+                                <div className="flex justify-between text-xs">
+                                  <span className="flex gap-1">
+                                    <button type="button" className="rounded border px-1.5 py-0.5 disabled:opacity-40" disabled={i === 0} onClick={() => suaHinh(c, i, { doi: -1 })} aria-label="Dời hình sang trước">◀</button>
+                                    <button type="button" className="rounded border px-1.5 py-0.5 disabled:opacity-40" disabled={i === (c.hinh ?? []).length - 1} onClick={() => suaHinh(c, i, { doi: 1 })} aria-label="Dời hình ra sau">▶</button>
+                                  </span>
+                                  <button type="button" className="inline-flex items-center gap-1 text-red-700" onClick={() => suaHinh(c, i, { xoa: true })}><Trash2 className="w-3 h-3" /> Xóa</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
                       {c.dang === 'DS' ? (
                         <div className="space-y-1.5">

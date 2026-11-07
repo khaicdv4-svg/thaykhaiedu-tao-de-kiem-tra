@@ -20,6 +20,21 @@ export const TRANG_THAI_CHI_DO_DUYET: TrangThaiDe[] = ['DA_DUYET', 'TRA_LAI'];
 
 export const NHAN_LUA_CHON = ['A', 'B', 'C', 'D'] as const;
 
+/** Hình đi kèm câu hỏi: ảnh đã thu nhỏ, chuyển đen trắng, lưu ngay trong đề dưới dạng data URL. */
+export interface HinhCau {
+  ten: string;
+  /** Chú thích in dưới hình (ví dụ "Hình A"). Có thể để trống. */
+  chuThich: string;
+  anh: string;
+  rong: number;
+  cao: number;
+}
+
+export const TOI_DA_HINH_MOT_CAU = 6;
+export const TOI_DA_KY_TU_MOT_HINH = 320_000;
+export const TOI_DA_KY_TU_HINH_CA_DE = 2_800_000;
+const DAU_ANH = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/;
+
 /** Phần giáo viên (hoặc AI) điền cho một câu. Giữ nguyên khi dựng lại đề. */
 export interface NoiDungCau {
   deBai: string;
@@ -30,6 +45,8 @@ export interface NoiDungCau {
   huongDanCham: string;
   /** Mô tả hình, bảng, bài đọc đi kèm (để dàn trang). */
   ghiChuHinh: string;
+  /** Hình thật đi kèm câu. Đề cũ chưa có trường này. */
+  hinh?: HinhCau[];
 }
 
 export interface CauDe extends NoiDungCau {
@@ -153,7 +170,7 @@ export function dapAnHienThi(c: CauDe): string {
 
 export function layNoiDung(d: DeKiemTra): Record<string, NoiDungCau> {
   const kq: Record<string, NoiDungCau> = {};
-  for (const c of d.cau) kq[c.khoa] = { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham, ghiChuHinh: c.ghiChuHinh };
+  for (const c of d.cau) kq[c.khoa] = { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham, ghiChuHinh: c.ghiChuHinh, hinh: c.hinh ?? [] };
   return kq;
 }
 
@@ -184,6 +201,9 @@ function kiemDinhMotCau(c: CauDe): string[] {
   const loi: string[] = [];
   const t = nhanCau(c);
   if (!c.deBai.trim()) loi.push(`${t}: chưa có đề bài.`);
+  const hinh = c.hinh ?? [];
+  if (hinh.length > TOI_DA_HINH_MOT_CAU) loi.push(`${t}: tối đa ${TOI_DA_HINH_MOT_CAU} hình mỗi câu.`);
+  if (hinh.some((h) => !DAU_ANH.test(h.anh) || h.anh.length > TOI_DA_KY_TU_MOT_HINH)) loi.push(`${t}: có hình không đúng định dạng hoặc quá nặng. Thêm lại hình (PNG hoặc JPG).`);
 
   if (c.dang === 'NLC') {
     if (c.luaChon.length !== 4 || c.luaChon.some((x) => !x.trim())) loi.push(`${t}: cần đủ 4 phương án A, B, C, D.`);
@@ -241,6 +261,8 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
   const khoaDacTa = new Set(dacTa.dong.map((r) => r.khoa));
   for (const c of xepDongTheoCau(de.cau)) if (!khoaDacTa.has(c.khoa)) loi.push(`${nhanCau(c)}: không có trong đặc tả.`);
 
+  if (de.cau.reduce((n, c) => n + (c.hinh ?? []).reduce((m, h) => m + h.anh.length, 0), 0) > TOI_DA_KY_TU_HINH_CA_DE) loi.push('Tổng dung lượng hình trong đề quá lớn. Bớt hình hoặc dùng hình nhỏ hơn.');
+
   const tong = lamTron(de.cau.reduce((s, c) => s + c.diem, 0));
   if (tong !== 10) loi.push(`Tổng điểm của đề là ${tong}, cần đúng 10.`);
 
@@ -269,7 +291,7 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
   }
 
   for (const c of xepDongTheoCau(de.cau)) {
-    if (/hình|bảng|biểu đồ|sơ đồ/i.test(c.deBai) && !c.ghiChuHinh.trim()) {
+    if (/hình|bảng|biểu đồ|sơ đồ/i.test(c.deBai) && !c.ghiChuHinh.trim() && !(c.hinh ?? []).length) {
       canhBao.push(`${nhanCau(c)}: đề bài nhắc đến hình hoặc bảng nhưng chưa ghi mô tả để dàn trang.`);
     }
   }
