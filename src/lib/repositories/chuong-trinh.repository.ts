@@ -211,17 +211,41 @@ export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: num
  * Mục lục SGK của một môn (trang đầu từng phần trong từng bài), do giáo viên nhập từ SGK đang dùng.
  * Môn chưa nhập mục lục thì trả danh sách rỗng, không báo lỗi: ô trang SGK để thầy tự điền.
  */
-export async function dsMucLucSgk(mon: string, lop: number): Promise<{ baiSo: number; tuan: number | null; hoatDong: string; noiDung: string; trang: number }[]> {
+export async function dsMucLucSgk(mon: string, lop: number): Promise<{ tap: number; baiSo: number; tuan: number | null; hoatDong: string; noiDung: string; trang: number }[]> {
   if (!MON_SANG_PPCT[mon]) return [];
   const { supabase, orgId } = await layNguoiDung();
   const { data, error } = await supabase
     .from('sgk_muc_luc')
-    .select('bai_so, tuan, hoat_dong, noi_dung, trang')
+    .select('tap, bai_so, tuan, hoat_dong, noi_dung, trang')
     .eq('organization_id', orgId)
     .eq('ma_mon', mon)
     .eq('khoi', lop)
     .order('bai_so')
     .limit(2000);
   if (error) throw new Error(`Không đọc được mục lục SGK: ${error.message}`);
-  return (data ?? []).map((r) => ({ baiSo: r.bai_so as number, tuan: r.tuan as number | null, hoatDong: r.hoat_dong as string, noiDung: r.noi_dung as string, trang: r.trang as number }));
+  return (data ?? []).map((r) => ({ tap: r.tap as number, baiSo: r.bai_so as number, tuan: r.tuan as number | null, hoatDong: r.hoat_dong as string, noiDung: r.noi_dung as string, trang: r.trang as number }));
+}
+
+/**
+ * Nạp lại mục lục SGK của một môn, một tập: thay phần cũ của đúng môn và tập đó, không đụng môn khác.
+ * Chỉ tổ trưởng trở lên. Nếu lưu phần mới lỗi thì trả lại phần cũ.
+ */
+export async function thayMucLucSgk(mon: string, lop: number, tap: number, dong: { tuan: number | null; bai: number; hoatDong: string; noiDung: string; trang: number }[]): Promise<{ soDong: number }> {
+  if (!MON_SANG_PPCT[mon]) throw new Error('Môn này chưa có trong ứng dụng.');
+  if (tap !== 1 && tap !== 2) throw new Error('Tập phải là 1 hoặc 2.');
+  if (!dong.length) throw new Error('Không có dòng nào để lưu.');
+  const { supabase, orgId, role } = await layNguoiDung();
+  canQuyenSua(role);
+  const loc = { organization_id: orgId, ma_mon: mon, khoi: lop, tap };
+  const { data: cu, error: eDoc } = await supabase.from('sgk_muc_luc').select('tuan, bai_so, hoat_dong, noi_dung, trang').match(loc);
+  if (eDoc) throw new Error(`Không đọc được mục lục cũ: ${eDoc.message}`);
+  const { error: eXoa } = await supabase.from('sgk_muc_luc').delete().match(loc);
+  if (eXoa) throw new Error(`Không xóa được mục lục cũ: ${eXoa.message}`);
+  const moi = dong.map((d) => ({ ...loc, bai_so: d.bai, tuan: d.tuan, hoat_dong: d.hoatDong, noi_dung: d.noiDung, trang: d.trang }));
+  const { error: eLuu } = await supabase.from('sgk_muc_luc').insert(moi);
+  if (eLuu) {
+    if (cu?.length) await supabase.from('sgk_muc_luc').insert(cu.map((r) => ({ ...loc, ...r })));
+    throw new Error(`Không lưu được mục lục: ${eLuu.message}. Mục lục cũ được giữ nguyên.`);
+  }
+  return { soDong: moi.length };
 }
