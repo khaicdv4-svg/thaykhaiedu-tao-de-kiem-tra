@@ -43,7 +43,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     iconName: 'LayoutDashboard',
     icon: LayoutDashboard,
     description: 'Bảng điều khiển hệ thống và tổng quan tiến độ',
-    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN', 'SCHOOL_LEADERSHIP'],
   },
   {
     id: 'sources',
@@ -124,7 +124,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     iconName: 'FolderKanban',
     icon: FolderKanban,
     description: 'Quản lý vòng đời đề kiểm tra, kiểm tra chéo và phê duyệt',
-    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN', 'SCHOOL_LEADERSHIP'],
   },
   {
     id: 'validation',
@@ -187,7 +187,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     iconName: 'Settings',
     icon: Settings,
     description: 'Cấp vai trò (tổ trưởng, Ban giám hiệu), ủy quyền thẩm định có thời hạn',
-    allowedRoles: ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+    allowedRoles: ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN', 'SCHOOL_LEADERSHIP'],
   },
   {
     id: 'settings',

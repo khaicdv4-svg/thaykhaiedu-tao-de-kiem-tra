@@ -19,10 +19,14 @@ export interface QuyenCuaToi {
   duocUyQuyen: boolean;
   /** Được phân công người thẩm định cho đề. */
   duocPhanCong: boolean;
+  /** Chỉ có vai trò Ban giám hiệu (không phải giáo viên hay tổ trưởng): chỉ dùng chức năng BGH. */
+  laBghThuan: boolean;
+  /** Các quyền chuyên môn đang có (SOAN_DE, THAM_DINH, SUA_MA_TRAN_DAC_TA, NAP_MUC_LUC_SACH). */
+  quyen: string[];
 }
 
 export async function quyenCuaToi(): Promise<QuyenCuaToi> {
-  const { vaiTro } = await layNguoiDung();
+  const { vaiTro, quyen } = await layNguoiDung();
   const co = (r: string) => vaiTro.includes(r);
   const laBgh = co('SCHOOL_LEADERSHIP') || co('SCHOOL_ADMIN');
   const laToTruong = co('GROUP_LEADER');
@@ -34,6 +38,8 @@ export async function quyenCuaToi(): Promise<QuyenCuaToi> {
     duocSoanDe: co('TEACHER') || co('GROUP_LEADER') || co('DEPUTY_GROUP_LEADER') || laBgh,
     duocUyQuyen: laToTruong || laBgh,
     duocPhanCong: laToTruong || laBgh,
+    laBghThuan: co('SCHOOL_LEADERSHIP') && !co('TEACHER') && !co('GROUP_LEADER') && !co('DEPUTY_GROUP_LEADER') && !co('SCHOOL_ADMIN') && !co('SYSTEM_ADMIN'),
+    quyen,
   };
 }
 
@@ -116,4 +122,63 @@ export async function thuHoiUyQuyen(id: string): Promise<void> {
   const { data, error } = await supabase.from('uy_quyen').update({ thu_hoi: true }).eq('id', id).select('id');
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error('Chỉ người giao quyền hoặc Ban giám hiệu mới thu hồi.');
+}
+
+// ---------------------------------------------------------------------------
+// Đăng ký vai trò theo Gmail (quản trị) và bảng quyền giáo viên theo tổ
+// ---------------------------------------------------------------------------
+
+export const QUYEN_GIAO_VIEN = ['SOAN_DE', 'THAM_DINH', 'SUA_MA_TRAN_DAC_TA', 'NAP_MUC_LUC_SACH'] as const;
+export type MaQuyenGv = (typeof QUYEN_GIAO_VIEN)[number];
+
+export interface DongEmailVaiTro { id: string; email: string; vaiTro: string; khoi: number | null; ghiChu: string | null; taoLuc: string; daDangNhap: boolean }
+
+export async function dsEmailVaiTro(): Promise<DongEmailVaiTro[]> {
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase.from('email_vai_tro').select('id, email, vai_tro, pham_vi_khoi, ghi_chu, created_at').eq('organization_id', orgId).order('created_at', { ascending: false });
+  if (error) throw new Error(`Không đọc được danh sách Gmail đã đăng ký: ${error.message}`);
+  const { data: ps } = await supabase.from('profiles').select('email').eq('organization_id', orgId);
+  const da = new Set(((ps ?? []) as { email: string | null }[]).map((p) => (p.email ?? '').toLowerCase()));
+  return ((data ?? []) as any[]).map((r) => ({ id: r.id, email: r.email, vaiTro: r.vai_tro, khoi: r.pham_vi_khoi, ghiChu: r.ghi_chu, taoLuc: r.created_at, daDangNhap: da.has(r.email) }));
+}
+
+export async function dangKyEmail(email: string, vaiTro: string, khoi: number | null, ghiChu: string): Promise<void> {
+  const { supabase } = await layNguoiDung();
+  const { error } = await supabase.rpc('dang_ky_email_vai_tro', { p_email: email, p_vai_tro: vaiTro, p_khoi: khoi, p_ghi_chu: ghiChu || null });
+  if (error) throw new Error(error.message);
+}
+
+export async function goEmail(id: string): Promise<void> {
+  const { supabase } = await layNguoiDung();
+  const { error } = await supabase.rpc('go_email_vai_tro', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
+export interface ToQuanLy { khoi: number; ten: string; soGiaoVien: number }
+export async function dsToQuanLy(): Promise<ToQuanLy[]> {
+  const { supabase } = await layNguoiDung();
+  const { data, error } = await supabase.rpc('ds_to_quan_ly');
+  if (error) throw new Error(error.message);
+  return (data as ToQuanLy[] | null) ?? [];
+}
+
+export interface GiaoVienTrongTo { id: string; ten: string; email: string | null; hoatDong: boolean; khoa: boolean; ghiChuKhoa: string; quyen: Record<MaQuyenGv, boolean> }
+export async function dsQuyenTo(khoi: number): Promise<GiaoVienTrongTo[]> {
+  const { supabase } = await layNguoiDung();
+  const { data, error } = await supabase.rpc('ds_quyen_to', { p_khoi: khoi });
+  if (error) throw new Error(error.message);
+  return (data as GiaoVienTrongTo[] | null) ?? [];
+}
+
+export async function apDungQuyenTo(khoi: number, ds: { user: string; quyen: string[] }[]): Promise<number> {
+  const { supabase } = await layNguoiDung();
+  const { data, error } = await supabase.rpc('ap_dung_quyen_to', { p_khoi: khoi, p_ds: ds });
+  if (error) throw new Error(error.message);
+  return (data as number | null) ?? 0;
+}
+
+export async function chuyenGiaoVienSangTo(user: string, khoi: number): Promise<void> {
+  const { supabase } = await layNguoiDung();
+  const { error } = await supabase.rpc('chuyen_giao_vien_sang_to', { p_user: user, p_khoi: khoi });
+  if (error) throw new Error(error.message);
 }

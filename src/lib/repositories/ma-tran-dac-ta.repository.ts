@@ -25,12 +25,13 @@ export async function layNguoiDung() {
   const { data: profile } = await supabase.from('profiles').select('organization_id, role').eq('id', user.id).single();
   if (!profile?.organization_id) throw new Error('Không tìm thấy trường của tài khoản.');
   // Vai trò cao nhất đang hiệu lực (gộp vai trò gốc và vai trò cấp thêm) và danh sách đầy đủ các vai trò
-  const [{ data: vaiTroCao }, { data: dsVaiTro }] = await Promise.all([supabase.rpc('get_auth_user_role'), supabase.rpc('vai_tro_cua_toi')]);
+  const [{ data: vaiTroCao }, { data: dsVaiTro }, { data: dsQuyen }] = await Promise.all([supabase.rpc('get_auth_user_role'), supabase.rpc('vai_tro_cua_toi'), supabase.rpc('quyen_gv_cua_toi')]);
   const vaiTro = ((dsVaiTro as string[] | null) ?? [profile.role as string]);
-  return { supabase, user, orgId: profile.organization_id as string, role: ((vaiTroCao as string | null) ?? (profile.role as string)), vaiTro };
+  return { supabase, user, orgId: profile.organization_id as string, role: ((vaiTroCao as string | null) ?? (profile.role as string)), vaiTro, quyen: ((dsQuyen as string[] | null) ?? []) };
 }
 
-function canQuyenGhi(role: string) {
+function canQuyenGhi(role: string, quyen: string[] = []) {
+  if (role === 'TEACHER' && quyen.includes('SUA_MA_TRAN_DAC_TA')) return;
   if (!VAI_TRO_GHI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được lưu và xác nhận. Bạn chỉ được xem.');
 }
 
@@ -104,8 +105,8 @@ function kiemCauTruc(d: DuLieuMaTranRieng, maMon: string, ky: string) {
 
 export async function luuNhapMaTranRieng(maMon: string, ky: string, d: DuLieuMaTranRieng): Promise<BanMaTranRieng> {
   kiemMonKy(maMon, ky);
-  const { supabase, user, orgId, role } = await layNguoiDung();
-  canQuyenGhi(role);
+  const { supabase, user, orgId, role, quyen } = await layNguoiDung();
+  canQuyenGhi(role, quyen);
   kiemCauTruc(d, maMon, ky);
   const trangThai = d.ma_tran_rieng.trang_thai;
   const hang = {
@@ -122,8 +123,8 @@ export async function luuNhapMaTranRieng(maMon: string, ky: string, d: DuLieuMaT
 /** Xác nhận: chạy lại kiểm định, rồi tạo phiên bản mới (hoặc giữ phiên bản cũ nếu nội dung không đổi). */
 export async function xacNhanMaTranRieng(maMon: string, ky: string, d: DuLieuMaTranRieng): Promise<{ ban: BanMaTranRieng; taoPhienBanMoi: boolean }> {
   kiemMonKy(maMon, ky);
-  const { supabase, user, orgId, role } = await layNguoiDung();
-  canQuyenGhi(role);
+  const { supabase, user, orgId, role, quyen } = await layNguoiDung();
+  canQuyenGhi(role, quyen);
   kiemCauTruc(d, maMon, ky);
 
   const kqChung = kiemDinhMaTranChung(d.ma_tran_chung);
@@ -206,8 +207,8 @@ async function layMaTranRiengDeKeThua(supabase: any, orgId: string, maMon: strin
 
 export async function luuNhapDacTa(maMon: string, ky: string, maTranRiengId: string, dacTa: DacTa, trangThai: TrangThaiDacTa): Promise<BanDacTa> {
   kiemMonKy(maMon, ky);
-  const { supabase, user, orgId, role } = await layNguoiDung();
-  canQuyenGhi(role);
+  const { supabase, user, orgId, role, quyen } = await layNguoiDung();
+  canQuyenGhi(role, quyen);
   if (dacTa.ma_mon !== maMon || dacTa.ky_kiem_tra !== ky) throw new Error('Đặc tả không đúng môn hoặc kì đã chọn.');
   if (trangThai === 'DA_XAC_NHAN') throw new Error('Bản nháp không được ghi trạng thái đã xác nhận. Dùng thao tác xác nhận.');
   const { chon } = await layMaTranRiengDeKeThua(supabase, orgId, maMon, ky, maTranRiengId);
@@ -224,8 +225,8 @@ export async function luuNhapDacTa(maMon: string, ky: string, maTranRiengId: str
 /** Xác nhận đặc tả: kiểm định lại với đúng phiên bản ma trận riêng đã chọn, và phải là phiên bản mới nhất. */
 export async function xacNhanDacTa(maMon: string, ky: string, maTranRiengId: string, dacTa: DacTa): Promise<{ ban: BanDacTa; taoPhienBanMoi: boolean }> {
   kiemMonKy(maMon, ky);
-  const { supabase, user, orgId, role } = await layNguoiDung();
-  canQuyenGhi(role);
+  const { supabase, user, orgId, role, quyen } = await layNguoiDung();
+  canQuyenGhi(role, quyen);
   if (dacTa.ma_mon !== maMon || dacTa.ky_kiem_tra !== ky) throw new Error('Đặc tả không đúng môn hoặc kì đã chọn.');
   const { chon, moiNhat } = await layMaTranRiengDeKeThua(supabase, orgId, maMon, ky, maTranRiengId);
   if (chon.phienBan !== dacTa.phien_ban_ma_tran_rieng) throw new Error('Số phiên bản ma trận riêng ghi trong đặc tả không đúng.');

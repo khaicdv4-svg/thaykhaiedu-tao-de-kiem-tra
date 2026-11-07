@@ -24,6 +24,7 @@ const ROLE_TITLE_MAP: Record<UserRole, string> = {
   GROUP_LEADER: 'Tổ trưởng',
   DEPUTY_GROUP_LEADER: 'Tổ phó',
   SCHOOL_ADMIN: 'Ban giám hiệu',
+  SCHOOL_LEADERSHIP: 'Ban giám hiệu',
   SYSTEM_ADMIN: 'Quản trị',
 };
 

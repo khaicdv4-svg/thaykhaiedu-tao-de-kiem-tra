@@ -8,6 +8,7 @@ export type UserRole =
   | 'GROUP_LEADER'
   | 'DEPUTY_GROUP_LEADER'
   | 'SCHOOL_ADMIN'
+  | 'SCHOOL_LEADERSHIP'
   | 'SYSTEM_ADMIN';
 
 export type SystemPermission =
@@ -36,6 +37,7 @@ export type DataScope =
  * Permission-based model allows adding/modifying capabilities without refactoring core business logic.
  */
 export const ROLE_PERMISSIONS: Record<UserRole, SystemPermission[]> = {
+  SCHOOL_LEADERSHIP: ['REQUEST_REVISION', 'APPROVE_TEST', 'LOCK_TEST', 'VIEW_GROUP_TESTS'],
   TEACHER: [
     'CREATE_TEST',
     'EDIT_OWN_TEST',

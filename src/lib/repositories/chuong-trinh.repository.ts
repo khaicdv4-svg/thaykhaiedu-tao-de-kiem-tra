@@ -6,6 +6,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { LoaiTaiLieu, NguonTaiLieu, TaiLieuChuongTrinh, TrangThaiYccd, YccdChuongTrinh } from '@/core/chuong-trinh/mon';
 import type { YccdDaKiem } from '@/core/chuong-trinh/trich-yccd';
+import { canQuyenSua as canQuyenNapSach } from '@/lib/repositories/quyen-nap';
 
 const VAI_TRO_SUA = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
@@ -234,8 +235,8 @@ export async function thayMucLucSgk(mon: string, lop: number, tap: number, dong:
   if (!MON_SANG_PPCT[mon]) throw new Error('Môn này chưa có trong ứng dụng.');
   if (tap !== 1 && tap !== 2) throw new Error('Tập phải là 1 hoặc 2.');
   if (!dong.length) throw new Error('Không có dòng nào để lưu.');
-  const { supabase, orgId, role } = await layNguoiDung();
-  canQuyenSua(role);
+  const { supabase, orgId } = await layNguoiDung();
+  await canQuyenNapSach(supabase);
   const loc = { organization_id: orgId, ma_mon: mon, khoi: lop, tap };
   const { data: cu, error: eDoc } = await supabase.from('sgk_muc_luc').select('tuan, bai_so, hoat_dong, noi_dung, trang').match(loc);
   if (eDoc) throw new Error(`Không đọc được mục lục cũ: ${eDoc.message}`);

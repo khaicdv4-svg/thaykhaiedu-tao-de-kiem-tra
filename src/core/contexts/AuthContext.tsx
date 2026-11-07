@@ -93,7 +93,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const orgRel = profileRow?.organizations as { name?: string } | { name?: string }[] | null | undefined;
       const orgName = (Array.isArray(orgRel) ? orgRel[0]?.name : orgRel?.name) || 'Trường TH Trần Văn Ơn';
 
-      const role = (profileRow?.role as UserRole) || 'TEACHER';
+      // Vai trò hiệu lực (gộp vai trò gốc và vai trò cấp thêm, kể cả đăng ký theo Gmail) do cơ sở dữ liệu quyết định
+      const { data: vaiTroHieuLuc } = await supabase.rpc('get_auth_user_role');
+      const role = ((vaiTroHieuLuc as UserRole | null) || (profileRow?.role as UserRole) || 'TEACHER');
       const loadedProfile: UserProfileData = {
         id: user.id,
         email: user.email || profileRow?.email || '',

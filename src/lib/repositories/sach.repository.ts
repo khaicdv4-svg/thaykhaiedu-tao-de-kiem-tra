@@ -3,6 +3,7 @@
  * Xem cho mọi thành viên của trường; tải lên, xóa chỉ tổ trưởng / quản trị.
  */
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { canQuyenSua } from '@/lib/repositories/quyen-nap';
 import { dsMucLucSgk } from '@/lib/repositories/chuong-trinh.repository';
 import { chonTrangSgv, gopTrang, khoangTrangCuaCau, trangPdfTuTrangSach, type NguCanhSach, type TrangSach } from '@/core/chuong-trinh/sach';
 
@@ -18,9 +19,6 @@ async function layNguoiDung() {
   const { data: profile } = await supabase.from('profiles').select('organization_id, role').eq('id', user.id).single();
   if (!profile?.organization_id) throw new Error('Không tìm thấy trường của tài khoản.');
   return { supabase, user, orgId: profile.organization_id as string, role: profile.role as string };
-}
-function canQuyenSua(role: string) {
-  if (!VAI_TRO_SUA.includes(role)) throw new Error('Chỉ tổ trưởng hoặc quản trị mới tải sách lên hoặc xóa sách.');
 }
 function loiBang(msg: string): Error {
   return new Error(/(does not exist|schema cache|Could not find)/i.test(msg) && /sach/.test(msg) ? 'Cơ sở dữ liệu chưa có bảng kho sách. Cần chạy migration 20261107130000_kho_sach.sql trên Supabase.' : msg);
@@ -53,7 +51,7 @@ export async function taoSach(p: { mon: string; lop: number; loai: 'SGK' | 'SGV'
   if (!(p.soTrangPdf >= 1 && p.soTrangPdf <= TOI_DA_TRANG_PDF)) throw new Error(`File PDF tối đa ${TOI_DA_TRANG_PDF} trang.`);
   if (!(p.trangDauPdf >= 1 && p.trangDauPdf <= p.soTrangPdf)) throw new Error('Trang số 1 của sách phải nằm trong file PDF.');
   const { supabase, user, orgId, role } = await layNguoiDung();
-  canQuyenSua(role);
+  await canQuyenSua(supabase);
   const loc = { organization_id: orgId, khoi: p.lop, ma_mon: p.mon, loai: p.loai, tap: p.tap };
   const { error: eX } = await supabase.from('sach').delete().match(loc);
   if (eX) throw loiBang(`Không thay được sách cũ: ${eX.message}`);
@@ -65,7 +63,7 @@ export async function taoSach(p: { mon: string; lop: number; loai: 'SGK' | 'SGV'
 export async function luuTrangSach(sachId: string, trangs: { trang: number; chu: string }[], nguon: 'CHU' | 'AI_DOC'): Promise<{ soTrang: number }> {
   if (!trangs.length || trangs.length > 25) throw new Error('Mỗi lần gửi từ 1 đến 25 trang.');
   const { supabase, orgId, role } = await layNguoiDung();
-  canQuyenSua(role);
+  await canQuyenSua(supabase);
   const { data: s, error: e0 } = await supabase.from('sach').select('id, so_trang_pdf').eq('id', sachId).eq('organization_id', orgId).maybeSingle();
   if (e0) throw loiBang(e0.message);
   if (!s) throw new Error('Không tìm thấy cuốn sách.');
@@ -80,7 +78,7 @@ export async function luuTrangSach(sachId: string, trangs: { trang: number; chu:
 
 export async function xoaSach(id: string): Promise<void> {
   const { supabase, orgId, role } = await layNguoiDung();
-  canQuyenSua(role);
+  await canQuyenSua(supabase);
   const { error } = await supabase.from('sach').delete().eq('id', id).eq('organization_id', orgId);
   if (error) throw loiBang(`Không xóa được sách: ${error.message}`);
 }
