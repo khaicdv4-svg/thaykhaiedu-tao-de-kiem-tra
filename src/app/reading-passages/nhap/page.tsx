@@ -122,11 +122,13 @@ export default function NhapKhoBaiDocPage() {
     return { baiDoc: r.baiDoc ?? [], coChuSgk: !!r.coChuSgk };
   };
 
-  const tepCanPhanTich = dsTep.filter((t) => t.trangThai === 'SAN_SANG' || t.trangThai === 'XONG');
+  // Chỉ phân tích file chưa phân tích (hoặc lỗi lúc phân tích nhưng đã đọc được chữ); file đã xong thì thôi.
+  const tepCanPhanTich = dsTep.filter((t) => t.trangThai === 'SAN_SANG' || (t.trangThai === 'LOI' && !!t.vanBan));
+  const soTepXong = dsTep.filter((t) => t.trangThai === 'XONG').length;
   const dangDocTep = dsTep.some((t) => t.trangThai === 'DANG_DOC');
   const soNguon = tepCanPhanTich.length + (vanBan.trim() ? 1 : 0);
 
-  /** Phân tích lần lượt từng file (và phần chữ dán thêm), gộp kết quả, bỏ bài trùng nhau giữa các file. */
+  /** Phân tích lần lượt các file chưa phân tích (và chữ dán thêm), nối vào kết quả đang có, bỏ bài trùng. */
   const phanTich = async () => {
     setDangXuLy(true);
     setThongBao(null);
@@ -138,8 +140,10 @@ export default function NhapKhoBaiDocPage() {
     const loi: string[] = [];
     let coChuSgk = true;
     let soTrung = 0;
-    const daThay = new Set<string>();
-    const dauVet = (b: KetQuaPhanTich) => `${b.tieuDe.trim().toLowerCase()}|${b.noiDung.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 300)}`;
+    const dauVet = (b: { tieuDe: string; noiDung: string }) => `${b.tieuDe.trim().toLowerCase()}|${b.noiDung.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 300)}`;
+    // Bài đã có trong kết quả (từ lần phân tích trước, nếu vẫn là kết quả tải file) cũng tính để bỏ trùng
+    const dsCu = nguonGoc === 'TAI_FILE' ? ds : [];
+    const daThay = new Set<string>(dsCu.map(dauVet));
     for (let i = 0; i < nguon.length; i++) {
       const n = nguon[i];
       setTienDo(nguon.length > 1 ? `Đang phân tích ${i + 1}/${nguon.length}: ${n.ten || 'chữ dán vào'}` : '');
@@ -163,8 +167,9 @@ export default function NhapKhoBaiDocPage() {
     }
     setTienDo('');
     setNguonGoc('TAI_FILE');
-    setDs(gop);
-    const tomTat = nguon.length > 1 ? `Phân tích ${nguon.length - loi.length}/${nguon.length} nguồn, tách được ${gop.length} bài` : `Tách được ${gop.length} bài`;
+    setDs([...dsCu, ...gop]);
+    if (vanBan.trim() && !loi.some((l) => l.startsWith('Chữ dán vào'))) setVanBan('');
+    const tomTat = nguon.length > 1 ? `Phân tích ${nguon.length - loi.length}/${nguon.length} nguồn, tách được ${gop.length} bài mới` : `Tách được ${gop.length} bài mới`;
     const text = [
       `${tomTat}.${soTrung ? ` Bỏ ${soTrung} bài trùng nhau giữa các file.` : ''} Xem lại từng bài, sửa chỗ máy đoán sai rồi gửi duyệt.`,
       coChuSgk ? '' : '(Kho SGK chưa có chữ bài đọc nên mới kiểm tra trùng theo tên bài.)',
@@ -298,7 +303,7 @@ export default function NhapKhoBaiDocPage() {
               </select>
             </label>
             <button type="button" className={nutChinh} disabled={!soNguon || dangXuLy || dangDocTep} onClick={phanTich}>
-              {dangXuLy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} {soNguon > 1 ? `Phân tích ${soNguon} nguồn` : 'Phân tích'}
+              {dangXuLy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} {!soNguon && soTepXong ? 'Đã phân tích hết' : soNguon > 1 ? `Phân tích ${soNguon} nguồn` : 'Phân tích'}
             </button>
             {tienDo && <span className="text-sm text-blue-700">{tienDo}</span>}
           </div>
