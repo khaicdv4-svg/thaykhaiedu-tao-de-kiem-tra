@@ -30,6 +30,24 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
   const [tu, setTu] = useState('');
   const [den, setDen] = useState('');
   const [tienDo, setTienDo] = useState<string | null>(null);
+  type TomTat = { n: number; tu: number | null; den: number | null };
+  const [tongQuan, setTongQuan] = useState<Record<string, Record<number, TomTat>> | null>(null);
+
+  const napTongQuan = useCallback(async () => {
+    const kq = await Promise.all(MON_CO_PPCT.map(async (m) => {
+      const r = await fetch(`/api/chuong-trinh/sgk-muc-luc?mon=${m}&lop=${LOP}`).then((x) => x.json()).catch(() => ({}));
+      const ds: { tap: number; tuan: number | null }[] = Array.isArray(r.mucLuc) ? r.mucLuc : [];
+      const theoTap: Record<number, TomTat> = {};
+      for (const tp of [1, 2]) {
+        const d = ds.filter((x) => x.tap === tp);
+        const tuans = d.map((x) => x.tuan).filter((x): x is number => x !== null);
+        theoTap[tp] = { n: d.length, tu: tuans.length ? Math.min(...tuans) : null, den: tuans.length ? Math.max(...tuans) : null };
+      }
+      return [m, theoTap] as const;
+    }));
+    setTongQuan(Object.fromEntries(kq));
+  }, []);
+  useEffect(() => { void napTongQuan(); }, [napTongQuan]);
 
   const nap = useCallback(async () => {
     const [pp, ml] = await Promise.all([
@@ -92,12 +110,39 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
       if (!r.ok) { setTb({ loai: 'loi', text: j.error ?? `Lỗi ${r.status}` }); return; }
       setTb({ loai: 'ok', text: `Đã lưu ${j.soDong} dòng mục lục ${TEN(mon)} tập ${tap}. Bản đặc tả sẽ tự điền trang SGK khi thầy chọn bài.` });
       setChu('');
-      await nap();
+      await nap(); void napTongQuan();
     } finally { setDangLuu(false); }
   };
 
   return (
     <div className="space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+        <div className="text-sm font-semibold text-slate-900">Tình trạng mục lục đã nạp (lớp 4)</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead><tr className="bg-slate-50 text-left"><th className="border border-slate-200 px-2 py-1.5">Môn</th><th className="border border-slate-200 px-2 py-1.5">Tập một</th><th className="border border-slate-200 px-2 py-1.5">Tập hai</th></tr></thead>
+            <tbody>
+              {MON_CO_PPCT.map((m) => (
+                <tr key={m}>
+                  <td className="border border-slate-200 px-2 py-1.5 font-medium">{DANH_SACH_MON.find((x) => x.ma === m)?.ten ?? m}</td>
+                  {[1, 2].map((tp) => {
+                    const t = tongQuan?.[m]?.[tp];
+                    const chon = mon === m && tap === tp;
+                    return (
+                      <td key={tp} className={`border border-slate-200 px-2 py-1.5 ${chon ? 'bg-indigo-50' : ''}`}>
+                        <button type="button" className="text-left w-full" onClick={() => { setMon(m); setTap(tp); }} aria-label={`Chọn ${m} tập ${tp}`}>
+                          {!t ? <span className="text-slate-400">Đang tải…</span> : t.n ? <span className="text-emerald-700">✓ {t.n} dòng{t.tu !== null ? ` · tuần ${t.tu}–${t.den}` : ''}</span> : <span className="text-amber-700">Chưa nạp</span>}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500">Bấm vào một ô để chọn đúng môn và tập đó rồi nạp bên dưới. Môn chỉ có một tập thì để Tập hai là &quot;Chưa nạp&quot;, không sao.</p>
+      </div>
       <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
         <p className="text-sm text-slate-600">Nhập mục lục SGK để bản đặc tả tự điền <b>trang SGK</b> khi thầy chọn bài. Thầy chép mục lục sách vào Excel (cột: Tuần, Bài, Hoạt động, Nội dung, Trang đầu), rồi dán vào ô bên dưới hoặc lưu CSV và chọn file. Ứng dụng chỉ kiểm tra và đối chiếu PPCT, không tự đoán số trang.</p>
         <div className="flex flex-wrap items-center gap-2">
