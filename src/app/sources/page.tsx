@@ -19,6 +19,7 @@ import { TwoColumnPreview } from '@/components/sources/TwoColumnPreview';
 import { ProvenanceSelector } from '@/components/sources/ProvenanceSelector';
 import { DocxXlsxImportTab } from '@/components/sources/DocxXlsxImportTab';
 import { ScannedPdfManualTab } from '@/components/sources/ScannedPdfManualTab';
+import { PpctPdfTab } from '@/components/sources/PpctPdfTab';
 import { EmptySourcesState } from '@/components/sources/EmptySourcesState';
 import { PpctDaNhapView } from '@/components/sources/PpctDaNhapView';
 import {
@@ -33,7 +34,7 @@ import {
   PpctHubBackupFile,
 } from '@/types/curriculum-source';
 
-type TabMode = 'ppct_hub' | 'docx_xlsx' | 'pdf_scan' | 'saved_sources';
+type TabMode = 'ppct_hub' | 'docx_xlsx' | 'pdf_scan' | 'pdf_ppct' | 'saved_sources';
 
 export default function SourcesPage() {
   const [activeTab, setActiveTab] = useState<TabMode>('saved_sources');
@@ -355,6 +356,19 @@ export default function SourcesPage() {
 
         <button
           type="button"
+          onClick={() => setActiveTab('pdf_ppct')}
+          className={`flex items-center gap-2 py-3 px-4 text-xs font-semibold border-b-2 transition-colors ${
+            activeTab === 'pdf_ppct'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+          }`}
+        >
+          <FileSearch className="w-4 h-4" />
+          <span>Nhập PPCT từ PDF</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('pdf_scan')}
           className={`flex items-center gap-2 py-3 px-4 text-xs font-semibold border-b-2 transition-colors ${
             activeTab === 'pdf_scan'
@@ -545,6 +559,8 @@ export default function SourcesPage() {
 
       {/* TAB 2: NHẬP TỪ WORD / EXCEL */}
       {activeTab === 'docx_xlsx' && <DocxXlsxImportTab />}
+
+      {activeTab === 'pdf_ppct' && <PpctPdfTab />}
 
       {/* TAB 3: PDF SCAN & ĐỐI CHIẾU TAY */}
       {activeTab === 'pdf_scan' && <ScannedPdfManualTab />}

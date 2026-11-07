@@ -6,9 +6,10 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Download, FileUp, Loader2, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, Download, FileUp, Loader2, ScanText, TriangleAlert } from 'lucide-react';
 import { CSV_MAU, docMucLuc, type TietDoiChieu } from '@/core/chuong-trinh/muc-luc-sgk';
 import { DANH_SACH_MON } from '@/core/chuong-trinh/mon';
+import { moPdfLamAnh, type PdfAnh } from '@/core/utils/pdf-anh';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-sm';
@@ -24,6 +25,10 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
   const [daLuu, setDaLuu] = useState<{ tap: number }[]>([]);
   const [dangLuu, setDangLuu] = useState(false);
   const [tb, setTb] = useState<{ loai: 'ok' | 'loi'; text: string } | null>(null);
+  const [pdf, setPdf] = useState<{ ten: string; doc: PdfAnh } | null>(null);
+  const [tu, setTu] = useState('');
+  const [den, setDen] = useState('');
+  const [tienDo, setTienDo] = useState<string | null>(null);
 
   const nap = useCallback(async () => {
     const [pp, ml] = await Promise.all([
@@ -41,6 +46,34 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
   const chonFile = async (f: File) => {
     setTb(null);
     setChu(await f.text());
+  };
+  const chonPdf = async (f: File) => {
+    setTb(null);
+    try {
+      setPdf({ ten: f.name, doc: await moPdfLamAnh(await f.arrayBuffer()) });
+      setTu(''); setDen('');
+    } catch (e) { setPdf(null); setTb({ loai: 'loi', text: `Không mở được PDF: ${e instanceof Error ? e.message : e}` }); }
+  };
+  const docBangAI = async () => {
+    if (!pdf) return;
+    const a = Number(tu), b = Number(den || tu);
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || b < a || b > pdf.doc.soTrang) { setTb({ loai: 'loi', text: `Nhập trang trong file từ 1 đến ${pdf.doc.soTrang} (trang thứ mấy của file PDF, không phải số in trên sách).` }); return; }
+    if (b - a >= 6) { setTb({ loai: 'loi', text: 'Mỗi lần đọc tối đa 6 trang. Mục lục thường 2–4 trang.' }); return; }
+    setTb(null);
+    const dong: string[] = [];
+    try {
+      for (let t = a; t <= b; t++) {
+        setTienDo(`Đang đọc trang ${t} (${t - a + 1}/${b - a + 1})…`);
+        const anh = await pdf.doc.ve(t);
+        const r = await fetch('/api/chuong-trinh/sgk-muc-luc/doc-anh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon, tap, anh, trang: t }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error ?? `Lỗi ${r.status}`);
+        dong.push(...(j.dong as string[]));
+      }
+      if (!dong.length) { setTb({ loai: 'loi', text: 'AI không thấy dòng mục lục nào trong các trang đã chọn. Thầy thử trang khác.' }); return; }
+      setChu((c) => (c.trim() ? c.replace(/\s+$/, '') + '\n' : '') + dong.join('\n'));
+      setTb({ loai: 'ok', text: `AI đã chép ${dong.length} dòng. Thầy đối chiếu với sách ở bảng xem trước rồi mới lưu.` });
+    } catch (e) { setTb({ loai: 'loi', text: e instanceof Error ? e.message : String(e) }); } finally { setTienDo(null); }
   };
   const taiMau = () => {
     const url = URL.createObjectURL(new Blob(['﻿' + CSV_MAU], { type: 'text/csv;charset=utf-8' }));
@@ -79,6 +112,27 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
             <label className={`${nutPhu} cursor-pointer w-fit`}><FileUp className="w-4 h-4" /> Chọn file CSV
               <input type="file" accept=".csv,.txt,.tsv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void chonFile(f); e.target.value = ''; }} />
             </label>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+              <div className="text-sm font-semibold text-slate-800">Hoặc tải PDF sách, AI đọc mục lục giúp</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className={`${nutPhu} cursor-pointer`}><ScanText className="w-4 h-4" /> Chọn PDF sách
+                  <input type="file" accept=".pdf,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void chonPdf(f); e.target.value = ''; }} />
+                </label>
+                {pdf && <span className="text-sm text-slate-600">{pdf.ten} ({pdf.doc.soTrang} trang)</span>}
+              </div>
+              {pdf && (
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  Mục lục nằm ở trang
+                  <input aria-label="Từ trang" inputMode="numeric" className={`${o} w-20`} value={tu} onChange={(e) => setTu(e.target.value)} />
+                  đến
+                  <input aria-label="Đến trang" inputMode="numeric" className={`${o} w-20`} placeholder={tu} value={den} onChange={(e) => setDen(e.target.value)} />
+                  <button type="button" className={nutChinh} disabled={!!tienDo || !tu} onClick={() => void docBangAI()}>
+                    {tienDo ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}{tienDo ?? 'AI đọc mục lục'}
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-slate-500">Trang tính theo thứ tự trong file PDF (trang đầu của file là trang 1). Dòng AI chép thêm vào ô bên dưới; thầy đối chiếu với sách, sửa rồi mới lưu.</p>
+            </div>
             <textarea aria-label="Bảng mục lục" className={`${o} w-full min-h-40 font-mono`} placeholder={'Dán bảng mục lục vào đây, ví dụ:\n1\t1\tĐọc\tĐiều kì diệu\t8'} value={chu} onChange={(e) => { setChu(e.target.value); setTb(null); }} />
           </>
         ) : <p className="text-xs text-amber-700">Bạn chỉ được xem. Tổ trưởng hoặc quản trị mới nạp mục lục.</p>}

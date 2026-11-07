@@ -13,6 +13,8 @@ export interface YeuCauAI {
   timWeb?: boolean;
   /** Thời gian chờ tối đa (mili giây). */
   choToiDa?: number;
+  /** Ảnh kèm theo (JPEG/PNG, base64 không có tiền tố) để model đọc chữ trên ảnh. */
+  anh?: { loai: 'image/jpeg' | 'image/png'; base64: string }[];
 }
 
 export interface KetQuaAI {
@@ -65,7 +67,12 @@ async function goiAnthropic(f: HamFetch, m: ModelAI, khoa: string, y: YeuCauAI, 
   const body: Record<string, unknown> = {
     model: m.modelId,
     max_tokens: y.toiDaToken ?? 4000,
-    messages: [{ role: 'user', content: y.noiDung }],
+    messages: [{
+      role: 'user',
+      content: y.anh?.length
+        ? [...y.anh.map((a) => ({ type: 'image', source: { type: 'base64', media_type: a.loai, data: a.base64 } })), { type: 'text', text: y.noiDung }]
+        : y.noiDung,
+    }],
   };
   if (y.heThong) body.system = y.heThong;
   if (timWeb) body.tools = [CONG_CU_TIM_WEB];
@@ -79,9 +86,14 @@ async function goiAnthropic(f: HamFetch, m: ModelAI, khoa: string, y: YeuCauAI, 
 }
 
 async function goiOpenAI(f: HamFetch, m: ModelAI, khoa: string, y: YeuCauAI) {
-  const messages = [] as { role: string; content: string }[];
+  const messages = [] as { role: string; content: unknown }[];
   if (y.heThong) messages.push({ role: 'system', content: y.heThong });
-  messages.push({ role: 'user', content: y.noiDung });
+  messages.push({
+    role: 'user',
+    content: y.anh?.length
+      ? [...y.anh.map((a) => ({ type: 'image_url', image_url: { url: `data:${a.loai};base64,${a.base64}` } })), { type: 'text', text: y.noiDung }]
+      : y.noiDung,
+  });
   return guiJson(
     f,
     `${m.diaChiCong.replace(/\/+$/, '')}/chat/completions`,
