@@ -58,6 +58,9 @@ export default function KhoDePage() {
   const [phienBan, setPhienBan] = useState<PhienBanDaDuyet[]>([]);
   const [kq, setKq] = useState<KetQuaKiemDinhDe | null>(null);
   const [dangMo, setDangMo] = useState(false);
+  const [kyDich, setKyDich] = useState('');
+  const [dangChep, setDangChep] = useState(false);
+  const [ketQuaChep, setKetQuaChep] = useState<{ ok: boolean; text: string; ky?: string } | null>(null);
   const [ghiChu, setGhiChu] = useState('');
   const [dangGui, setDangGui] = useState(false);
   const [thongBao, setThongBao] = useState<string | null>(null);
@@ -123,6 +126,17 @@ export default function KhoDePage() {
     window.location.href = `/api/de-kiem-tra/xuat?${q}`;
   };
 
+  const saoChep = async () => {
+    if (!chon || !kyDich) return;
+    setDangChep(true); setKetQuaChep(null);
+    try {
+      const r = await fetch('/api/de-kiem-tra/sao-chep', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: chon.mon, kyNguon: chon.ky, kyDich }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) setKetQuaChep({ ok: false, text: j.error ?? `Lỗi ${r.status}` });
+      else setKetQuaChep({ ok: true, ky: kyDich, text: `Đã tạo bản nháp cho ${tenKy(kyDich)}: chép ${j.daChep} câu, ${j.trong} câu để trống vì khác hình thức hoặc dạng so với đặc tả mới.` });
+    } finally { setDangChep(false); }
+  };
+
   const cau = useMemo(() => (de ? xepCauTheoSo(de.duLieu.cau) : []), [de]);
   const tong = Math.round(cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
   const choDuyet = de?.trangThai === 'SAN_SANG_DUYET';
@@ -184,6 +198,26 @@ export default function KhoDePage() {
               <button type="button" className={nutPhu} disabled={!de} onClick={() => xuatWord(true)}><Download className="w-4 h-4" /> Xuất bộ hồ sơ</button>
             </div>
           </div>
+
+          {phienBan.length > 0 && (
+            <div className="the-tke p-4 space-y-2">
+              <h3 className="font-semibold text-slate-900">Làm đề mới cho kì khác từ đề này</h3>
+              <p className="text-sm text-slate-600">Chép nội dung phiên bản đã duyệt mới nhất sang một kì khác của {tenMon(chon.mon)} thành bản nháp. Kì đó phải có đặc tả đã xác nhận và chưa có đề. Đề này giữ nguyên; thầy rà lại từng câu theo YCCĐ, tuần, bài của kì mới.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <select aria-label="Kì đích" className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white" value={kyDich} onChange={(e) => { setKyDich(e.target.value); setKetQuaChep(null); }}>
+                  <option value="">Chọn kì cần làm đề</option>
+                  {DANH_SACH_KY.filter((k) => k.ma !== chon.ky).map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
+                </select>
+                <button type="button" className={nutPhu} disabled={!kyDich || dangChep} onClick={() => void saoChep()}>{dangChep ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Tạo bản nháp</button>
+              </div>
+              {ketQuaChep && (
+                <div className={`rounded-lg border p-3 text-sm ${ketQuaChep.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>
+                  {ketQuaChep.text}
+                  {ketQuaChep.ok && ketQuaChep.ky && <> <Link href={`/tao-de?mon=${chon.mon}&ky=${ketQuaChep.ky}`} className="underline font-medium">Mở ở bước 4 để rà lại</Link></>}
+                </div>
+              )}
+            </div>
+          )}
 
           {de?.trangThai === 'TRA_LAI' && de.ghiChuDuyet && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"><b>Lý do trả lại:</b> {de.ghiChuDuyet}</div>

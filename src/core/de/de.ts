@@ -237,6 +237,27 @@ export function layNoiDung(d: DeKiemTra): Record<string, NoiDungCau> {
 }
 
 /** Dựng lại đề khi đặc tả đổi: giữ nội dung các câu còn nguyên khóa, báo câu mới và câu bị bỏ. */
+/**
+ * Làm đề mới cho kì khác từ một đề đã duyệt: chép đề bài, phương án, đáp án, hướng dẫn chấm, hình của những câu
+ * trùng mã câu VÀ cùng hình thức, dạng, số ý với đặc tả mới. Câu còn lại để trống. Bài đọc Tiếng Việt không chép
+ * (mỗi kì dùng bài đọc khác). Thầy phải rà lại từng câu theo YCCĐ, tuần, bài của kì mới.
+ */
+export function saoChepDeSangKyMoi(dacTaDich: DacTa, phienBanDich: number, nguon: DeKiemTra): { de: DeKiemTra; daChep: string[]; trong: string[] } {
+  const nguonTheoKhoa = new Map(nguon.cau.map((c) => [c.khoa, c]));
+  const noiDungCu: Record<string, NoiDungCau> = {};
+  const daChep: string[] = [];
+  const trong: string[] = [];
+  for (const r of dacTaDich.dong) {
+    const c = nguonTheoKhoa.get(r.khoa);
+    const khop = !!c && c.hinhThuc === r.hinhThuc && c.dang === r.dang && (c.yNho?.length ?? 0) === (r.yNho?.length ?? 0);
+    if (c && khop) {
+      noiDungCu[r.khoa] = { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham, ghiChuHinh: c.ghiChuHinh, hinh: c.hinh ?? [] };
+      daChep.push(r.khoa);
+    } else trong.push(r.khoa);
+  }
+  return { de: taoDeTuDacTa(dacTaDich, phienBanDich, noiDungCu), daChep, trong };
+}
+
 export function dungLaiDe(dacTaMoi: DacTa, phienBanMoi: number, cu: DeKiemTra): { de: DeKiemTra; moi: string[]; bo: string[] } {
   const noiDungCu = layNoiDung(cu);
   const de = taoDeTuDacTa(dacTaMoi, phienBanMoi, noiDungCu, cu.tiengViet);

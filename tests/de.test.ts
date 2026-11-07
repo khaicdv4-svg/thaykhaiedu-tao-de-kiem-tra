@@ -202,3 +202,19 @@ describe('Hình đi kèm câu hỏi', () => {
     expect(kq.de.cau.find((c) => c.khoa === de.cau[0].khoa)?.hinh).toEqual([hinhOk]);
   });
 });
+
+import { saoChepDeSangKyMoi } from '../src/core/de/de';
+describe('làm đề mới từ đề đã duyệt', () => {
+  it('chép câu trùng mã, hình thức, dạng; câu khác để trống; không chép bài đọc', () => {
+    const goc = taoDeTuDacTa(dacTa, 1);
+    goc.cau = goc.cau.map((c, i) => ({ ...c, deBai: `Đề ${i}`, dapAn: c.dang === 'NLC' ? 'B' : c.dapAn }));
+    const dich = { ...dacTa, dong: dacTa.dong.map((r, i) => (i === 0 ? { ...r, hinhThuc: r.hinhThuc === 'TN' ? ('TL' as const) : ('TN' as const) } : r)) };
+    const kq = saoChepDeSangKyMoi(dich, 2, goc);
+    expect(kq.trong).toHaveLength(1);
+    expect(kq.daChep.length).toBe(dacTa.dong.length - 1);
+    expect(kq.de.phien_ban_dac_ta).toBe(2);
+    const daChepCau = kq.de.cau.find((c) => c.khoa === kq.daChep[0])!;
+    expect(daChepCau.deBai.startsWith('Đề ')).toBe(true);
+    expect(kq.de.cau.find((c) => c.khoa === kq.trong[0])!.deBai).toBe('');
+  });
+});

@@ -10,7 +10,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { dsYccd } from '@/lib/repositories/chuong-trinh.repository';
 import { kiemDinhMaTranChung, kiemDinhMaTranRieng } from '@/core/matrix/matrix-template';
 import { kiemDinhDacTa, type DacTa, type TrangThaiDacTa } from '@/core/dac-ta/dac-ta';
-import { TRANG_THAI_CHI_DO_DUYET, kiemDinhDe, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
+import { TRANG_THAI_CHI_DO_DUYET, kiemDinhDe, saoChepDeSangKyMoi, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
 import type { KyKiemTra, MaTranChung, MaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 
 const KHOI = 4;
@@ -418,4 +418,28 @@ export async function duyetDe(maMon: string, ky: string, hanhDong: 'DUYET' | 'TR
   const { data, error } = await supabase.from('de_kiem_tra').update({ trang_thai: 'DA_DUYET', duyet_boi: user.id, duyet_luc: new Date().toISOString(), ghi_chu_duyet: note || null, updated_by: user.id }).eq('id', ban.id).select(COT_DE).single();
   if (error) throw loiDe('Không cập nhật được trạng thái đề', error.message);
   return { ban: sangDe(data), phienBan, taoPhienBanMoi: !giong };
+}
+
+
+/**
+ * Làm đề mới cho kì khác từ phiên bản đã duyệt mới nhất của đề nguồn. Kì đích phải có đặc tả đã xác nhận và chưa có đề
+ * (không ghi đè). Kết quả là bản nháp để thầy rà lại; đề nguồn giữ nguyên.
+ */
+export async function saoChepDe(maMon: string, kyNguon: string, kyDich: string): Promise<{ ban: BanDe; daChep: number; trong: number }> {
+  kiemMonKy(maMon, kyNguon);
+  kiemMonKy(maMon, kyDich);
+  if (kyNguon === kyDich) throw new Error('Kì đích phải khác kì của đề nguồn.');
+  const { supabase, orgId, role } = await layNguoiDung();
+  canQuyenGhi(role);
+  const { data: dd, error: e1 } = await supabase.from('de_da_duyet').select('du_lieu').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', kyNguon).order('phien_ban', { ascending: false }).limit(1);
+  if (e1) throw loiDe('Không đọc được đề nguồn', e1.message);
+  const nguon = (dd ?? [])[0]?.du_lieu as DeKiemTra | undefined;
+  if (!nguon) throw new Error('Chỉ làm đề mới từ đề đã được duyệt. Đề nguồn chưa có phiên bản đã duyệt.');
+  const { de: daCo } = await layDe(maMon, kyDich);
+  if (daCo) throw new Error('Kì đích đã có đề. App không ghi đè; thầy mở đề đó ở bước 4 để sửa.');
+  const { moiNhat } = await layDacTa(maMon, kyDich);
+  if (!moiNhat || !moiNhat.duLieu || moiNhat.phienBan == null) throw new Error('Kì đích chưa có đặc tả đã xác nhận. Thầy làm ma trận và đặc tả cho kì đó ở bước 2, 3 trước.');
+  const { de, daChep, trong } = saoChepDeSangKyMoi(moiNhat.duLieu, moiNhat.phienBan, nguon);
+  const { ban } = await luuDe(maMon, kyDich, moiNhat.id, de, 'BAN_NHAP');
+  return { ban, daChep: daChep.length, trong: trong.length };
 }
