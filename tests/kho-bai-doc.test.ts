@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { docChuTuDocx, xmlWordSangVanBan } from '../src/core/utils/docx-text';
 import { tachBaiDoc, phanTichBaiDoc, nhanDienTheLoai, goiYChuDiem, chuanHoaSoSanh } from '../src/core/reading-passages/phan-tich';
-import { kiemTraBaiDoc, tiLeTrung, trungTenSgk, lamSachUrl, type BaiDocCanKiem } from '../src/core/reading-passages/kiem-tra';
+import { kiemTraBaiDoc, tiLeTrung, trungTenSgk, lamSachUrl, laDuongDanWeb, type BaiDocCanKiem } from '../src/core/reading-passages/kiem-tra';
 import { khoangDoDai, CHU_DIEM_THEO_KY } from '../src/core/reading-passages/quy-dinh';
 import { BAI_DOC_SGK_TV4 } from '../src/core/reading-passages/sgk-tieng-viet-4';
 import { loiNhacTimBaiDoc } from '../src/core/services/ai/reading-passage-ai';
@@ -103,6 +103,14 @@ describe('Kiểm tra bài đọc', () => {
     expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, Cánh Diều' }).loi.join(' ')).toContain('số trang');
     // Có link đã kiểm thì không cần trang
     expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Báo Nhi Đồng', nguonUrl: 'https://vidu.vn/a', trangThaiLink: 'CON_TON_TAI' }).loi).toEqual([]);
+  });
+
+  it('ô link ghi chữ thường (không phải đường dẫn) thì báo rõ, không bắt kiểm link', () => {
+    const loi = kiemTraBaiDoc({ ...hopLe, nguon: 'Theo Ngọc Khánh', nguonUrl: 'Bài tập cuối tuần' }).loi.join(' ');
+    expect(loi).toContain('không phải link');
+    expect(loi).not.toContain('Chưa kiểm tra link');
+    expect(laDuongDanWeb('https://vidu.vn/a')).toBe(true);
+    expect(laDuongDanWeb('vidu.vn')).toBe(false);
   });
 
   it('đọc hiểu dài hơn quy định: cho qua, nhắc cắt đoạn; ngắn hơn: chặn', () => {

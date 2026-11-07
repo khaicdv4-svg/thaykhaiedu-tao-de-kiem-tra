@@ -18,7 +18,7 @@ import {
   type TheLoaiBaiDoc,
 } from '@/core/reading-passages/quy-dinh';
 import type { BoNao } from '@/core/bo-nao/bo-nao';
-import { kiemTraBaiDoc, type BaiDocCanKiem, type TrangThaiLink } from '@/core/reading-passages/kiem-tra';
+import { kiemTraBaiDoc, laDuongDanWeb, type BaiDocCanKiem, type TrangThaiLink } from '@/core/reading-passages/kiem-tra';
 
 export interface BaiDocSua extends BaiDocCanKiem {
   khoa: string;
@@ -83,7 +83,10 @@ export function TheBaiDoc({
     }
   };
 
-  const link = NHAN_LINK[bai.nguonUrl ? bai.trangThaiLink ?? 'CHUA_KIEM' : 'SACH_IN'];
+  const linkSaiDang = !!bai.nguonUrl?.trim() && !laDuongDanWeb(bai.nguonUrl);
+  const link = linkSaiDang
+    ? { ten: 'Ô link không phải link', mau: 'bg-red-50 text-red-700 border-red-200' }
+    : NHAN_LINK[bai.nguonUrl?.trim() ? bai.trangThaiLink ?? 'CHUA_KIEM' : 'SACH_IN'];
   const doDai = kq.khoang ? `${kq.soTieng} tiếng / quy định ${kq.khoang.min}–${kq.khoang.max} (±${kq.khoang.dungSai})` : `${kq.soTieng} tiếng`;
   const doDaiMau = kq.loi.some((l) => l.includes('tiếng; quy định')) ? 'bg-red-50 text-red-700 border-red-200'
     : kq.canhBao.some((c) => c.includes('độ lệch')) ? 'bg-amber-50 text-amber-800 border-amber-200'
@@ -110,11 +113,11 @@ export function TheBaiDoc({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <input className={o} value={bai.tacGia} disabled={chiXem} placeholder="Tác giả (bắt buộc)" onChange={(e) => doi({ tacGia: e.target.value })} />
-        <input className={o} value={bai.nguon} disabled={chiXem} placeholder="Nguồn: sách, báo, NXB, năm" onChange={(e) => doi({ nguon: e.target.value })} />
+        <input className={o} value={bai.nguon} disabled={chiXem} placeholder="Nguồn: tên sách/báo, NXB, năm, trang" onChange={(e) => doi({ nguon: e.target.value })} />
         <div className="md:col-span-2 flex gap-2">
-          <input className={o} value={bai.nguonUrl ?? ''} disabled={chiXem} placeholder="Link nguồn (nếu lấy trên mạng)" onChange={(e) => doi({ nguonUrl: e.target.value })} />
+          <input className={o} value={bai.nguonUrl ?? ''} disabled={chiXem} placeholder="Link nguồn, chỉ dán đường dẫn https://… (để trống nếu là sách in)" onChange={(e) => doi({ nguonUrl: e.target.value })} />
           {!chiXem && (
-            <button type="button" onClick={kiemLink} disabled={!bai.nguonUrl || dangKiemLink} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm hover:bg-slate-50 disabled:opacity-50">
+            <button type="button" onClick={kiemLink} disabled={!bai.nguonUrl || linkSaiDang || dangKiemLink} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm hover:bg-slate-50 disabled:opacity-50">
               {dangKiemLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />} Kiểm tra link
             </button>
           )}

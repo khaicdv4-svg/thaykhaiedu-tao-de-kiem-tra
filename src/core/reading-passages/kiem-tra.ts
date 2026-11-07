@@ -96,6 +96,11 @@ export function trungTenSgk(tieuDe: string): string | null {
 // Link nguồn
 // ---------------------------------------------------------------------------
 
+/** Ô link có phải đường dẫn web không (http/https). */
+export function laDuongDanWeb(url: string): boolean {
+  return /^https?:\/\/\S+\.\S+/i.test(url.trim());
+}
+
 /** Bỏ tham số theo dõi (utm_..., fbclid, gclid). */
 export function lamSachUrl(url: string): string {
   try {
@@ -138,7 +143,9 @@ export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = [], boN
   // Link
   const url = b.nguonUrl?.trim() || '';
   const urlSach = url ? lamSachUrl(url) : '';
-  if (url) {
+  if (url && !laDuongDanWeb(url)) {
+    loi.push(`Ô "Link nguồn" chỉ dán đường dẫn web (bắt đầu bằng http). "${url.slice(0, 60)}" không phải link: chép sang ô "Nguồn" và ghi rõ tên sách, NXB, năm, số trang; rồi xóa ô link.`);
+  } else if (url) {
     if (urlSach !== url) canhBao.push('Link nguồn có tham số theo dõi (utm…), đã bỏ đi.');
     if (TEN_MIEN_NGUON_PHU.some((d) => urlSach.toLowerCase().includes(d))) {
       canhBao.push('Link là trang đề thi / lời giải. Nên ghi nguồn chính là sách, báo, tác giả.');
