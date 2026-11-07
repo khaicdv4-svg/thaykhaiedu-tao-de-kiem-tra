@@ -5,7 +5,7 @@
  * đường kẻ dọc, phương án A–B / C–D hai bên, dòng chấm chừa chỗ làm bài. Chỉ để xem; xuất Word dùng cùng quy tắc.
  */
 import React, { useState } from 'react';
-import { NHAN_LUA_CHON, dapAnHienThi, nhanCau, soDongTraLoi, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, dapAnHienThi, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 
 const fmt = (x: number) => String(x).replace('.', ',');
 const dong = (t: string) => t.split(/\n+/).filter((x) => x.trim());
@@ -25,8 +25,22 @@ function DongCham({ n, cao = 28 }: { n: number; cao?: number }) {
   return <div aria-hidden>{Array.from({ length: n }, (_, i) => <div key={i} style={{ height: cao }} className="border-b border-dotted border-black" />)}</div>;
 }
 
+function LuoiY({ y, datTinh }: { y: { nhan: string; nd: string }[]; datTinh: boolean }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-3 pl-1">
+      {y.map((k) => (
+        <div key={k.nhan}>
+          <div><b>{k.nhan})</b> {k.nd}</div>
+          {datTinh ? <div style={{ height: 130 }} aria-hidden /> : <DongCham n={3} cao={30} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
-  const lop = dong(c.deBai);
+  const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
+  const lop = dong(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
   return (
     <div className="grid grid-cols-[84px_1fr] break-inside-avoid">
       <div className="pr-2 pt-1 border-r border-black">…/{fmt(c.diem)}đ</div>
@@ -38,7 +52,7 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
           (c.yNho ?? c.luaChon.map((_, i) => String.fromCharCode(97 + i))).map((y, i) => (
             <div key={y} className="pl-3 flex justify-between gap-4"><span>{y}) {c.luaChon[i] ?? ''}</span><span className="shrink-0">Đ / S</span></div>
           ))
-        ) : c.hinhThuc === 'TN' ? <PhuongAn c={c} /> : <DongCham n={soDongTraLoi(c, maMon)} cao={maMon === 'TOAN' ? 32 : 29} />}
+        ) : nhieuY ? <LuoiY y={nhieuY.y} datTinh={nhieuY.datTinh} /> : c.hinhThuc === 'TN' ? <PhuongAn c={c} /> : <DongCham n={soDongTraLoi(c, maMon)} cao={maMon === 'TOAN' ? 32 : 29} />}
       </div>
     </div>
   );

@@ -168,3 +168,18 @@ describe('Thứ tự câu và số dòng chấm', () => {
     expect(soDongTraLoi(c(5, 'x', 'VIET'), 'TIENG_VIET')).toBe(18);
   });
 });
+
+describe('Tách các ý a), b), c), d) trong đề bài', () => {
+  it('đặt tính 4 phép tính trên một dòng', async () => {
+    const { tachYTrongDeBai } = await import('../src/core/de/de');
+    const r = tachYTrongDeBai('Đặt tính rồi tính: a) 45 678 + 23 456; b) 90 000 - 34 567; c) 123 456 + 78 944; d) 500 000 - 128 349');
+    expect(r?.datTinh).toBe(true);
+    expect(r?.dau).toBe('Đặt tính rồi tính:');
+    expect(r?.y.map((k) => k.nd)).toEqual(['45 678 + 23 456', '90 000 - 34 567', '123 456 + 78 944', '500 000 - 128 349']);
+  });
+  it('một ý hoặc không có ý thì không tách', async () => {
+    const { tachYTrongDeBai } = await import('../src/core/de/de');
+    expect(tachYTrongDeBai('Tính: a) 5 + 3')).toBeNull();
+    expect(tachYTrongDeBai('Một cửa hàng có 3 tấn gạo.')).toBeNull();
+  });
+});

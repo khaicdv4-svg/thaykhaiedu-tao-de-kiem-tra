@@ -114,6 +114,32 @@ export function soDongTraLoi(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: s
   return n;
 }
 
+export interface DeBaiNhieuY { dau: string; y: { nhan: string; nd: string }[]; datTinh: boolean }
+
+/**
+ * Tách đề bài có các ý a), b), c)… trên cùng một dòng (ví dụ "Đặt tính rồi tính: a) 45 678 + 23 456; b) …")
+ * để dàn thành lưới hai cột, mỗi ý một ô. Không có ít nhất hai ý liên tiếp a), b) thì trả về null.
+ */
+export function tachYTrongDeBai(deBai: string): DeBaiNhieuY | null {
+  const t = deBai.replace(/\s+/g, ' ').trim();
+  const vt: { nhan: string; bd: number; sau: number }[] = [];
+  let tuViTri = 0;
+  for (const nhan of 'abcdef') {
+    const re = new RegExp(`(^|[^\\p{L}\\d])${nhan}\\)\\s*`, 'u');
+    const m = re.exec(t.slice(tuViTri));
+    if (!m) break;
+    const bd = tuViTri + m.index + m[1].length;
+    vt.push({ nhan, bd, sau: tuViTri + m.index + m[0].length });
+    tuViTri = vt[vt.length - 1].sau;
+  }
+  if (vt.length < 2) return null;
+  const lam = (x: string) => x.replace(/[\s;,.]+$/, '').trim();
+  const y = vt.map((v, i) => ({ nhan: v.nhan, nd: lam(t.slice(v.sau, i + 1 < vt.length ? vt[i + 1].bd : t.length)) }));
+  if (y.some((k) => !k.nd)) return null;
+  const dau = t.slice(0, vt[0].bd).trim();
+  return { dau, y, datTinh: /đặt tính/i.test(dau) };
+}
+
 /** Đáp án viết ra để in: NLC kèm nội dung phương án, Đúng/Sai theo từng ý. */
 export function dapAnHienThi(c: CauDe): string {
   if (c.dang === 'NLC') {

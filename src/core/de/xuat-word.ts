@@ -26,7 +26,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { NHAN_LUA_CHON, dapAnHienThi, nhanCau, soDongTraLoi, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, dapAnHienThi, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 
 export interface ThongTinDe {
@@ -155,9 +155,25 @@ function phuongAn(c: CauDe): (Paragraph | Table)[] {
   })];
 }
 
+/** Các ý a), b), c), d) dàn hai cột. Đặt tính: chừa khoảng trắng để đặt tính; ý khác: mỗi ô vài dòng chấm. */
+function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean): Table {
+  const rong = Math.floor((RONG_NOI_DUNG - 100) / 2);
+  const o = (k?: { nhan: string; nd: string }) => o2(
+    k ? [
+      doan([tr(`${k.nhan}) `, { bold: true }), tr(k.nd)], { dong: DAN_CAU, giuDong: true }),
+      ...(datTinh ? Array.from({ length: 5 }, () => doan('', { dong: 400 })) : Array.from({ length: 3 }, () => dongCham(rong - 300, 400))),
+    ] : [doan('')],
+    rong,
+  );
+  const hang: TableRow[] = [];
+  for (let i = 0; i < y.length; i += 2) hang.push(new TableRow({ cantSplit: true, children: [o(y[i]), o(y[i + 1])] }));
+  return new Table({ width: { size: rong * 2, type: WidthType.DXA }, columnWidths: [rong, rong], layout: TableLayoutType.FIXED, rows: hang });
+}
+
 function noiDungCau(c: CauDe, inDam = false, maMon = ''): (Paragraph | Table)[] {
   const kq: (Paragraph | Table)[] = [];
-  const dongDau = c.deBai.split(/\n+/).filter((x) => x.trim());
+  const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
+  const dongDau = (nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai).split(/\n+/).filter((x) => x.trim());
   kq.push(
     doan([tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true }), tr(dongDau[0] ?? '', { bold: inDam })], { dong: DAN_CAU }),
     ...dongDau.slice(1).map((d) => doan([tr(d, { bold: inDam })], { dong: DAN_CAU })),
@@ -178,6 +194,8 @@ function noiDungCau(c: CauDe, inDam = false, maMon = ''): (Paragraph | Table)[] 
     const coLuaChon = c.luaChon.some((x) => x.trim());
     if (coLuaChon) kq.push(...phuongAn(c));
     else if (c.dang !== 'NLC') kq.push(dongCham());
+  } else if (nhieuY) {
+    kq.push(luoiY(nhieuY.y, nhieuY.datTinh));
   } else {
     const dong = maMon === 'TOAN' ? 420 : 380;
     for (let i = 0; i < soDongTraLoi(c, maMon); i++) kq.push(dongCham(RONG_NOI_DUNG - 200, dong));
