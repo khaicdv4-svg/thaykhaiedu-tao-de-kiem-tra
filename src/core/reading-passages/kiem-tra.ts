@@ -119,6 +119,14 @@ export function lamSachUrl(url: string): string {
 // Kiểm tra trọn gói
 // ---------------------------------------------------------------------------
 
+/** Nhãn dán cho bài chưa có link web và cũng chưa ghi tên sách kèm số trang. */
+export const NHAN_CHUA_CO_LINK = 'Chưa có link – cần bổ sung';
+
+/** Bài chưa có link web, cũng chưa có tên sách kèm số trang (vẫn duyệt được, nhưng cần bổ sung sau). */
+export function chuaCoLinkHoacTrang(b: Pick<BaiDocCanKiem, 'nguon' | 'nguonUrl'>): boolean {
+  return !b.nguonUrl?.trim() && !CO_SO_TRANG.test(b.nguon || '');
+}
+
 export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = [], boNao?: BoNao | null): KetQuaKiemTraBaiDoc {
   const loi: string[] = [];
   const canhBao: string[] = [];
@@ -128,10 +136,10 @@ export function kiemTraBaiDoc(b: BaiDocCanKiem, vanBanSgk: VanBanSgk[] = [], boN
   if (!b.tieuDe?.trim()) loi.push('Thiếu tên bài.');
   if (!b.noiDung?.trim()) loi.push('Thiếu nội dung bài đọc.');
   if (!b.tacGia?.trim()) loi.push('Thiếu tác giả. Bài đọc phải là tác phẩm có thật, ghi đúng tác giả.');
-  if (!b.nguon?.trim() && !b.nguonUrl?.trim()) loi.push('Thiếu nguồn: cần link, hoặc tên sách và trang.');
-  // Sách in, không có link: phải ghi tên sách và số trang
-  else if (!b.nguonUrl?.trim() && !CO_SO_TRANG.test(b.nguon || '')) {
-    loi.push('Không có link thì ghi tên sách và số trang (ví dụ: Tiếng Việt 4, tập một, Cánh Diều, trang 25).');
+  if (!b.nguon?.trim() && !b.nguonUrl?.trim()) loi.push('Thiếu nguồn: ghi ít nhất tên sách, báo hoặc "Theo …". Chưa có link thì để trống ô link.');
+  // Không có link và không có tên sách kèm số trang: vẫn cho nhập kho và duyệt, dán nhãn để bổ sung sau
+  else if (chuaCoLinkHoacTrang(b)) {
+    canhBao.push(`${NHAN_CHUA_CO_LINK}: tìm được link thì dán vào ô link, hoặc ghi tên sách và số trang (ví dụ: Tiếng Việt 4, tập một, Cánh Diều, trang 25).`);
   }
 
   // Không lấy từ SGK Tiếng Việt 4 Kết nối tri thức đang dạy. SGK Cánh Diều, Chân trời sáng tạo được phép.

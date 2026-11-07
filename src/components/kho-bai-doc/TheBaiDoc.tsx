@@ -19,7 +19,7 @@ import {
 } from '@/core/reading-passages/quy-dinh';
 import type { BoNao } from '@/core/bo-nao/bo-nao';
 import { aiTimNguonChoBai } from '@/lib/ai-tim-nguon-client';
-import { kiemTraBaiDoc, laDuongDanWeb, type BaiDocCanKiem, type TrangThaiLink } from '@/core/reading-passages/kiem-tra';
+import { chuaCoLinkHoacTrang, kiemTraBaiDoc, laDuongDanWeb, NHAN_CHUA_CO_LINK, type BaiDocCanKiem, type TrangThaiLink } from '@/core/reading-passages/kiem-tra';
 
 export interface BaiDocSua extends BaiDocCanKiem {
   khoa: string;
@@ -103,7 +103,17 @@ export function TheBaiDoc({
 
   const link = linkSaiDang
     ? { ten: 'Ô link không phải link', mau: 'bg-red-50 text-red-700 border-red-200' }
-    : NHAN_LINK[bai.nguonUrl?.trim() ? bai.trangThaiLink ?? 'CHUA_KIEM' : 'SACH_IN'];
+    : !bai.nguonUrl?.trim() && chuaCoLinkHoacTrang(bai)
+      ? { ten: NHAN_CHUA_CO_LINK, mau: 'bg-amber-50 text-amber-800 border-amber-200' }
+      : NHAN_LINK[bai.nguonUrl?.trim() ? bai.trangThaiLink ?? 'CHUA_KIEM' : 'SACH_IN'];
+
+  /** Ô link bị gõ chữ thường (tên sách, số trang): chuyển sang ô Nguồn cho đúng chỗ. */
+  const chuyenChuLinkSangNguon = () => {
+    const chu = bai.nguonUrl?.trim() ?? '';
+    if (!chu || laDuongDanWeb(chu)) return;
+    const nguon = bai.nguon.trim();
+    doi({ nguonUrl: '', nguon: nguon && !nguon.includes(chu) ? `${nguon}; ${chu}` : nguon || chu });
+  };
   const doDai = kq.khoang ? `${kq.soTieng} tiếng / quy định ${kq.khoang.min}–${kq.khoang.max} (±${kq.khoang.dungSai})` : `${kq.soTieng} tiếng`;
   const doDaiMau = kq.loi.some((l) => l.includes('tiếng; quy định')) ? 'bg-red-50 text-red-700 border-red-200'
     : kq.canhBao.some((c) => c.includes('độ lệch')) ? 'bg-amber-50 text-amber-800 border-amber-200'
@@ -132,7 +142,7 @@ export function TheBaiDoc({
         <input className={o} value={bai.tacGia} disabled={chiXem} placeholder="Tác giả (bắt buộc)" onChange={(e) => doi({ tacGia: e.target.value })} />
         <input className={o} value={bai.nguon} disabled={chiXem} placeholder="Nguồn: tên sách/báo, NXB, năm, trang" onChange={(e) => doi({ nguon: e.target.value })} />
         <div className="md:col-span-2 flex gap-2">
-          <input className={o} value={bai.nguonUrl ?? ''} disabled={chiXem} placeholder="Link nguồn, chỉ dán đường dẫn https://… (để trống nếu là sách in)" onChange={(e) => doi({ nguonUrl: e.target.value })} />
+          <input className={o} value={bai.nguonUrl ?? ''} disabled={chiXem} placeholder="Link nguồn, chỉ dán đường dẫn https://… (để trống nếu là sách in)" onChange={(e) => doi({ nguonUrl: e.target.value })} onBlur={chuyenChuLinkSangNguon} />
           {!chiXem && (
             <button type="button" onClick={kiemLink} disabled={!bai.nguonUrl || linkSaiDang || dangKiemLink} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm hover:bg-slate-50 disabled:opacity-50">
               {dangKiemLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />} Kiểm tra link

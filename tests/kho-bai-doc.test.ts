@@ -100,7 +100,11 @@ describe('Kiểm tra bài đọc', () => {
   it('SGK Cánh Diều, Chân trời sáng tạo được dùng; sách in không link phải có trang', () => {
     expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, tập một, Cánh Diều, trang 25' }).loi).toEqual([]);
     expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, Chân trời sáng tạo, tr. 41' }).loi).toEqual([]);
-    expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, Cánh Diều' }).loi.join(' ')).toContain('số trang');
+    // Không link, không số trang: vẫn cho qua nhưng dán nhãn cần bổ sung
+    const chua = kiemTraBaiDoc({ ...hopLe, nguon: 'Tiếng Việt 4, Cánh Diều' });
+    expect(chua.hopLe).toBe(true);
+    expect(chua.canhBao.join(' ')).toContain('Chưa có link – cần bổ sung');
+    expect(kiemTraBaiDoc({ ...hopLe, nguon: '', nguonUrl: '' }).hopLe).toBe(false);
     // Có link đã kiểm thì không cần trang
     expect(kiemTraBaiDoc({ ...hopLe, nguon: 'Báo Nhi Đồng', nguonUrl: 'https://vidu.vn/a', trangThaiLink: 'CON_TON_TAI' }).loi).toEqual([]);
   });
