@@ -1,148 +1,134 @@
-import React from 'react';
+'use client';
+
+/**
+ * Bước 1 – Thiết lập: chọn môn và kì kiểm tra, xem từng bước (ma trận riêng, đặc tả, đề) đã xong tới đâu
+ * và đi thẳng tới việc cần làm tiếp theo. Không tự tạo hay sửa dữ liệu, chỉ đọc trạng thái đã lưu.
+ */
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Sparkles, FilePlus, Copy, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, BookOpenText, CheckCircle2, CircleDashed, Loader2, TriangleAlert } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
+import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
+import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
+
+const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
+const nutChinh = 'nut-tke text-base px-6 py-3';
+
+interface Ban { phienBan?: number; trangThai?: string }
+interface TrangThaiBuoc { mtr: { moiNhat: Ban | null; banNhap: Ban | null } | null; dt: { moiNhat: Ban | null; banNhap: Ban | null } | null; de: { trangThai: string } | null; loi?: string }
+
+const TEN_TT_DE: Record<string, string> = {
+  BAN_NHAP: 'bản nháp', CAN_KIEM_TRA: 'cần kiểm tra', CO_LOI: 'còn lỗi', SAN_SANG_DUYET: 'sẵn sàng duyệt',
+  CAN_KIEM_TRA_LAI: 'cần kiểm tra lại', DA_DUYET: 'đã duyệt', TRA_LAI: 'bị trả lại',
+};
+
+async function lay<T>(url: string): Promise<T | null> {
+  try { const r = await fetch(url); const j = await r.json(); return r.ok ? (j as T) : null; } catch { return null; }
+}
 
 export default function TestBuilderPage() {
+  const [maMon, setMaMon] = useState('TOAN');
+  const [ky, setKy] = useState<KyDung>('CUOI_HK1');
+  const [tt, setTt] = useState<TrangThaiBuoc | null>(null);
+  const [dangTai, setDangTai] = useState(false);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const m = p.get('mon'); const k = p.get('ky');
+    if (m && MAU_MA_TRAN_CHUNG.some((x) => x.ma_mon === m)) setMaMon(m);
+    if (k && DANH_SACH_KY.some((x) => x.ma === k)) setKy(k as KyDung);
+  }, []);
+
+  useEffect(() => {
+    let huy = false;
+    setDangTai(true); setTt(null);
+    void Promise.all([
+      lay<{ moiNhat: Ban | null; banNhap: Ban | null }>(`/api/ma-tran-rieng?mon=${maMon}&ky=${ky}`),
+      lay<{ moiNhat: Ban | null; banNhap: Ban | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
+      lay<{ de: { trangThai: string } | null }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
+    ]).then(([mtr, dt, de]) => {
+      if (huy) return;
+      setTt({ mtr, dt, de: de?.de ?? null, loi: !mtr && !dt && !de ? 'Chưa đọc được trạng thái. Thầy đăng nhập lại hoặc thử lại sau.' : undefined });
+      setDangTai(false);
+    });
+    return () => { huy = true; };
+  }, [maMon, ky]);
+
+  const tenMon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? maMon;
+  const tenKy = DANH_SACH_KY.find((k) => k.ma === ky)?.ten ?? ky;
+  const q = `mon=${maMon}&ky=${ky}`;
+
+  const buoc = useMemo(() => {
+    const mtrXong = !!tt?.mtr?.moiNhat;
+    const dtXong = !!tt?.dt?.moiNhat;
+    const de = tt?.de ?? null;
+    return [
+      { so: 2, ten: 'Ma trận riêng', xong: mtrXong, nhan: mtrXong ? `đã xác nhận (phiên bản ${tt?.mtr?.moiNhat?.phienBan ?? 1})` : tt?.mtr?.banNhap ? 'có bản nháp, chưa xác nhận' : 'chưa làm', href: '/matrices', viec: mtrXong ? 'Xem ma trận' : tt?.mtr?.banNhap ? 'Tiếp tục ma trận' : 'Làm ma trận' },
+      { so: 3, ten: 'Bản đặc tả', xong: dtXong, nhan: dtXong ? `đã xác nhận (phiên bản ${tt?.dt?.moiNhat?.phienBan ?? 1})` : tt?.dt?.banNhap ? 'có bản nháp, chưa xác nhận' : mtrXong ? 'chưa làm' : 'cần ma trận trước', href: `/dac-ta?${q}`, viec: dtXong ? 'Xem đặc tả' : 'Làm đặc tả', khoa: !mtrXong },
+      { so: 4, ten: 'Tạo đề', xong: de?.trangThai === 'DA_DUYET', nhan: de ? TEN_TT_DE[de.trangThai] ?? de.trangThai : dtXong ? 'chưa làm' : 'cần đặc tả trước', href: `/tao-de?${q}`, viec: de ? 'Tiếp tục soạn đề' : 'Soạn đề', khoa: !dtXong },
+    ];
+  }, [tt, q]);
+
+  const tiep = buoc.find((b) => !b.xong && !('khoa' in b && b.khoa)) ?? buoc[buoc.length - 1];
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-8">
+    <div className="space-y-6 max-w-4xl mx-auto pb-8">
       <TienTrinh5Buoc buocHienTai={1} choBam />
-      {/* Header Banner */}
-      <div className="the-tke p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-start space-x-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100/80 shrink-0">
-            <Sparkles className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2.5">
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Xưởng tạo đề kiểm tra</h1>
-              <Badge variant="outline" className="text-[11px] font-mono uppercase">
-                MOD-05
-              </Badge>
-            </div>
-            <p className="text-sm text-slate-600 mt-1 max-w-2xl">
-              Quy trình tạo đề kiểm tra định kỳ chuẩn hóa Lớp 4 bám sát YCCĐ và Ma trận theo 2 chế độ độc lập.
-            </p>
-          </div>
+
+      <div className="the-tke p-6 space-y-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Bước 1. Thiết lập đề kiểm tra</h1>
+          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp 4. Mỗi đề đi qua ma trận riêng, đặc tả, soạn đề rồi duyệt; thầy xác nhận từng bước, AI chỉ hỗ trợ.</p>
         </div>
-        <Badge variant="secondary" className="px-3 py-1.5 text-xs flex items-center space-x-1.5 shrink-0">
-          <Clock className="w-3.5 h-3.5 text-blue-600" />
-          <span>Đang xây dựng theo lộ trình</span>
-        </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <select aria-label="Môn" className={`${o} min-w-44`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
+            {MAU_MA_TRAN_CHUNG.map((m) => <option key={m.ma_mon} value={m.ma_mon}>{m.mon}</option>)}
+          </select>
+          <select aria-label="Kì kiểm tra" className={`${o} min-w-44`} value={ky} onChange={(e) => setKy(e.target.value as KyDung)}>
+            {DANH_SACH_KY.map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
+          </select>
+          <span className="text-sm text-slate-500">Lớp 4 · {tenMon} · {tenKy}</span>
+        </div>
       </div>
 
-      {/* 2 Chế độ tạo đề theo SPEC mục 7.1 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Chế độ A: Tạo đề mới */}
-        <Card className="border-blue-200/90 hover:shadow-md transition-all">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-blue-100 text-blue-700 rounded-lg">
-                  <FilePlus className="w-5 h-5" />
+      <div className="the-tke p-6 space-y-3">
+        <h2 className="font-semibold text-slate-900">Tiến độ của đề này</h2>
+        {dangTai && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Đang đọc trạng thái…</div>}
+        {tt?.loi && <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><TriangleAlert className="w-4 h-4 mt-0.5" />{tt.loi}</div>}
+        {tt && !tt.loi && (
+          <ul className="divide-y divide-slate-100">
+            {buoc.map((b) => (
+              <li key={b.so} className="py-3 flex flex-wrap items-center gap-3">
+                {b.xong ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" /> : <CircleDashed className="w-5 h-5 text-slate-400 shrink-0" />}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-slate-900">Bước {b.so}. {b.ten}</div>
+                  <div className="text-xs text-slate-500">{b.nhan}</div>
                 </div>
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Chế độ A – Tạo đề mới
-                </CardTitle>
-              </div>
-              <Badge variant="secondary" className="text-[11px]">
-                Quy trình chuẩn
-              </Badge>
-            </div>
-            <CardDescription>
-              Tạo đề mới từ ma trận, phạm vi YCCĐ/PPCT và câu hỏi trong ngân hàng
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ul className="space-y-2 text-xs text-slate-600">
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <span>1. Chọn Lớp 4, môn (Toán / Tiếng Việt), kỳ kiểm tra.</span>
+                {'khoa' in b && b.khoa
+                  ? <span className="text-xs text-slate-400">Chưa mở</span>
+                  : <Link href={b.href} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">{b.viec}</Link>}
               </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <span>2. Chọn phạm vi tuần/bài học theo phân phối chương trình.</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <span>3. Chọn ma trận chuẩn (Mức 1, Mức 2, Mức 3).</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <span>4. Chọn câu hỏi từ ngân hàng hoặc đề xuất nội dung.</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <span>5. Kiểm định độc lập (tổng điểm, số câu, đáp án) & lưu bản nháp.</span>
-              </li>
-            </ul>
-            <div className="pt-3 border-t border-slate-100">
-              <Link href="/test-builder/bai-doc" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700">
-                Chọn bài đọc cho đề Tiếng Việt
-              </Link>
-            </div>
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Sẵn sàng triển khai ở Giai đoạn 4</span>
-              <button
-                disabled
-                className="px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-xs font-semibold cursor-not-allowed"
-              >
-                Tạo đề mới (Giai đoạn 4)
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Chế độ B: Dùng lại đề trong kho */}
-        <Card className="border-slate-200 hover:shadow-md transition-all bg-slate-50/40">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
-                  <Copy className="w-5 h-5" />
-                </div>
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Chế độ B – Dùng lại đề trong kho
-                </CardTitle>
-              </div>
-              <Badge variant="warning" className="text-[11px]">
-                Sắp có
-              </Badge>
-            </div>
-            <CardDescription>
-              Tái sử dụng đề đã có trong kho đề kiểm tra dưới dạng bản sao độc lập
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ul className="space-y-2 text-xs text-slate-600">
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                <span>1. Tìm đề kiểm tra tương ứng trong kho đề trường / tổ.</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                <span>2. Tạo bản sao độc lập (Clone), tuyệt đối không ghi đè đề gốc.</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                <span>3. Thay thế câu hỏi tương đương theo đúng YCCĐ & Mức độ.</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                <span>4. Chạy kiểm định lại toàn bộ và lưu thành mã đề mới.</span>
-              </li>
-            </ul>
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Tạo bản sao độc lập – Không ghi đè</span>
-              <span className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-semibold">
-                Sắp có
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+            ))}
+          </ul>
+        )}
+        {tt && !tt.loi && (
+          <div className="pt-2">
+            <Link href={tiep.href} className={`${nutChinh} inline-flex items-center gap-2`}>{tiep.viec} <ArrowRight className="w-5 h-5" /></Link>
+          </div>
+        )}
       </div>
+
+      {maMon === 'TIENG_VIET' && (
+        <div className="the-tke p-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold text-slate-900 flex items-center gap-2"><BookOpenText className="w-5 h-5 text-blue-600" /> Bài đọc cho đề Tiếng Việt</div>
+            <p className="text-sm text-slate-600">Chọn bài đọc thành tiếng và đọc hiểu đã duyệt, đúng chủ đề và số tiếng.</p>
+          </div>
+          <Link href="/test-builder/bai-doc" className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700">Chọn bài đọc</Link>
+        </div>
+      )}
+
+      <p className="text-xs text-slate-500">Muốn sửa đề đã duyệt hoặc xem các phiên bản cũ, thầy vào <Link href="/tests" className="text-blue-700 underline">Bước 5: Duyệt đề &amp; kho đề</Link>.</p>
     </div>
   );
 }
