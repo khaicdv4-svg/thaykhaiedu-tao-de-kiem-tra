@@ -26,6 +26,8 @@ export interface BaiDocSua extends BaiDocCanKiem {
   ghiChu?: string[];
   /** Nhãn khi bài do AI chỉnh độ dài. */
   nhanAI?: string | null;
+  /** Tên file gốc khi bài được tách từ file tải lên. */
+  tenFile?: string;
 }
 
 const NHAN_LINK: Record<TrangThaiLink, { ten: string; mau: string }> = {
