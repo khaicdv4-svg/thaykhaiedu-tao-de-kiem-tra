@@ -5,7 +5,7 @@
  * đường kẻ dọc, phương án A–B / C–D hai bên, dòng chấm chừa chỗ làm bài. Chỉ để xem; xuất Word dùng cùng quy tắc.
  */
 import React, { useState } from 'react';
-import { NHAN_LUA_CHON, dapAnHienThi, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 
 const fmt = (x: number) => String(x).replace('.', ',');
 const dong = (t: string) => t.split(/\n+/).filter((x) => x.trim());
@@ -40,24 +40,35 @@ function LuoiY({ y, datTinh }: { y: { nhan: string; nd: string }[]; datTinh: boo
 
 function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
   const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
-  const lop = dong(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
+  const doan = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
+  const conLai = chiSoHinhChuaGan(c).map((i) => (c.hinh ?? [])[i]).filter((h) => h?.anh);
+  const manhHinh = (h: NonNullable<CauDe['hinh']>[number] | undefined, k: number) => h?.anh ? (
+    <figure key={k} className="text-center m-0 py-1">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={h.anh} alt={h.chuThich || h.ten} className="mx-auto max-h-[200px] object-contain" />
+      {h.chuThich.trim() && <figcaption className="text-[15px]">{h.chuThich}</figcaption>}
+    </figure>
+  ) : <div key={k} className="italic text-slate-400 border border-dashed border-slate-300 py-3 text-center">[Hình {doan[k]?.khung}: chưa có ảnh]</div>;
+  const nhanC = <b>{nhanCau(c)}{/^\d+$/.test(c.cau) ? '. ' : ': '}</b>;
   return (
     <div className="grid grid-cols-[84px_1fr] break-inside-avoid">
       <div className="pr-2 pt-1 border-r border-black">…/{fmt(c.diem)}đ</div>
       <div className="pl-3 pb-3 space-y-1.5 leading-[1.55]">
-        <div><b>{nhanCau(c)}{/^\d+$/.test(c.cau) ? '. ' : ': '}</b>{lop[0] ?? <i className="text-slate-400">(chưa có đề bài)</i>}</div>
-        {lop.slice(1).map((d, i) => <div key={i}>{d}</div>)}
-        {(c.hinh ?? []).length > 0 ? (
+        {doan.length === 0 && <div>{nhanC}<i className="text-slate-400">(chưa có đề bài)</i></div>}
+        {doan.map((d, k) => d.khung !== undefined
+          ? manhHinh((c.hinh ?? [])[d.khung - 1], k)
+          : <div key={k}>{k === 0 && nhanC}{d.chu}</div>)}
+        {conLai.length > 0 ? (
           <div className="flex flex-wrap items-end justify-around gap-3 py-1">
-            {(c.hinh ?? []).map((h, i) => (
-              <figure key={i} className="text-center m-0" style={{ maxWidth: `${Math.floor(96 / Math.min(4, (c.hinh ?? []).length))}%` }}>
+            {conLai.map((h, i) => (
+              <figure key={i} className="text-center m-0" style={{ maxWidth: `${Math.floor(96 / Math.min(4, conLai.length))}%` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={h.anh} alt={h.chuThich || h.ten} className="mx-auto max-h-[200px] object-contain" />
-                {h.chuThich.trim() && <figcaption className="text-[15px]">{h.chuThich}</figcaption>}
+                <img src={h!.anh} alt={h!.chuThich || h!.ten} className="mx-auto max-h-[200px] object-contain" />
+                {h!.chuThich.trim() && <figcaption className="text-[15px]">{h!.chuThich}</figcaption>}
               </figure>
             ))}
           </div>
-        ) : c.ghiChuHinh.trim() && <div className="italic">[{c.ghiChuHinh.trim()}]</div>}
+        ) : !(c.hinh ?? []).length && c.ghiChuHinh.trim() && <div className="italic">[{c.ghiChuHinh.trim()}]</div>}
         {c.dang === 'DS' ? (
           (c.yNho ?? c.luaChon.map((_, i) => String.fromCharCode(97 + i))).map((y, i) => (
             <div key={y} className="pl-3 flex justify-between gap-4"><span>{y}) {c.luaChon[i] ?? ''}</span><span className="shrink-0">Đ / S</span></div>

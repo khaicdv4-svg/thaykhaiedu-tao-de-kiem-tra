@@ -27,7 +27,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { NHAN_LUA_CHON, dapAnHienThi, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, nhanCau, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 
 export interface ThongTinDe {
@@ -206,13 +206,24 @@ function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean): Table {
 function noiDungCau(c: CauDe, inDam = false, maMon = ''): (Paragraph | Table)[] {
   const kq: (Paragraph | Table)[] = [];
   const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
-  const dongDau = (nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai).split(/\n+/).filter((x) => x.trim());
-  kq.push(
-    doan([tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true }), tr(dongDau[0] ?? '', { bold: inDam })], { dong: DAN_CAU }),
-    ...dongDau.slice(1).map((d) => doan([tr(d, { bold: inDam })], { dong: DAN_CAU })),
-  );
-  if ((c.hinh ?? []).length) kq.push(...hinhCau(c.hinh!));
-  else if (c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
+  const doanDau = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
+  const nhan = tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true });
+  let daNhan = false;
+  for (const d of doanDau) {
+    if (d.khung !== undefined) {
+      if (!daNhan) { kq.push(doan([nhan], { dong: DAN_CAU })); daNhan = true; }
+      const h = (c.hinh ?? [])[d.khung - 1];
+      if (h?.anh) kq.push(...hinhCau([h]));
+      else kq.push(doan([tr(`[Hình ${d.khung}: chưa có ảnh]`, { italics: true })], { dong: DAN_CAU }));
+    } else {
+      kq.push(doan(daNhan ? [tr(d.chu ?? '', { bold: inDam })] : [nhan, tr(d.chu ?? '', { bold: inDam })], { dong: DAN_CAU }));
+      daNhan = true;
+    }
+  }
+  if (!daNhan) kq.push(doan([nhan], { dong: DAN_CAU }));
+  const conLai = chiSoHinhChuaGan(c).map((i) => c.hinh![i]).filter((h) => h.anh);
+  if (conLai.length) kq.push(...hinhCau(conLai));
+  else if (!(c.hinh ?? []).length && c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
 
   if (c.dang === 'DS') {
     (c.yNho ?? c.luaChon.map((_, i) => String.fromCharCode(97 + i))).forEach((y, i) => {

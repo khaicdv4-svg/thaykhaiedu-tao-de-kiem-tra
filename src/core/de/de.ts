@@ -20,7 +20,7 @@ export const TRANG_THAI_CHI_DO_DUYET: TrangThaiDe[] = ['DA_DUYET', 'TRA_LAI'];
 
 export const NHAN_LUA_CHON = ['A', 'B', 'C', 'D'] as const;
 
-/** Hình đi kèm câu hỏi: ảnh đã thu nhỏ, chuyển đen trắng, lưu ngay trong đề dưới dạng data URL. */
+/** Hình đi kèm câu hỏi: ảnh đã thu nhỏ, chuyển đen trắng, lưu ngay trong đề dưới dạng data URL. `anh` rỗng là khung hình chờ ảnh. */
 export interface HinhCau {
   ten: string;
   /** Chú thích in dưới hình (ví dụ "Hình A"). Có thể để trống. */
@@ -28,6 +28,8 @@ export interface HinhCau {
   anh: string;
   rong: number;
   cao: number;
+  /** Mô tả thầy viết để AI vẽ hình (giữ lại để vẽ lại). */
+  moTa?: string;
 }
 
 export const TOI_DA_HINH_MOT_CAU = 6;
@@ -81,6 +83,60 @@ const lamTron = (x: number) => Math.round(x * 100) / 100;
 const chuanHoa = (s: string) => s.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
 
 export const NOI_DUNG_RONG: NoiDungCau = { deBai: '', luaChon: [], dapAn: '', huongDanCham: '', ghiChuHinh: '' };
+
+// ---------------------------------------------------------------------------
+// Khung hình trong đề bài: một dòng riêng "[Hình 1]" là vị trí chèn hình số 1
+// ---------------------------------------------------------------------------
+
+const KHUNG_CA_DONG = /^\s*\[Hình\s*(\d+)\]\s*$/i;
+
+export const nhanKhung = (so: number) => `[Hình ${so}]`;
+
+export function soKhungTrongDeBai(deBai: string): number[] {
+  return deBai.split(/\n/).map((d) => KHUNG_CA_DONG.exec(d)?.[1]).filter((x): x is string => !!x).map(Number);
+}
+
+/** Tách đề bài thành các đoạn chữ và vị trí khung hình (khung: số thứ tự 1, 2, 3…). */
+export function tachDeBaiTheoKhung(deBai: string): { chu?: string; khung?: number }[] {
+  return deBai.split(/\n/).map((d) => d.trim()).filter(Boolean).map((d) => {
+    const m = KHUNG_CA_DONG.exec(d);
+    return m ? { khung: Number(m[1]) } : { chu: d };
+  });
+}
+
+/** Hình chưa có chỗ trong đề bài (không có [Hình n] tương ứng): in thành một hàng sau đề bài. */
+export function chiSoHinhChuaGan(c: Pick<CauDe, 'deBai' | 'hinh'>): number[] {
+  const da = new Set(soKhungTrongDeBai(c.deBai));
+  return (c.hinh ?? []).map((_, i) => i).filter((i) => !da.has(i + 1));
+}
+
+/** Chèn dòng "[Hình n]" vào đề bài tại vị trí con trỏ (cuối đề nếu không rõ), luôn nằm trên dòng riêng. */
+export function chenKhungVaoDeBai(deBai: string, so: number, viTri?: number): string {
+  const p = viTri === undefined || viTri < 0 || viTri > deBai.length ? deBai.length : viTri;
+  const truoc = deBai.slice(0, p).replace(/[ \t]+$/, '');
+  const sau = deBai.slice(p).replace(/^[ \t]+/, '');
+  const dauXuong = truoc && !truoc.endsWith('\n') ? '\n' : '';
+  const cuoiXuong = sau && !sau.startsWith('\n') ? '\n' : '';
+  return `${truoc}${dauXuong}${nhanKhung(so)}${cuoiXuong}${sau}`;
+}
+
+/** Bỏ khung số `so` khỏi đề bài và đánh số lại các khung sau nó. */
+export function xoaKhungKhoiDeBai(deBai: string, so: number): string {
+  return deBai.split('\n').filter((d) => KHUNG_CA_DONG.exec(d)?.[1] !== String(so)).map((d) => {
+    const m = KHUNG_CA_DONG.exec(d);
+    return m && Number(m[1]) > so ? nhanKhung(Number(m[1]) - 1) : d;
+  }).join('\n');
+}
+
+/** Đổi chỗ khung a và b (số thứ tự từ 1) trong đề bài. */
+export function doiKhungTrongDeBai(deBai: string, a: number, b: number): string {
+  return deBai.split('\n').map((d) => {
+    const m = KHUNG_CA_DONG.exec(d);
+    if (!m) return d;
+    const n = Number(m[1]);
+    return n === a ? nhanKhung(b) : n === b ? nhanKhung(a) : d;
+  }).join('\n');
+}
 
 export function nhanCau(c: Pick<CauDe, 'cau'>): string {
   return /^\d+$/.test(c.cau) ? `Câu ${c.cau}` : c.cau;
@@ -203,7 +259,9 @@ function kiemDinhMotCau(c: CauDe): string[] {
   if (!c.deBai.trim()) loi.push(`${t}: chưa có đề bài.`);
   const hinh = c.hinh ?? [];
   if (hinh.length > TOI_DA_HINH_MOT_CAU) loi.push(`${t}: tối đa ${TOI_DA_HINH_MOT_CAU} hình mỗi câu.`);
-  if (hinh.some((h) => !DAU_ANH.test(h.anh) || h.anh.length > TOI_DA_KY_TU_MOT_HINH)) loi.push(`${t}: có hình không đúng định dạng hoặc quá nặng. Thêm lại hình (PNG hoặc JPG).`);
+  hinh.forEach((h, i) => { if (!h.anh) loi.push(`${t}: khung hình ${i + 1} chưa có ảnh.`); });
+  if (hinh.some((h) => h.anh && (!DAU_ANH.test(h.anh) || h.anh.length > TOI_DA_KY_TU_MOT_HINH))) loi.push(`${t}: có hình không đúng định dạng hoặc quá nặng. Thêm lại hình (PNG hoặc JPG).`);
+  for (const so of new Set(soKhungTrongDeBai(c.deBai))) if (so < 1 || so > hinh.length) loi.push(`${t}: đề bài có [Hình ${so}] nhưng câu chưa có khung hình số ${so}.`);
 
   if (c.dang === 'NLC') {
     if (c.luaChon.length !== 4 || c.luaChon.some((x) => !x.trim())) loi.push(`${t}: cần đủ 4 phương án A, B, C, D.`);

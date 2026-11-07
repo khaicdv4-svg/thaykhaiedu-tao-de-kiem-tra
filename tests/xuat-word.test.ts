@@ -105,4 +105,15 @@ describe('Thông báo kiểm định theo thứ tự câu', () => {
     expect(so).toEqual([...so].sort((a, b) => a - b));
     expect(kq.loi.some((l) => l.includes('1.5 điểm'))).toBe(false);
   });
+
+  it('hình đặt đúng chỗ [Hình n] và khung trống không làm hỏng tệp', async () => {
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const d2 = { ...de, cau: de.cau.map((c, i) => (i === 0 ? { ...c, deBai: 'Quan sát hình:\n[Hình 1]\nCó mấy góc?\n[Hình 2]', hinh: [{ ten: 'a', chuThich: 'Hình A', anh: png, rong: 1, cao: 1 }, { ten: '', chuThich: '', anh: '', rong: 0, cao: 0 }] } : c)) };
+    const buf = await Packer.toBuffer(dungTaiLieuDe(tt, d2));
+    const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+    expect(xml).toContain('Quan sát hình:');
+    expect(xml).toContain('Hình A');
+    expect(xml).toContain('[Hình 2: chưa có ảnh]');
+    expect(xml).not.toContain('[Hình 1]');
+  });
 });
