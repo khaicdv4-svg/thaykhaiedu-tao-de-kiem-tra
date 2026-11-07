@@ -32,7 +32,13 @@ export async function aiTimNguonChoBai(bai: BaiDocSua): Promise<KetQuaTimNguon> 
     body: JSON.stringify({ tieuDe: bai.tieuDe, noiDung: bai.noiDung, tacGia: bai.tacGia }),
   }).then((x) => x.json());
   if (r.error) return { bai, daTim: false, thongBao: r.error };
-  if (!r.daTimThay) return { bai, daTim: false, thongBao: r.ghiChu || 'AI không tìm thấy nguồn.' };
+  if (!r.daTimThay) {
+    const cd = r.chanDoan as { daTimWeb: boolean; soLanTim: number; lyDoDung: string | null; giay: number; doDaiTraLoi: number; trichDau: string } | undefined;
+    const chiTiet = cd
+      ? ` [Chi tiết: ${cd.daTimWeb ? `AI đã tìm web ${cd.soLanTim} lần` : 'cổng không báo có tìm web'}, ${cd.giay} giây${cd.lyDoDung ? `, dừng vì ${cd.lyDoDung}` : ''}${cd.trichDau && cd.doDaiTraLoi < 400 ? `. AI trả lời: ${cd.trichDau}` : ''}]`
+      : '';
+    return { bai, daTim: false, thongBao: `${r.ghiChu || 'AI không tìm thấy nguồn.'}${chiTiet}` };
+  }
 
   const coLink = !!r.nguonUrl && laDuongDanWeb(r.nguonUrl);
   const tacGiaKhac = bai.tacGia.trim() && r.tacGia && bai.tacGia.trim().toLowerCase() !== String(r.tacGia).toLowerCase();

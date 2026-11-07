@@ -124,6 +124,22 @@ describe('Gọi model', () => {
     expect(JSON.parse((f.mock.calls[1][1] as RequestInit).body as string).tools).toBeUndefined();
     expect(kq.daTimWeb).toBe(false);
   });
+  it('tìm web bị cổng dừng giữa chừng (pause_turn) thì gửi lại phần đã có để model làm tiếp', async () => {
+    const f = vi.fn()
+      .mockResolvedValueOnce(phanHoi(200, { stop_reason: 'pause_turn', content: [{ type: 'server_tool_use', name: 'web_search' }, { type: 'web_search_tool_result' }] }))
+      .mockResolvedValueOnce(phanHoi(200, { stop_reason: 'end_turn', content: [{ type: 'text', text: '{"daTimThay": true}' }], usage: { output_tokens: 9 } }));
+    const kq = await goiModel(SONNET, 'k', { noiDung: 'x', timWeb: true }, f as unknown as typeof fetch);
+    expect(f).toHaveBeenCalledTimes(2);
+    const body2 = JSON.parse((f.mock.calls[1][1] as RequestInit).body as string);
+    expect(body2.messages).toHaveLength(2);
+    expect(body2.messages[1].role).toBe('assistant');
+    expect(kq).toMatchObject({ traLoi: '{"daTimThay": true}', daTimWeb: true, lyDoDung: 'end_turn', soLanTim: 1 });
+  });
+  it('báo lý do dừng khi câu trả lời bị cắt vì hết dung lượng', async () => {
+    const f = vi.fn(async () => phanHoi(200, { stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"daTimThay": tr' }] }));
+    const kq = await goiModel(SONNET, 'k', { noiDung: 'x' }, f as unknown as typeof fetch);
+    expect(kq.lyDoDung).toBe('max_tokens');
+  });
   it('chuẩn OpenAI: gọi /chat/completions với Bearer', async () => {
     const f = vi.fn(async () => phanHoi(200, { choices: [{ message: { content: 'OK' } }] }));
     const kq = await thuModel(GPT, 'khoa-thu', f as unknown as typeof fetch);

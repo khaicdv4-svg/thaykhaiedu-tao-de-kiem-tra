@@ -24,16 +24,28 @@ export async function POST(req: NextRequest) {
     const kq = await goiAITheoViec('TIM_NGUON', {
       heThong: heThongCoQuyDinhRieng(HE_THONG_TIM_NGUON, boNao),
       noiDung: loiNhacTimNguon({ tieuDe: tieuDe ?? '', tacGia, noiDung }),
-      toiDaToken: 2000,
+      toiDaToken: 8000,
       timWeb: true,
       choToiDa: 240_000,
     });
-    if (!kq.daTimWeb) {
-      return NextResponse.json({ daTimThay: false, ghiChu: 'Model hiện tại không tìm được web nên không tìm nguồn được. Thử đổi model ở Cài đặt AI.', model: tt.model });
-    }
+    // Thông tin giúp biết vì sao không ra kết quả (hiện cho người dùng khi không tìm thấy)
+    const chanDoan = {
+      daTimWeb: kq.daTimWeb,
+      soLanTim: kq.soLanTim ?? 0,
+      lyDoDung: kq.lyDoDung ?? null,
+      tokenRa: kq.tokenRa ?? null,
+      giay: Math.round(kq.thoiGianMs / 1000),
+      doDaiTraLoi: kq.traLoi.length,
+      trichDau: kq.traLoi.trim().slice(0, 300),
+    };
     const n = docNguonAI(kq.traLoi);
+    // Cổng không báo đã tìm web: vẫn đọc câu trả lời (có thể cổng không gửi lại dấu vết tìm kiếm), nhưng ghi chú rõ
+    const ghiChuKhongWeb = kq.daTimWeb ? '' : 'Không xác nhận được AI đã tìm web, nguồn này có thể là AI nhớ lại: cần đối chiếu.';
     if (!n || !n.daTimThay) {
-      return NextResponse.json({ daTimThay: false, ghiChu: n?.ghiChu || 'AI không tìm thấy nguồn của bài này.', model: tt.model });
+      const lyDo = !n
+        ? `AI trả lời không đúng dạng${kq.lyDoDung === 'max_tokens' ? ' (bị cắt giữa chừng vì hết dung lượng trả lời)' : ''}.`
+        : n.ghiChu || 'AI không tìm thấy nguồn của bài này.';
+      return NextResponse.json({ daTimThay: false, ghiChu: `${lyDo} ${ghiChuKhongWeb}`.trim(), chanDoan, model: tt.model });
     }
 
     // Link AI đưa ra phải mở được và có nội dung bài
@@ -55,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
     // Không còn link tốt và không có chữ nguồn thì coi như chưa tìm được
     if (!nguonUrl && !n.nguon && !n.tacGia) {
-      return NextResponse.json({ daTimThay: false, ghiChu: ghiChuLink || 'AI không tìm thấy nguồn kiểm chứng được.', model: tt.model });
+      return NextResponse.json({ daTimThay: false, ghiChu: ghiChuLink || 'AI không tìm thấy nguồn kiểm chứng được.', chanDoan, model: tt.model });
     }
     return NextResponse.json({
       daTimThay: true,
@@ -63,8 +75,9 @@ export async function POST(req: NextRequest) {
       nguon: n.nguon,
       nguonUrl,
       trangThaiLink,
-      doTinCay: nguonUrl ? 'CAO' : n.doTinCay,
-      ghiChu: [n.ghiChu, ghiChuLink, !nguonUrl && n.nguon ? 'Nguồn sách in do AI tìm, máy chưa kiểm chứng được: cần đối chiếu sách.' : ''].filter(Boolean).join(' '),
+      doTinCay: nguonUrl ? 'CAO' : kq.daTimWeb ? n.doTinCay : 'THAP',
+      ghiChu: [n.ghiChu, ghiChuLink, ghiChuKhongWeb, !nguonUrl && n.nguon ? 'Nguồn sách in do AI tìm, máy chưa kiểm chứng được: cần đối chiếu sách.' : ''].filter(Boolean).join(' '),
+      chanDoan,
       model: tt.model,
     });
   } catch (err) {

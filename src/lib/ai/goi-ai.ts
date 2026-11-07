@@ -23,11 +23,15 @@ export interface KetQuaAI {
   tokenVao?: number;
   tokenRa?: number;
   thoiGianMs: number;
+  /** Lý do model dừng (chuẩn Anthropic): end_turn, max_tokens, pause_turn... Giúp biết vì sao câu trả lời cụt. */
+  lyDoDung?: string;
+  /** Số lần model đã tìm web. */
+  soLanTim?: number;
 }
 
 type HamFetch = typeof fetch;
 
-const CONG_CU_TIM_WEB = { type: 'web_search_20250305', name: 'web_search', max_uses: 5 };
+const CONG_CU_TIM_WEB = { type: 'web_search_20250305', name: 'web_search', max_uses: 8 };
 
 async function guiJson(f: HamFetch, url: string, headers: Record<string, string>, body: unknown, choToiDa: number) {
   const ctl = new AbortController();
@@ -63,7 +67,7 @@ function moTaLoi(status: number, json: any, chu: string): string {
   return `Cổng AI báo lỗi ${status}. ${tin}`.trim();
 }
 
-async function goiAnthropic(f: HamFetch, m: ModelAI, khoa: string, y: YeuCauAI, timWeb: boolean) {
+async function goiAnthropic(f: HamFetch, m: ModelAI, khoa: string, y: YeuCauAI, timWeb: boolean, tiepTuc: unknown[] = [], choToiDa = y.choToiDa ?? 120_000) {
   const body: Record<string, unknown> = {
     model: m.modelId,
     max_tokens: y.toiDaToken ?? 4000,
@@ -72,7 +76,7 @@ async function goiAnthropic(f: HamFetch, m: ModelAI, khoa: string, y: YeuCauAI, 
       content: y.anh?.length
         ? [...y.anh.map((a) => ({ type: 'image', source: { type: 'base64', media_type: a.loai, data: a.base64 } })), { type: 'text', text: y.noiDung }]
         : y.noiDung,
-    }],
+    }, ...tiepTuc],
   };
   if (y.heThong) body.system = y.heThong;
   if (timWeb) body.tools = [CONG_CU_TIM_WEB];
@@ -81,7 +85,7 @@ async function goiAnthropic(f: HamFetch, m: ModelAI, khoa: string, y: YeuCauAI, 
     `${m.diaChiCong.replace(/\/+$/, '')}/v1/messages`,
     { 'x-api-key': khoa, 'anthropic-version': '2023-06-01' },
     body,
-    y.choToiDa ?? 120_000,
+    choToiDa,
   );
 }
 
@@ -127,7 +131,20 @@ export async function goiModel(m: ModelAI, khoa: string, y: YeuCauAI, f: HamFetc
     r = await goiAnthropic(f, m, khoa, y, false);
   }
   if (!r.ok) throw new Error(moTaLoi(r.status, r.json, r.chu));
-  const khoi = Array.isArray(r.json?.content) ? r.json.content : [];
+
+  // Tìm web lâu thì cổng dừng giữa chừng (pause_turn): gửi lại phần đã có để model làm tiếp, tối đa 4 lần
+  const khoiTruoc: any[] = [];
+  let vong = 0;
+  while (daTimWeb && r.json?.stop_reason === 'pause_turn' && vong < 4) {
+    const conLai = (y.choToiDa ?? 120_000) - (Date.now() - batDau);
+    if (conLai < 10_000) break;
+    khoiTruoc.push(...(Array.isArray(r.json?.content) ? r.json.content : []));
+    vong++;
+    r = await goiAnthropic(f, m, khoa, y, true, [{ role: 'assistant', content: khoiTruoc }], conLai);
+    if (!r.ok) throw new Error(moTaLoi(r.status, r.json, r.chu));
+  }
+
+  const khoi = [...khoiTruoc, ...(Array.isArray(r.json?.content) ? r.json.content : [])];
   const traLoi = khoi.filter((k: any) => k?.type === 'text').map((k: any) => k.text).join('');
   if (!traLoi) throw new Error('Model không trả lời chữ nào.');
   const coTimThat = khoi.some((k: any) => k?.type === 'web_search_tool_result' || k?.type === 'server_tool_use');
@@ -137,6 +154,8 @@ export async function goiModel(m: ModelAI, khoa: string, y: YeuCauAI, f: HamFetc
     tokenVao: r.json?.usage?.input_tokens,
     tokenRa: r.json?.usage?.output_tokens,
     thoiGianMs: Date.now() - batDau,
+    lyDoDung: typeof r.json?.stop_reason === 'string' ? r.json.stop_reason : undefined,
+    soLanTim: khoi.filter((k: any) => k?.type === 'server_tool_use').length,
   };
 }
 
