@@ -18,7 +18,7 @@ import { demTieng } from '@/core/de/tieng-viet';
 import { xepCauTheoSo } from '@/core/de/xuat-word';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 
-interface DongKho { maMon: string; ky: string; trangThai: TrangThaiDe; phienBanDacTa: number; capNhatLuc: string; duyetLuc: string | null; phienBanDaDuyetMoiNhat: number | null }
+interface DongKho { maMon: string; ky: string; trangThai: TrangThaiDe; phienBanDacTa: number; capNhatLuc: string; duyetLuc: string | null; phienBanDaDuyetMoiNhat: number | null; nguoiTao: string | null; duocXoa: boolean }
 interface BanDeApi { id: string; trangThai: TrangThaiDe; dacTaId: string; phienBanDacTa: number; duLieu: DeKiemTra; duyetLuc: string | null; ghiChuDuyet: string | null }
 interface PhienBanDaDuyet { phienBan: number; phienBanDacTa: number; duyetLuc: string; ghiChu: string | null }
 
@@ -72,6 +72,16 @@ export default function KhoDePage() {
     else { setDs(r.j.de ?? []); setLoiTai(null); }
     setDangTai(false);
   }, []);
+
+  const xoa = async (d: DongKho) => {
+    const ghi = d.phienBanDaDuyetMoiNhat ? '\n(Các phiên bản đã duyệt vẫn được giữ lại trong kho.)' : '';
+    if (!confirm(`Xóa đề ${tenMon(d.maMon)} – ${tenKy(d.ky)}? Không khôi phục được.${ghi}`)) return;
+    const r = await goiJson<object>(`/api/de-kiem-tra?mon=${d.maMon}&ky=${d.ky}`, { method: 'DELETE' });
+    if (!r.ok) { setThongBao(`Chưa xóa được: ${r.j.error}`); return; }
+    if (chon?.mon === d.maMon && chon.ky === d.ky) setChon(null);
+    setThongBao('Đã xóa đề.');
+    await napDs();
+  };
 
   const mo = useCallback(async (mon: string, ky: string) => {
     setChon({ mon, ky });
@@ -165,7 +175,7 @@ export default function KhoDePage() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50 text-left">
-                {['Môn', 'Kì', 'Trạng thái', 'Đặc tả', 'Cập nhật', 'Bản đã duyệt', ''].map((h) => <th key={h} className="border border-slate-200 px-2 py-1.5 font-semibold">{h}</th>)}
+                {['Môn', 'Kì', 'Trạng thái', 'Người tạo', 'Đặc tả', 'Cập nhật', 'Bản đã duyệt', ''].map((h) => <th key={h} className="border border-slate-200 px-2 py-1.5 font-semibold">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -174,10 +184,11 @@ export default function KhoDePage() {
                   <td className="border border-slate-200 px-2 py-1.5">{tenMon(d.maMon)}</td>
                   <td className="border border-slate-200 px-2 py-1.5">{tenKy(d.ky)}</td>
                   <td className="border border-slate-200 px-2 py-1.5"><span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${NHAN[d.trangThai].mau}`}>{NHAN[d.trangThai].ten}</span></td>
+                  <td className="border border-slate-200 px-2 py-1.5">{d.nguoiTao ?? '—'}</td>
                   <td className="border border-slate-200 px-2 py-1.5 text-center">v{d.phienBanDacTa}</td>
                   <td className="border border-slate-200 px-2 py-1.5">{ngay(d.capNhatLuc)}</td>
                   <td className="border border-slate-200 px-2 py-1.5 text-center">{d.phienBanDaDuyetMoiNhat ? `v${d.phienBanDaDuyetMoiNhat}` : '—'}</td>
-                  <td className="border border-slate-200 px-2 py-1.5"><button type="button" className="text-blue-700 underline" onClick={() => void mo(d.maMon, d.ky)}>Xem</button></td>
+                  <td className="border border-slate-200 px-2 py-1.5"><button type="button" className="text-blue-700 underline" onClick={() => void mo(d.maMon, d.ky)}>Xem</button>{d.duocXoa && <button type="button" className="ml-3 text-red-700 underline" onClick={() => void xoa(d)}>Xóa</button>}</td>
                 </tr>
               ))}
             </tbody>

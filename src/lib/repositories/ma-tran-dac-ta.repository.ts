@@ -311,7 +311,6 @@ async function layDacTaDeKeThua(supabase: any, orgId: string, maMon: string, ky:
 export async function luuDe(maMon: string, ky: string, dacTaId: string, de: DeKiemTra, trangThai: TrangThaiDe): Promise<{ ban: BanDe; kiemDinh: KetQuaKiemDinhDe }> {
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId, role } = await layNguoiDung();
-  canQuyenGhi(role);
   if (de.ma_mon !== maMon || de.ky_kiem_tra !== ky) throw new Error('Đề không đúng môn hoặc kì đã chọn.');
   if (TRANG_THAI_CHI_DO_DUYET.includes(trangThai)) throw new Error('Trạng thái đã duyệt hoặc trả lại chỉ đặt qua thao tác duyệt đề.');
   const { chon, moiNhat } = await layDacTaDeKeThua(supabase, orgId, maMon, ky, dacTaId);
@@ -323,7 +322,10 @@ export async function luuDe(maMon: string, ky: string, dacTaId: string, de: DeKi
   if (trangThai === 'SAN_SANG_DUYET' && !kiemDinh.hopLe) throw new Error(`Đề còn lỗi, chưa chuyển sang duyệt được: ${kiemDinh.loi[0]}`);
   if (trangThai === 'CAN_KIEM_TRA' && !kiemDinh.hopLe) tt = 'CO_LOI';
 
-  const { data: cu } = await supabase.from('de_kiem_tra').select('id, trang_thai, du_lieu, dac_ta_id').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  const { data: cu } = await supabase.from('de_kiem_tra').select('id, trang_thai, du_lieu, dac_ta_id, created_by').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  // Giáo viên chỉ sửa đề do mình tạo; đề của người khác thì chỉ tổ trưởng, tổ phó, ban giám hiệu, quản trị sửa được
+  if (cu && !VAI_TRO_GHI.includes(role) && cu.created_by !== user.id) throw new Error('Chỉ tổ trưởng, tổ phó, ban giám hiệu hoặc người đã tạo đề này mới sửa được. Bạn chỉ được xem.');
+  if (!VAI_TRO_GHI.includes(role) && (tt === 'DA_DUYET' || tt === 'TRA_LAI')) throw new Error('Giáo viên không được duyệt hoặc trả lại đề.');
   // Đề đã duyệt: lưu lại nội dung y nguyên thì giữ "Đã duyệt"; có sửa thì phải kiểm tra và duyệt lại
   let xoaDuyet = false;
   if (cu && (cu.trang_thai === 'DA_DUYET' || cu.trang_thai === 'TRA_LAI')) {
@@ -351,19 +353,32 @@ export interface DongKhoDe {
   capNhatLuc: string;
   duyetLuc: string | null;
   phienBanDaDuyetMoiNhat: number | null;
+  /** Tên người tạo đề (nếu đọc được). */
+  nguoiTao: string | null;
+  /** Tài khoản đang đăng nhập có được xóa đề này không (quản lý: mọi đề; giáo viên: đề mình tạo, chưa duyệt). */
+  duocXoa: boolean;
 }
 
 /** Danh sách đề của trường (không kèm nội dung câu hỏi) và phiên bản đã duyệt mới nhất của từng đề. */
 export async function danhSachDe(): Promise<DongKhoDe[]> {
-  const { supabase, orgId } = await layNguoiDung();
-  const { data, error } = await supabase.from('de_kiem_tra').select('ma_mon, ky_kiem_tra, trang_thai, phien_ban_dac_ta, updated_at, duyet_luc').eq('organization_id', orgId).eq('khoi', KHOI).order('updated_at', { ascending: false });
+  const { supabase, user, orgId, role } = await layNguoiDung();
+  const { data, error } = await supabase.from('de_kiem_tra').select('ma_mon, ky_kiem_tra, trang_thai, phien_ban_dac_ta, updated_at, duyet_luc, created_by').eq('organization_id', orgId).eq('khoi', KHOI).order('updated_at', { ascending: false });
   if (error) throw loiDe('Không đọc được kho đề', error.message);
   const { data: dd } = await supabase.from('de_da_duyet').select('ma_mon, ky_kiem_tra, phien_ban').eq('organization_id', orgId).eq('khoi', KHOI).order('phien_ban', { ascending: false });
   const moiNhat = new Map<string, number>();
   for (const r of (dd ?? []) as any[]) { const k = `${r.ma_mon}|${r.ky_kiem_tra}`; if (!moiNhat.has(k)) moiNhat.set(k, r.phien_ban); }
+  const ids = [...new Set(((data ?? []) as any[]).map((r) => r.created_by).filter(Boolean))] as string[];
+  const ten = new Map<string, string>();
+  if (ids.length) {
+    const { data: ps } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+    for (const p of (ps ?? []) as any[]) ten.set(p.id, p.full_name);
+  }
+  const quanLy = VAI_TRO_GHI.includes(role);
   return ((data ?? []) as any[]).map((r) => ({
     maMon: r.ma_mon, ky: r.ky_kiem_tra, trangThai: r.trang_thai, phienBanDacTa: r.phien_ban_dac_ta, capNhatLuc: r.updated_at, duyetLuc: r.duyet_luc ?? null,
     phienBanDaDuyetMoiNhat: moiNhat.get(`${r.ma_mon}|${r.ky_kiem_tra}`) ?? null,
+    nguoiTao: r.created_by ? ten.get(r.created_by) ?? null : null,
+    duocXoa: quanLy || (r.created_by === user.id && r.trang_thai !== 'DA_DUYET'),
   }));
 }
 
@@ -429,8 +444,7 @@ export async function saoChepDe(maMon: string, kyNguon: string, kyDich: string):
   kiemMonKy(maMon, kyNguon);
   kiemMonKy(maMon, kyDich);
   if (kyNguon === kyDich) throw new Error('Kì đích phải khác kì của đề nguồn.');
-  const { supabase, orgId, role } = await layNguoiDung();
-  canQuyenGhi(role);
+  const { supabase, orgId } = await layNguoiDung();
   const { data: dd, error: e1 } = await supabase.from('de_da_duyet').select('du_lieu').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', kyNguon).order('phien_ban', { ascending: false }).limit(1);
   if (e1) throw loiDe('Không đọc được đề nguồn', e1.message);
   const nguon = (dd ?? [])[0]?.du_lieu as DeKiemTra | undefined;
@@ -442,4 +456,24 @@ export async function saoChepDe(maMon: string, kyNguon: string, kyDich: string):
   const { de, daChep, trong } = saoChepDeSangKyMoi(moiNhat.duLieu, moiNhat.phienBan, nguon);
   const { ban } = await luuDe(maMon, kyDich, moiNhat.id, de, 'BAN_NHAP');
   return { ban, daChep: daChep.length, trong: trong.length };
+}
+
+
+/**
+ * Xóa đề đang soạn của môn, kì. Tổ trưởng, tổ phó, ban giám hiệu, quản trị xóa được mọi đề trong trường;
+ * giáo viên chỉ xóa đề do mình tạo và chưa được duyệt. Các phiên bản đã duyệt (de_da_duyet) luôn được giữ lại.
+ */
+export async function xoaDe(maMon: string, ky: string): Promise<void> {
+  kiemMonKy(maMon, ky);
+  const { supabase, user, orgId, role } = await layNguoiDung();
+  const { data: cu, error: e0 } = await supabase.from('de_kiem_tra').select('id, trang_thai, created_by').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).maybeSingle();
+  if (e0) throw loiDe('Không đọc được đề kiểm tra', e0.message);
+  if (!cu) throw new Error('Không tìm thấy đề để xóa.');
+  if (!VAI_TRO_GHI.includes(role)) {
+    if (cu.created_by !== user.id) throw new Error('Bạn chỉ xóa được đề do chính mình tạo.');
+    if (cu.trang_thai === 'DA_DUYET') throw new Error('Đề đã được duyệt, giáo viên không xóa được. Nhờ tổ trưởng xử lý.');
+  }
+  const { data, error } = await supabase.from('de_kiem_tra').delete().eq('id', cu.id).select('id');
+  if (error) throw loiDe('Không xóa được đề', error.message);
+  if (!data?.length) throw new Error('Không xóa được đề (không đủ quyền).');
 }
