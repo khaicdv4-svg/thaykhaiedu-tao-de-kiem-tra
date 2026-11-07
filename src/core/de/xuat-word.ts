@@ -26,7 +26,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { NHAN_LUA_CHON, nhanCau, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, dapAnHienThi, nhanCau, soDongTraLoi, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 
 export interface ThongTinDe {
@@ -41,6 +41,7 @@ export interface ThongTinDe {
 const FONT = 'Times New Roman';
 const CO = 26; // 13 pt
 const DAN_DONG = 312; // 1,3 dòng
+const DAN_CAU = 348; // 1,45 dòng cho nội dung câu hỏi: thoáng hơn để dễ đọc
 const LE = 567; // 1 cm
 const RONG_TRANG = 11906 - LE * 2;
 const RONG_DIEM = 1100;
@@ -54,11 +55,11 @@ const CAC_VIEN_KHONG: CacVien = { top: KHONG_VIEN, bottom: KHONG_VIEN, left: KHO
 const fmtDiem = (x: number) => String(x).replace('.', ',');
 const tr = (text: string, o: { bold?: boolean; italics?: boolean; size?: number } = {}) => new TextRun({ text, font: FONT, size: o.size ?? CO, bold: o.bold, italics: o.italics });
 
-function doan(runs: TextRun[] | string, o: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; truoc?: number; sau?: number; thut?: number; giuDong?: boolean } = {}) {
+function doan(runs: TextRun[] | string, o: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; truoc?: number; sau?: number; thut?: number; giuDong?: boolean; dong?: number } = {}) {
   return new Paragraph({
     children: typeof runs === 'string' ? [tr(runs)] : runs,
     alignment: o.align,
-    spacing: { line: DAN_DONG, before: o.truoc ?? 0, after: o.sau ?? 0 },
+    spacing: { line: o.dong ?? DAN_DONG, before: o.truoc ?? 0, after: o.sau ?? 0 },
     indent: o.thut ? { left: o.thut } : undefined,
     keepLines: true,
     keepNext: o.giuDong,
@@ -66,11 +67,11 @@ function doan(runs: TextRun[] | string, o: { align?: (typeof AlignmentType)[keyo
 }
 
 /** Dòng chấm chạy hết bề rộng cột nội dung. */
-function dongCham(rong = RONG_NOI_DUNG - 200) {
+function dongCham(rong = RONG_NOI_DUNG - 200, dong = 360) {
   return new Paragraph({
     children: [new TextRun({ text: '\t', font: FONT, size: CO })],
     tabStops: [{ type: TabStopType.RIGHT, position: rong, leader: LeaderType.DOT }],
-    spacing: { line: 360, before: 0, after: 0 },
+    spacing: { line: dong, before: 0, after: 0 },
   });
 }
 
@@ -136,17 +137,30 @@ function dauDe(t: ThongTinDe, tc: { tenMon?: string; phut?: number | null } = {}
 // Câu hỏi
 // ---------------------------------------------------------------------------
 
-function soDongCham(c: CauDe): number {
-  if (c.dang === 'VIET') return 18;
-  return Math.max(2, Math.min(6, Math.ceil(c.diem * 3)));
+/** Bốn phương án A–D xếp hai cột: A, B một hàng; C, D hàng kế. Phương án dài thì mỗi phương án một dòng. */
+function phuongAn(c: CauDe): (Paragraph | Table)[] {
+  const ds = NHAN_LUA_CHON.map((n, i) => ({ n, v: (c.luaChon[i] ?? '').trim() })).filter((x) => x.v);
+  if (!ds.length) return [];
+  const rong = Math.floor((RONG_NOI_DUNG - 300) / 2);
+  const dai = ds.some((x) => x.v.length > 34);
+  if (dai || ds.length < 4) return ds.map((x) => doan(`${x.n}. ${x.v}`, { thut: 300, dong: DAN_CAU, truoc: 20 }));
+  const o = (x: { n: string; v: string }) => o2([doan([tr(`${x.n}. `, { bold: true }), tr(x.v)], { dong: DAN_CAU })], rong);
+  const hang = (a: { n: string; v: string }, b: { n: string; v: string }) => new TableRow({ cantSplit: true, children: [o(a), o(b)] });
+  return [new Table({
+    width: { size: rong * 2, type: WidthType.DXA },
+    columnWidths: [rong, rong],
+    layout: TableLayoutType.FIXED,
+    indent: { size: 300, type: WidthType.DXA },
+    rows: [hang(ds[0], ds[1]), hang(ds[2], ds[3])],
+  })];
 }
 
-function noiDungCau(c: CauDe, inDam = false): Paragraph[] {
-  const kq: Paragraph[] = [];
+function noiDungCau(c: CauDe, inDam = false, maMon = ''): (Paragraph | Table)[] {
+  const kq: (Paragraph | Table)[] = [];
   const dongDau = c.deBai.split(/\n+/).filter((x) => x.trim());
   kq.push(
-    doan([tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true }), tr(dongDau[0] ?? '', { bold: inDam })]),
-    ...dongDau.slice(1).map((d) => doan([tr(d, { bold: inDam })])),
+    doan([tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true }), tr(dongDau[0] ?? '', { bold: inDam })], { dong: DAN_CAU }),
+    ...dongDau.slice(1).map((d) => doan([tr(d, { bold: inDam })], { dong: DAN_CAU })),
   );
   if (c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
 
@@ -162,21 +176,22 @@ function noiDungCau(c: CauDe, inDam = false): Paragraph[] {
     });
   } else if (c.hinhThuc === 'TN') {
     const coLuaChon = c.luaChon.some((x) => x.trim());
-    if (coLuaChon) NHAN_LUA_CHON.forEach((n, i) => { if (c.luaChon[i]?.trim()) kq.push(doan(`${n}. ${c.luaChon[i]}`, { thut: 300 })); });
+    if (coLuaChon) kq.push(...phuongAn(c));
     else if (c.dang !== 'NLC') kq.push(dongCham());
   } else {
-    for (let i = 0; i < soDongCham(c); i++) kq.push(dongCham());
+    const dong = maMon === 'TOAN' ? 420 : 380;
+    for (let i = 0; i < soDongTraLoi(c, maMon); i++) kq.push(dongCham(RONG_NOI_DUNG - 200, dong));
   }
   return kq;
 }
 
 /** Mỗi câu một hàng: điểm bên trái, nội dung bên phải, một đường kẻ dọc giữa hai cột, hàng không bị cắt ngang trang. */
-function bangCau(cau: CauDe[], inDam = false): Table {
+function bangCau(cau: CauDe[], inDam = false, maMon = ''): Table {
   const rows = cau.map((c) => new TableRow({
     cantSplit: true,
     children: [
       o2([doan([tr(`…/${fmtDiem(c.diem)}đ`)], { align: AlignmentType.LEFT })], RONG_DIEM, { ...CAC_VIEN_KHONG, right: VIEN_DEN }),
-      o2(noiDungCau(c, inDam), RONG_NOI_DUNG),
+      o2(noiDungCau(c, inDam, maMon) as Paragraph[], RONG_NOI_DUNG),
     ],
   }));
   return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: [RONG_DIEM, RONG_NOI_DUNG], layout: TableLayoutType.FIXED, rows });
@@ -185,16 +200,6 @@ function bangCau(cau: CauDe[], inDam = false): Table {
 // ---------------------------------------------------------------------------
 // Hướng dẫn chấm
 // ---------------------------------------------------------------------------
-
-function dapAnHienThi(c: CauDe): string {
-  if (c.dang === 'NLC') {
-    const n = c.dapAn.trim().toUpperCase();
-    const i = (NHAN_LUA_CHON as readonly string[]).indexOf(n);
-    return i >= 0 && c.luaChon[i]?.trim() ? `${n}. ${c.luaChon[i]}` : n;
-  }
-  if (c.dang === 'DS') return Array.from(c.dapAn.replace(/[\s,;]/g, '').toUpperCase()).map((k, i) => `${(c.yNho ?? [])[i] ?? String.fromCharCode(97 + i)}) ${k === 'Đ' ? 'Đúng' : 'Sai'}`).join('; ');
-  return c.dapAn;
-}
 
 function bangDapAn(cau: CauDe[]): Table {
   const w = [1300, RONG_TRANG - 1300 - 1300, 1300];
@@ -211,8 +216,11 @@ function bangDapAn(cau: CauDe[]): Table {
   for (const c of cau) {
     const ps: Paragraph[] = [];
     const dapAn = dapAnHienThi(c).trim();
-    if (dapAn) ps.push(doan(dapAn));
-    for (const d of c.huongDanCham.split(/\n+/).filter((x) => x.trim())) ps.push(doan(d));
+    const lamRo = c.hinhThuc === 'TL' && c.dang !== 'VIET';
+    const dongCham = c.huongDanCham.split(/\n+/).filter((x) => x.trim());
+    if (dapAn) ps.push(doan([tr(lamRo ? 'Đáp án: ' : '', { bold: true }), tr(dapAn, { bold: lamRo })], { dong: DAN_CAU }));
+    if (lamRo && dongCham.length) ps.push(doan([tr('Cách chấm:', { bold: true })], { dong: DAN_CAU, truoc: 40 }));
+    for (const d of dongCham) ps.push(doan(d, { dong: DAN_CAU, thut: lamRo ? 200 : 0 }));
     if (!ps.length) ps.push(doan(''));
     rows.push(hang(nhanCau(c).replace(/^Câu /, ''), ps, fmtDiem(c.diem)));
   }
@@ -252,7 +260,7 @@ export function cacPhanDe(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptions[] {
     },
   };
   return [
-    { properties: trang, children: [...dauDe(t), bangCau(de.cau), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
+    { properties: trang, children: [...dauDe(t), bangCau(de.cau, false, de.ma_mon), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
     { properties: trang, children: huongDanCham(t, de) },
   ];
 }

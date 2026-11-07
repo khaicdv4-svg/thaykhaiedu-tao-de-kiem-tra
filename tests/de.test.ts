@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
-import { TRANG_THAI_CHI_DO_DUYET, cauDaXong, dungLaiDe, kiemDinhDe, layNoiDung, taoDeTuDacTa, tienDoDe, trangThaiDeSauKhiSua, trangThaiDeSauKiemDinh, type DeKiemTra } from '../src/core/de/de';
+import { xepDongTheoCau } from '../src/core/dac-ta/dac-ta';
+import { TRANG_THAI_CHI_DO_DUYET, soDongTraLoi, cauDaXong, dungLaiDe, kiemDinhDe, layNoiDung, taoDeTuDacTa, tienDoDe, trangThaiDeSauKhiSua, trangThaiDeSauKiemDinh, type DeKiemTra } from '../src/core/de/de';
 import type { MaTranChung, MaTranRieng } from '../src/types/matrix-template';
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -39,7 +40,7 @@ describe('Dựng đề từ đặc tả', () => {
 
   it('mỗi dòng đặc tả có một câu, thông tin lấy đúng từ đặc tả', () => {
     expect(de.cau).toHaveLength(dacTa.dong.length);
-    const r = dacTa.dong[0];
+    const r = xepDongTheoCau(dacTa.dong)[0];
     expect([de.cau[0].khoa, de.cau[0].muc, de.cau[0].diem, de.cau[0].yccd]).toEqual([r.khoa, r.muc, r.diem, r.yccd]);
     expect(de.phien_ban_dac_ta).toBe(1);
   });
@@ -132,8 +133,9 @@ describe('Dựng lại đề khi đặc tả đổi', () => {
     expect(kq.moi).toEqual(['moi/1/1']);
     expect(kq.bo).toEqual([bo.khoa]);
     expect(kq.de.phien_ban_dac_ta).toBe(2);
-    expect(kq.de.cau[0].deBai).toBe(de.cau[0].deBai);
-    expect(layNoiDung(kq.de)[dacTa.dong[0].khoa].dapAn).toBe(de.cau[0].dapAn);
+    const k0 = dacTa.dong[0].khoa;
+    expect(layNoiDung(kq.de)[k0].deBai).toBe(layNoiDung(de)[k0].deBai);
+    expect(layNoiDung(kq.de)[k0].dapAn).toBe(layNoiDung(de)[k0].dapAn);
   });
 });
 
@@ -149,5 +151,20 @@ describe('Trạng thái đề', () => {
     expect(trangThaiDeSauKhiSua('DA_DUYET')).toBe('CAN_KIEM_TRA_LAI');
     expect(trangThaiDeSauKiemDinh('DA_DUYET', { hopLe: false, loi: ['x'], canhBao: [] })).toBe('DA_DUYET');
     expect(TRANG_THAI_CHI_DO_DUYET).toEqual(['DA_DUYET', 'TRA_LAI']);
+  });
+});
+
+describe('Thứ tự câu và số dòng chấm', () => {
+  it('khung đề xếp câu theo số câu tăng dần', () => {
+    const so = taoDeTuDacTa(dacTa, 1).cau.map((c) => (/^\d+$/.test(c.cau) ? Number(c.cau) : Infinity));
+    expect(so).toEqual([...so].sort((a, b) => a - b));
+  });
+  it('Toán chừa nhiều dòng hơn; đặt tính thì ít nhất 6 dòng; bài viết 18 dòng', () => {
+    const c = (diem: number, deBai = 'x', dang: 'VIET' | null = null) => ({ diem, deBai, dang });
+    expect(soDongTraLoi(c(1), 'TOAN')).toBe(6);
+    expect(soDongTraLoi(c(0.5), 'TOAN')).toBe(4);
+    expect(soDongTraLoi(c(0.5, 'Đặt tính rồi tính'), 'KHOA_HOC')).toBe(6);
+    expect(soDongTraLoi(c(1.5), 'TOAN')).toBe(9);
+    expect(soDongTraLoi(c(5, 'x', 'VIET'), 'TIENG_VIET')).toBe(18);
   });
 });

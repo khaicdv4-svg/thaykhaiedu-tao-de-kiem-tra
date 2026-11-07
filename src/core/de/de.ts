@@ -87,7 +87,7 @@ export function taoDeTuDacTa(dacTa: DacTa, phienBanDacTa: number, noiDungCu: Rec
     ma_mon: dacTa.ma_mon,
     ky_kiem_tra: dacTa.ky_kiem_tra,
     phien_ban_dac_ta: phienBanDacTa,
-    cau: dacTa.dong.map((r) => ({
+    cau: xepDongTheoCau(dacTa.dong).map((r) => ({
       khoa: r.khoa,
       cau: r.cau,
       yNho: r.yNho,
@@ -99,6 +99,30 @@ export function taoDeTuDacTa(dacTa: DacTa, phienBanDacTa: number, noiDungCu: Rec
       ...(noiDungCu[r.khoa] ?? { ...NOI_DUNG_RONG, luaChon: luaChonMau(r.dang, r.yNho) }),
     })),
   };
+}
+
+/**
+ * Số dòng chấm chừa cho câu tự luận (cả đề in và bản xem trước dùng chung).
+ * Bài viết: 18 dòng. Toán cần nhiều chỗ hơn (đặt tính, lời giải, đáp số); đề bài có "đặt tính" thì chừa ít nhất 6 dòng.
+ */
+export function soDongTraLoi(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: string): number {
+  if (c.dang === 'VIET') return 18;
+  const toan = maMon === 'TOAN';
+  const goc = toan ? Math.ceil(c.diem * 5) + 1 : Math.ceil(c.diem * 4) + 1;
+  let n = Math.max(3, Math.min(toan ? 10 : 8, goc));
+  if (/đặt tính|giải bài toán|bài giải|lời giải/i.test(c.deBai)) n = Math.max(n, 6);
+  return n;
+}
+
+/** Đáp án viết ra để in: NLC kèm nội dung phương án, Đúng/Sai theo từng ý. */
+export function dapAnHienThi(c: CauDe): string {
+  if (c.dang === 'NLC') {
+    const n = c.dapAn.trim().toUpperCase();
+    const i = (NHAN_LUA_CHON as readonly string[]).indexOf(n);
+    return i >= 0 && c.luaChon[i]?.trim() ? `${n}. ${c.luaChon[i]}` : n;
+  }
+  if (c.dang === 'DS') return Array.from(c.dapAn.replace(/[\s,;]/g, '').toUpperCase()).map((k, i) => `${(c.yNho ?? [])[i] ?? String.fromCharCode(97 + i)}) ${k === 'Đ' ? 'Đúng' : 'Sai'}`).join('; ');
+  return c.dapAn;
 }
 
 export function layNoiDung(d: DeKiemTra): Record<string, NoiDungCau> {
@@ -210,6 +234,12 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
     const truoc = daGap.get(k);
     if (truoc) loi.push(`${nhanCau(c)} trùng đề bài với ${truoc}.`);
     else daGap.set(k, nhanCau(c));
+  }
+
+  for (const c of xepDongTheoCau(de.cau)) {
+    if (c.hinhThuc === 'TL' && c.dang !== 'VIET' && c.diem >= 1 && c.huongDanCham.trim() && !/điểm|\d\s*đ\b/i.test(c.huongDanCham)) {
+      canhBao.push(`${nhanCau(c)}: hướng dẫn chấm chưa ghi điểm từng ý (nên chia ${String(c.diem).replace('.', ',')} điểm theo các bước làm).`);
+    }
   }
 
   for (const c of xepDongTheoCau(de.cau)) {

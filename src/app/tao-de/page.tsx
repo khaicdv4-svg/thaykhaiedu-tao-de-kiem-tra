@@ -8,15 +8,16 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Download, FilePlus2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FilePlus2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
+import { XemTruocDe } from '@/components/de/XemTruocDe';
 import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
-import type { DacTa } from '@/core/dac-ta/dac-ta';
+import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
 import {
   NHAN_LUA_CHON,
   cauDaXong,
@@ -79,6 +80,8 @@ export default function TaoDePage() {
   const [namHoc, setNamHoc] = useState('2026 - 2027');
   const [phut, setPhut] = useState(35);
   const [dangXuat, setDangXuat] = useState(false);
+  const [xemTruoc, setXemTruoc] = useState(false);
+  const [goiY, setGoiY] = useState<Record<string, { dang?: boolean; text?: string; canh?: string }>>({});
 
   useEffect(() => {
     try {
@@ -154,6 +157,16 @@ export default function TaoDePage() {
     suaCau(c.khoa, { luaChon: moi });
   };
 
+  const nhoAI = async (c: CauDe) => {
+    setGoiY((g) => ({ ...g, [c.khoa]: { dang: true } }));
+    const r = await goiJson<{ huongDan?: string; lechDiem?: number | null }>('/api/de-kiem-tra/goi-y-cham', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mon: maMon, cau: { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, diem: c.diem, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, yccd: c.yccd } }),
+    });
+    if (!r.ok || !r.j.huongDan) { setGoiY((g) => ({ ...g, [c.khoa]: { canh: r.j.error ?? 'AI chưa trả lời được.' } })); return; }
+    setGoiY((g) => ({ ...g, [c.khoa]: { text: r.j.huongDan, canh: r.j.lechDiem != null ? `Tổng điểm các ý AI ghi là ${fmtDiem(r.j.lechDiem)}, chưa bằng ${fmtDiem(c.diem)}. Thầy sửa lại điểm từng ý.` : undefined } }));
+  };
+
   const suaTiengViet = (g: NoiDungTiengViet) => {
     setDe((d) => (d ? { ...d, tiengViet: g } : d));
     setTrangThai((t) => trangThaiDeSauKhiSua(t));
@@ -213,7 +226,7 @@ export default function TaoDePage() {
   const nhom = useMemo(() => {
     const dong = new Map((dacTaBan?.duLieu.dong ?? []).map((r) => [r.khoa, r]));
     const m = new Map<string, CauDe[]>();
-    for (const c of de?.cau ?? []) {
+    for (const c of xepDongTheoCau(de?.cau ?? [])) {
       const r = dong.get(c.khoa);
       const ten = r ? `${r.baiKiemTra}${r.phan ? ` – ${r.phan}` : ''}` : 'Câu khác';
       m.set(ten, [...(m.get(ten) ?? []), c]);
@@ -345,9 +358,27 @@ export default function TaoDePage() {
                       )}
 
                       <label className="block text-xs text-slate-500">
-                        {c.dang === 'VIET' || c.hinhThuc === 'TL' ? 'Hướng dẫn chấm (các ý cho điểm)' : 'Hướng dẫn chấm (nếu cần)'}
-                        <textarea aria-label={`Hướng dẫn chấm ${nhanCau(c)}`} rows={2} className={`${o} mt-0.5`} value={c.huongDanCham} onChange={(e) => suaCau(c.khoa, { huongDanCham: e.target.value })} />
+                        {c.dang === 'VIET' || c.hinhThuc === 'TL' ? 'Hướng dẫn chấm (từng bước làm, điểm từng ý, lưu ý chấm)' : 'Hướng dẫn chấm (nếu cần)'}
+                        <textarea aria-label={`Hướng dẫn chấm ${nhanCau(c)}`} rows={c.hinhThuc === 'TL' ? 4 : 2} className={`${o} mt-0.5`} placeholder={c.hinhThuc === 'TL' && c.dang !== 'VIET' ? 'Ví dụ:\nĐổi 3 tấn = 3 000 kg (0,5 điểm)\nĐổi 5 yến = 50 kg; 3 000 + 50 = 3 050 kg (0,5 điểm)\nLưu ý chấm: thiếu đơn vị trừ 0,25 điểm.' : ''} value={c.huongDanCham} onChange={(e) => suaCau(c.khoa, { huongDanCham: e.target.value })} />
                       </label>
+                      {c.dang !== 'VIET' && c.deBai.trim() && c.dapAn.trim() && (
+                        <div className="space-y-1.5">
+                          <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-100 disabled:opacity-50" disabled={goiY[c.khoa]?.dang} onClick={() => void nhoAI(c)}>
+                            {goiY[c.khoa]?.dang ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} AI viết hướng dẫn chấm chi tiết
+                          </button>
+                          {goiY[c.khoa]?.canh && <div className="text-xs text-amber-800">{goiY[c.khoa]?.canh}</div>}
+                          {goiY[c.khoa]?.text && (
+                            <div className="rounded-lg border border-violet-200 bg-violet-50/60 p-3 space-y-2">
+                              <div className="text-xs font-semibold text-violet-900">Gợi ý của AI (thầy kiểm tra kĩ trước khi dùng)</div>
+                              <div className="text-sm text-slate-800 whitespace-pre-line">{goiY[c.khoa]?.text}</div>
+                              <div className="flex gap-2">
+                                <button type="button" className={nutChinh} onClick={() => { suaCau(c.khoa, { huongDanCham: goiY[c.khoa]!.text! }); setGoiY((g) => ({ ...g, [c.khoa]: {} })); }}>Dùng gợi ý này</button>
+                                <button type="button" className={nutPhu} onClick={() => setGoiY((g) => ({ ...g, [c.khoa]: {} }))}>Bỏ</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <label className="block text-xs text-slate-500">Hình, bảng, bài đọc đi kèm (mô tả để dàn trang)
                         <input aria-label={`Hình đi kèm ${nhanCau(c)}`} className={`${o} mt-0.5`} value={c.ghiChuHinh} onChange={(e) => suaCau(c.khoa, { ghiChuHinh: e.target.value })} />
                       </label>
@@ -357,6 +388,11 @@ export default function TaoDePage() {
               </div>
             ))}
           </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" className={nutPhu} onClick={() => setXemTruoc((v) => !v)}><Eye className="w-4 h-4" /> {xemTruoc ? 'Ẩn bản xem trước' : 'Xem trước đề và đáp án'}</button>
+          </div>
+          {xemTruoc && <XemTruocDe de={de} truong={truong} tenMon={tenMon} phut={phut} />}
 
           {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra đề" /></div>}
 
