@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, FileText, FileUp, Inbox, Loader2, Search, Send, Sparkles, Trash2, X, XCircle } from 'lucide-react';
 import { docChuTuDocx } from '@/core/utils/docx-text';
+import { dauVetBaiDoc } from '@/core/reading-passages/phan-tich';
 import { CHU_DIEM_THEO_KY, chuDiemCuaKy, DANH_SACH_KY, TEN_LOAI, TEN_THE_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { useBoNao } from '@/lib/hooks/useBoNao';
 import { kiemTraBaiDoc } from '@/core/reading-passages/kiem-tra';
@@ -32,6 +33,8 @@ interface TepNhap {
   vanBan: string;
   loi?: string;
   soBai?: number;
+  /** Số bài đã có trong kho nên bị bỏ qua. */
+  soDaCo?: number;
 }
 
 /** Đọc chữ từ một file ở trình duyệt. Lỗi thì ném ra câu báo dễ hiểu. */
@@ -46,6 +49,8 @@ async function docChuFile(f: File): Promise<string> {
 interface KetQuaPhanTich {
   tieuDe: string; noiDung: string; tacGia: string; nguon: string; nguonUrl: string;
   loai: LoaiBaiDoc; ky: KyKiemTraBaiDoc | null; theLoai: TheLoaiBaiDoc; chuDiem: string | null; ghiChu: string[];
+  /** Bài đã có trong kho hoặc hàng chờ. */
+  daCoTrongKho?: boolean;
 }
 
 export default function NhapKhoBaiDocPage() {
@@ -140,7 +145,8 @@ export default function NhapKhoBaiDocPage() {
     const loi: string[] = [];
     let coChuSgk = true;
     let soTrung = 0;
-    const dauVet = (b: { tieuDe: string; noiDung: string }) => `${b.tieuDe.trim().toLowerCase()}|${b.noiDung.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 300)}`;
+    let soDaCoKho = 0;
+    const dauVet = (b: { tieuDe: string; noiDung: string }) => dauVetBaiDoc(b.tieuDe, b.noiDung);
     // Bài đã có trong kết quả (từ lần phân tích trước, nếu vẫn là kết quả tải file) cũng tính để bỏ trùng
     const dsCu = nguonGoc === 'TAI_FILE' ? ds : [];
     const daThay = new Set<string>(dsCu.map(dauVet));
@@ -151,14 +157,17 @@ export default function NhapKhoBaiDocPage() {
       try {
         const kq = await goiPhanTich(n.chu);
         if (!kq.coChuSgk) coChuSgk = false;
-        const khongTrung = kq.baiDoc.filter((b) => {
+        const moiTrongKho = kq.baiDoc.filter((b) => !b.daCoTrongKho);
+        const soDaCoFile = kq.baiDoc.length - moiTrongKho.length;
+        soDaCoKho += soDaCoFile;
+        const khongTrung = moiTrongKho.filter((b) => {
           const k = dauVet(b);
           if (daThay.has(k)) { soTrung++; return false; }
           daThay.add(k);
           return true;
         });
         gop.push(...doiBai(khongTrung, n.ten || undefined));
-        if (n.id) suaTep(n.id, { trangThai: 'XONG', soBai: kq.baiDoc.length });
+        if (n.id) suaTep(n.id, { trangThai: 'XONG', soBai: moiTrongKho.length, soDaCo: soDaCoFile });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         loi.push(`${n.ten || 'Chữ dán vào'}: ${msg}`);
@@ -171,7 +180,7 @@ export default function NhapKhoBaiDocPage() {
     if (vanBan.trim() && !loi.some((l) => l.startsWith('Chữ dán vào'))) setVanBan('');
     const tomTat = nguon.length > 1 ? `Phân tích ${nguon.length - loi.length}/${nguon.length} nguồn, tách được ${gop.length} bài mới` : `Tách được ${gop.length} bài mới`;
     const text = [
-      `${tomTat}.${soTrung ? ` Bỏ ${soTrung} bài trùng nhau giữa các file.` : ''} Xem lại từng bài, sửa chỗ máy đoán sai rồi gửi duyệt.`,
+      `${tomTat}.${soDaCoKho ? ` Bỏ qua ${soDaCoKho} bài đã nhập trước đó (đã có trong kho hoặc hàng chờ).` : ''}${soTrung ? ` Bỏ ${soTrung} bài trùng nhau giữa các file.` : ''} ${gop.length ? ' Xem lại từng bài, sửa chỗ máy đoán sai rồi gửi duyệt.' : ' Không có bài mới để gửi duyệt.'}`,
       coChuSgk ? '' : '(Kho SGK chưa có chữ bài đọc nên mới kiểm tra trùng theo tên bài.)',
       loi.length ? `Lỗi: ${loi.join('; ')}` : '',
     ].filter(Boolean).join(' ');
@@ -215,7 +224,7 @@ export default function NhapKhoBaiDocPage() {
       }).then((x) => x.json());
       if (r.error) throw new Error(r.error);
       setDs((cu) => cu.filter((b) => !b.chon));
-      setThongBao({ loai: 'ok', text: `Đã lưu: ${r.choDuyet} bài chờ tổ trưởng duyệt${r.banNhap ? `, ${r.banNhap} bài còn lỗi lưu thành bản nháp` : ''}.` });
+      setThongBao({ loai: 'ok', text: `Đã lưu: ${r.choDuyet} bài chờ tổ trưởng duyệt${r.banNhap ? `, ${r.banNhap} bài còn lỗi lưu thành bản nháp` : ''}.${r.boQuaTrung ? ` Bỏ qua ${r.boQuaTrung} bài đã có trong kho.` : ''}` });
     } catch (e) {
       setThongBao({ loai: 'loi', text: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -276,7 +285,7 @@ export default function NhapKhoBaiDocPage() {
                         {t.trangThai === 'DANG_DOC' && 'Đang đọc file…'}
                         {t.trangThai === 'SAN_SANG' && `Đã đọc ${t.vanBan.length.toLocaleString('vi-VN')} kí tự, chờ phân tích`}
                         {t.trangThai === 'DANG_PHAN_TICH' && 'Đang phân tích…'}
-                        {t.trangThai === 'XONG' && `Tách được ${t.soBai ?? 0} bài`}
+                        {t.trangThai === 'XONG' && (t.soDaCo ? `${t.soBai ? `Tách được ${t.soBai} bài mới; ` : ''}${t.soDaCo} bài đã nhập trước đó, bỏ qua` : `Tách được ${t.soBai ?? 0} bài`)}
                         {t.trangThai === 'LOI' && t.loi}
                       </div>
                     </div>

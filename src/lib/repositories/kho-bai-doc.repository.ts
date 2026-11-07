@@ -8,6 +8,7 @@ import { docBoNaoNeuCo } from '@/lib/repositories/bo-nao.repository';
 import { kiemTraBaiDoc, type BaiDocCanKiem, type TrangThaiLink, type VanBanSgk } from '@/core/reading-passages/kiem-tra';
 import { khoangDoDai, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { kiemTraBanChinh, tacGiaTheo } from '@/core/reading-passages/chinh-do-dai';
+import { dauVetBaiDoc } from '@/core/reading-passages/phan-tich';
 
 export interface BaiDocNhapKho extends BaiDocCanKiem {
   nguonGoc: 'TAI_FILE' | 'AI_TIM' | 'NHAP_TAY';
@@ -91,9 +92,28 @@ export async function layVanBanSgkTiengViet(): Promise<VanBanSgk[]> {
   return data.map((r: any) => ({ ten: r.title, noiDung: r.text_content }));
 }
 
+/** Dấu vết các bài đã có trong kho (nháp, chờ duyệt, đã duyệt). Bài bị từ chối thì cho nhập lại. */
+export async function layDauVetBaiDaCo(): Promise<Set<string>> {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) return new Set();
+  const { data, error } = await supabase.from('reading_passages').select('title, content').neq('status', 'REJECTED');
+  if (error || !data) return new Set();
+  return new Set(data.map((r: any) => dauVetBaiDoc(r.title ?? '', r.content ?? '')));
+}
+
 /** Lưu các bài đã phân tích. Bài không còn lỗi → chờ duyệt; còn lỗi → bản nháp để sửa tiếp. */
-export async function luuVaoHangCho(ds: BaiDocNhapKho[]): Promise<{ choDuyet: number; banNhap: number; ids: string[] }> {
+export async function luuVaoHangCho(dsGoc: BaiDocNhapKho[]): Promise<{ choDuyet: number; banNhap: number; boQuaTrung: number; ids: string[] }> {
   const { supabase, user, orgId } = await layNguoiDung();
+  // Bài đã có trong kho (hoặc trùng nhau trong chính lần lưu này) thì bỏ qua
+  const daCo = await layDauVetBaiDaCo();
+  const ds = dsGoc.filter((b) => {
+    const k = dauVetBaiDoc(b.tieuDe, b.noiDung);
+    if (daCo.has(k)) return false;
+    daCo.add(k);
+    return true;
+  });
+  const boQuaTrung = dsGoc.length - ds.length;
+  if (!ds.length) return { choDuyet: 0, banNhap: 0, boQuaTrung, ids: [] };
   const sgk = await layVanBanSgkTiengViet();
   const boNao = await docBoNaoNeuCo();
   const rows = ds.map((b) => {
@@ -136,6 +156,7 @@ export async function luuVaoHangCho(ds: BaiDocNhapKho[]): Promise<{ choDuyet: nu
   return {
     choDuyet: (data ?? []).filter((r) => r.status === 'PENDING_REVIEW').length,
     banNhap: (data ?? []).filter((r) => r.status === 'DRAFT').length,
+    boQuaTrung,
     ids: (data ?? []).map((r) => r.id),
   };
 }

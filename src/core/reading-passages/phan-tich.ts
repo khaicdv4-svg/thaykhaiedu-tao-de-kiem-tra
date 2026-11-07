@@ -74,6 +74,11 @@ export function chuanHoaSoSanh(s: string): string {
     .trim();
 }
 
+/** Dấu vết để nhận ra một bài đã nhập: tên bài + đầu nội dung, bỏ dấu câu, hoa thường, khoảng trắng. */
+export function dauVetBaiDoc(tieuDe: string, noiDung: string): string {
+  return `${chuanHoaSoSanh(tieuDe)}|${chuanHoaSoSanh(noiDung).slice(0, 200)}`;
+}
+
 const RE_URL = /https?:\/\/[^\s)>\]]+/i;
 const RE_NGUON = /^\(?\s*(nguồn|nguon)\s*[:：]\s*(.+?)\s*\)?$/i;
 const RE_THEO = /^\(?\s*(theo|trích|sưu tầm|phỏng theo|dịch)\b\s*(.*?)\s*\)?$/i;

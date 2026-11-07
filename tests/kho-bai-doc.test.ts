@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { docChuTuDocx, xmlWordSangVanBan } from '../src/core/utils/docx-text';
-import { tachBaiDoc, phanTichBaiDoc, nhanDienTheLoai, goiYChuDiem, chuanHoaSoSanh } from '../src/core/reading-passages/phan-tich';
+import { tachBaiDoc, phanTichBaiDoc, nhanDienTheLoai, goiYChuDiem, chuanHoaSoSanh, dauVetBaiDoc } from '../src/core/reading-passages/phan-tich';
 import { kiemTraBaiDoc, tiLeTrung, trungTenSgk, lamSachUrl, laDuongDanWeb, type BaiDocCanKiem } from '../src/core/reading-passages/kiem-tra';
 import { khoangDoDai, CHU_DIEM_THEO_KY } from '../src/core/reading-passages/quy-dinh';
 import { BAI_DOC_SGK_TV4 } from '../src/core/reading-passages/sgk-tieng-viet-4';
@@ -111,6 +111,12 @@ describe('Kiểm tra bài đọc', () => {
     expect(loi).not.toContain('Chưa kiểm tra link');
     expect(laDuongDanWeb('https://vidu.vn/a')).toBe(true);
     expect(laDuongDanWeb('vidu.vn')).toBe(false);
+  });
+
+  it('nhận ra bài đã nhập: khác hoa thường, dấu câu, khoảng trắng vẫn là một bài', () => {
+    const nd = 'Biển rất đẹp.   Sóng vỗ  nhẹ nhàng vào bờ cát trắng, gió thổi mát rượi.';
+    expect(dauVetBaiDoc('BIỂN ĐẸP', nd)).toBe(dauVetBaiDoc(' Biển đẹp ', nd.toLowerCase().replace(/\./g, '')));
+    expect(dauVetBaiDoc('Biển nhớ', nd)).not.toBe(dauVetBaiDoc('Biển đẹp', nd));
   });
 
   it('đọc hiểu dài hơn quy định: cho qua, nhắc cắt đoạn; ngắn hơn: chặn', () => {
