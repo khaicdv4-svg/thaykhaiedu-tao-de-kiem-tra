@@ -93,6 +93,8 @@ export default function TaoDePage() {
   const conTro = useRef<Record<string, number>>({});
   const [veAI, setVeAI] = useState<Record<string, { mo?: boolean; moTa: string; dich: number | null; dang?: boolean; loi?: string; xem?: HinhCau }>>({});
   const [goiY, setGoiY] = useState<Record<string, { dang?: boolean; text?: string; canh?: string }>>({});
+  type KetQuaSach = { dang?: 'soan' | 'doi'; loi?: string; thieu?: string[]; trang?: string; soan?: { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string }; doi?: { trongPhamVi: string; khopSach: string; dapAnDung: string; chepNguyenSach: string; nhanXet: string[]; goiY: string } };
+  const [sach, setSach] = useState<Record<string, KetQuaSach>>({});
 
   useEffect(() => {
     try {
@@ -176,6 +178,34 @@ export default function TaoDePage() {
     });
     if (!r.ok || !r.j.huongDan) { setGoiY((g) => ({ ...g, [c.khoa]: { canh: r.j.error ?? 'AI chưa trả lời được.' } })); return; }
     setGoiY((g) => ({ ...g, [c.khoa]: { text: r.j.huongDan, canh: r.j.lechDiem != null ? `Tổng điểm các ý AI ghi là ${fmtDiem(r.j.lechDiem)}, chưa bằng ${fmtDiem(c.diem)}. Thầy sửa lại điểm từng ý.` : undefined } }));
+  };
+
+  const dongDacTaCua = (c: CauDe) => {
+    const d = dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa);
+    return { baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa };
+  };
+  const moTaTrang = (kh: { tap: number | null; tu: number; den: number } | null | undefined, co: number[] | undefined) =>
+    kh ? `SGK${kh.tap ? ` tập ${kh.tap}` : ''} tr. ${kh.tu}${kh.den > kh.tu ? `–${kh.den}` : ''}${co ? `, có chữ ${co.length} trang` : ''}` : undefined;
+  const soanTuSach = async (c: CauDe) => {
+    setSach((g) => ({ ...g, [c.khoa]: { dang: 'soan' } }));
+    const r = await goiJson<{ cau?: NonNullable<KetQuaSach['soan']>; khoang?: { tap: number | null; tu: number; den: number }; trangDaDung?: number[]; thieu?: string[] }>('/api/de-kiem-tra/soan-cau', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, dong: dongDacTaCua(c) }),
+    });
+    if (!r.ok || !r.j.cau) { setSach((g) => ({ ...g, [c.khoa]: { loi: r.j.error ?? 'AI chưa soạn được.', thieu: r.j.thieu } })); return; }
+    setSach((g) => ({ ...g, [c.khoa]: { soan: r.j.cau, thieu: r.j.thieu, trang: moTaTrang(r.j.khoang, r.j.trangDaDung) } }));
+  };
+  const doiChieuSach = async (c: CauDe) => {
+    setSach((g) => ({ ...g, [c.khoa]: { dang: 'doi' } }));
+    const r = await goiJson<{ ketQua?: NonNullable<KetQuaSach['doi']>; khoang?: { tap: number | null; tu: number; den: number }; trangDaDung?: number[]; thieu?: string[] }>('/api/de-kiem-tra/doi-chieu-sach', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, dong: dongDacTaCua(c), cau: { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham } }),
+    });
+    if (!r.ok || !r.j.ketQua) { setSach((g) => ({ ...g, [c.khoa]: { loi: r.j.error ?? 'AI chưa đối chiếu được.', thieu: r.j.thieu } })); return; }
+    setSach((g) => ({ ...g, [c.khoa]: { doi: r.j.ketQua, thieu: r.j.thieu, trang: moTaTrang(r.j.khoang, r.j.trangDaDung) } }));
+  };
+  const dungCauSach = (c: CauDe, x: NonNullable<KetQuaSach['soan']>) => {
+    const lc = [...x.luaChon]; while (lc.length < c.luaChon.length) lc.push('');
+    suaCau(c.khoa, { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}) });
+    setSach((g) => ({ ...g, [c.khoa]: {} }));
   };
 
   const KHUNG_TRONG: HinhCau = { ten: '', chuThich: '', anh: '', rong: 0, cao: 0 };
@@ -546,6 +576,52 @@ export default function TaoDePage() {
                         </div>
                       )}
                       </>)}
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-100 disabled:opacity-50" disabled={!!sach[c.khoa]?.dang} onClick={() => void soanTuSach(c)}>
+                            {sach[c.khoa]?.dang === 'soan' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} AI soạn câu từ SGK
+                          </button>
+                          {c.deBai.trim() && (
+                            <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-50 disabled:opacity-50" disabled={!!sach[c.khoa]?.dang} onClick={() => void doiChieuSach(c)}>
+                              {sach[c.khoa]?.dang === 'doi' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />} Đối chiếu SGK, SGV
+                            </button>
+                          )}
+                        </div>
+                        {sach[c.khoa]?.loi && <div className="text-xs text-amber-800">{sach[c.khoa]?.loi}{' '}<Link className="underline" href="/chuong-trinh">Mở Kho sách</Link></div>}
+                        {sach[c.khoa]?.trang && <div className="text-xs text-slate-500">Căn cứ: {sach[c.khoa]?.trang}</div>}
+                        {(sach[c.khoa]?.thieu ?? []).map((t) => <div key={t} className="text-xs text-amber-800">{t}</div>)}
+                        {sach[c.khoa]?.soan && (
+                          <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-3 space-y-2">
+                            <div className="text-xs font-semibold text-sky-900">Câu AI soạn từ sách (thầy đọc kĩ, sửa trước khi dùng)</div>
+                            {sach[c.khoa]!.soan!.khongDuCanCu && <div className="text-xs text-amber-800">AI báo căn cứ trong sách chưa đủ, câu dưới đây chỉ để tham khảo.</div>}
+                            <div className="text-sm text-slate-800 whitespace-pre-line">{sach[c.khoa]!.soan!.deBai}</div>
+                            {sach[c.khoa]!.soan!.luaChon.filter((x) => x.trim()).map((x, i) => <div key={i} className="text-sm text-slate-700">{'ABCD'[i] ?? i + 1}. {x}</div>)}
+                            <div className="text-sm text-slate-700">Đáp án: {sach[c.khoa]!.soan!.dapAn || '(chưa có)'}</div>
+                            {sach[c.khoa]!.soan!.huongDanCham && <div className="text-sm text-slate-700 whitespace-pre-line">Hướng dẫn chấm: {sach[c.khoa]!.soan!.huongDanCham}</div>}
+                            {sach[c.khoa]!.soan!.ghiChu && <div className="text-xs text-slate-600">{sach[c.khoa]!.soan!.ghiChu}</div>}
+                            <div className="flex gap-2">
+                              <button type="button" className={nutChinh} onClick={() => dungCauSach(c, sach[c.khoa]!.soan!)}>Dùng câu này</button>
+                              <button type="button" className={nutPhu} onClick={() => setSach((g) => ({ ...g, [c.khoa]: {} }))}>Bỏ</button>
+                            </div>
+                          </div>
+                        )}
+                        {sach[c.khoa]?.doi && (() => {
+                          const d = sach[c.khoa]!.doi!;
+                          const nhan = (v: string) => (v === 'co' ? 'Có' : v === 'khong' ? 'Không' : 'Chưa đủ căn cứ');
+                          const hang: [string, string, boolean][] = [['Trong phạm vi bài, trang đã học', d.trongPhamVi, true], ['Khớp nội dung sách', d.khopSach, true], ['Đáp án đúng theo sách', d.dapAnDung, true], ['Chép nguyên bài tập trong sách', d.chepNguyenSach, false]];
+                          return (
+                            <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-3 space-y-2">
+                              <div className="text-xs font-semibold text-sky-900">Kết quả đối chiếu (AI chỉ gợi ý, thầy quyết định)</div>
+                              <ul className="text-sm text-slate-800 space-y-0.5">
+                                {hang.map(([t, v, tot]) => <li key={t}>{t}: <b className={v === 'khong_du_can_cu' ? 'text-slate-500' : (v === 'co') === tot ? 'text-emerald-700' : 'text-red-700'}>{nhan(v)}</b></li>)}
+                              </ul>
+                              {d.nhanXet.map((x, i) => <div key={i} className="text-sm text-slate-700">• {x}</div>)}
+                              {d.goiY && <div className="text-sm text-slate-700">Gợi ý sửa: {d.goiY}</div>}
+                              <button type="button" className={nutPhu} onClick={() => setSach((g) => ({ ...g, [c.khoa]: {} }))}>Đóng</button>
+                            </div>
+                          );
+                        })()}
+                      </div>
                       <label className="block text-xs text-slate-500">Hình, bảng, bài đọc đi kèm (mô tả để dàn trang)
                         <input aria-label={`Hình đi kèm ${nhanCau(c)}`} className={`${o} mt-0.5`} value={c.ghiChuHinh} onChange={(e) => suaCau(c.khoa, { ghiChuHinh: e.target.value })} />
                       </label>

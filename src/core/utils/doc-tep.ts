@@ -55,3 +55,35 @@ export async function docBangTuTep(f: File): Promise<string> {
   if (ten.endsWith('.csv') || ten.endsWith('.txt')) return (await f.text()).replace(/^\uFEFF/, '').split(/\r?\n/).map((d) => (d.includes('\t') ? d : d.split(/[;,](?=(?:[^"]*"[^"]*")*[^"]*$)/).map((x) => x.replace(/^"|"$/g, '').trim()).join('\t'))).join('\n');
   throw new Error('Chỉ nhận file .docx, .xlsx, .csv. File .doc hoặc .xls cũ thầy lưu lại thành .docx hoặc .xlsx.');
 }
+
+export interface PdfDocChu {
+  soTrang: number;
+  /** Chữ của trang số `trang` (từ 1); rỗng nếu trang là ảnh quét. */
+  chu: (trang: number) => Promise<string>;
+}
+
+/** Mở PDF để lấy chữ từng trang (dùng cho Kho sách). Chỉ chạy ở trình duyệt. */
+export async function moPdfDocChu(buf: ArrayBuffer): Promise<PdfDocChu> {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(buf), verbosity: 0 }).promise;
+  return {
+    soTrang: pdf.numPages,
+    async chu(trang) {
+      const t = await pdf.getPage(trang);
+      const nd = await t.getTextContent();
+      let dong = '';
+      let kq = '';
+      let yCu: number | null = null;
+      for (const it of nd.items as Array<{ str?: string; transform?: number[]; hasEOL?: boolean }>) {
+        if (typeof it.str !== 'string') continue;
+        const y = it.transform?.[5] ?? null;
+        if (yCu !== null && y !== null && Math.abs(y - yCu) > 3) { kq += `${dong.trim()}\n`; dong = ''; }
+        dong += it.str + (it.hasEOL ? '\n' : ' ');
+        yCu = y;
+      }
+      kq += dong.trim();
+      return kq.replace(/[ \t]+/g, ' ').trim();
+    },
+  };
+}

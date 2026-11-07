@@ -12,6 +12,7 @@ import { useAuth } from '@/core/contexts/AuthContext';
 import { DANH_SACH_MON, LOAI_TAI_LIEU, TEN_LOAI_TAI_LIEU, TEN_MON, type TaiLieuChuongTrinh, type TrangThaiYccd, type YccdChuongTrinh } from '@/core/chuong-trinh/mon';
 import { docChuTuTep } from '@/core/utils/doc-tep';
 import { TabMucLucSgk } from '@/components/chuong-trinh/TabMucLucSgk';
+import { TabKhoSach } from '@/components/chuong-trinh/TabKhoSach';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-sm';
@@ -30,7 +31,7 @@ const json = (b: unknown): RequestInit => ({ headers: { 'Content-Type': 'applica
 export default function KhoChuongTrinhPage() {
   const { activeRole } = useAuth();
   const duocSua = VAI_TRO_SUA.includes(activeRole as string);
-  const [tab, setTab] = useState<'tai-lieu' | 'yccd' | 'muc-luc'>('tai-lieu');
+  const [tab, setTab] = useState<'tai-lieu' | 'yccd' | 'muc-luc' | 'kho-sach'>('tai-lieu');
 
   return (
     <div className="space-y-5 max-w-6xl">
@@ -40,11 +41,11 @@ export default function KhoChuongTrinhPage() {
         {!duocSua && <p className="text-xs text-amber-700 mt-1">Bạn chỉ được xem. Tổ trưởng hoặc quản trị mới nạp tài liệu và duyệt YCCĐ.</p>}
       </div>
       <div className="flex gap-2 border-b border-slate-200">
-        {([['tai-lieu', 'Tài liệu nguồn'], ['yccd', 'Yêu cầu cần đạt (YCCĐ)'], ['muc-luc', 'Mục lục SGK']] as const).map(([k, t]) => (
+        {([['tai-lieu', 'Tài liệu nguồn'], ['yccd', 'Yêu cầu cần đạt (YCCĐ)'], ['muc-luc', 'Mục lục SGK'], ['kho-sach', 'Kho sách']] as const).map(([k, t]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`px-4 py-2 text-sm font-semibold border-b-2 -mb-px ${tab === k ? 'border-blue-700 text-blue-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{t}</button>
         ))}
       </div>
-      {tab === 'tai-lieu' ? <TabTaiLieu duocSua={duocSua} chuyenSangYccd={() => setTab('yccd')} /> : tab === 'yccd' ? <TabYccd duocSua={duocSua} /> : <TabMucLucSgk duocSua={duocSua} />}
+      {tab === 'tai-lieu' ? <TabTaiLieu duocSua={duocSua} chuyenSangYccd={() => setTab('yccd')} /> : tab === 'yccd' ? <TabYccd duocSua={duocSua} /> : tab === 'muc-luc' ? <TabMucLucSgk duocSua={duocSua} /> : <TabKhoSach duocSua={duocSua} />}
     </div>
   );
 }
