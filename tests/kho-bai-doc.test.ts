@@ -184,3 +184,31 @@ describe('Chỗ cắm AI', () => {
     expect(p).toContain('Anh Ba');
   });
 });
+
+describe('AI tìm nguồn', () => {
+  it('nhận ra bài còn thiếu tác giả hoặc nguồn', async () => {
+    const { thieuNguon } = await import('../src/core/reading-passages/tim-nguon-ai');
+    expect(thieuNguon({ tacGia: '', nguon: 'Tiếng Việt 4, trang 5', nguonUrl: '' })).toBe(true);
+    expect(thieuNguon({ tacGia: 'A', nguon: 'Theo A', nguonUrl: '' })).toBe(true);
+    expect(thieuNguon({ tacGia: 'A', nguon: 'Tiếng Việt 4, Cánh Diều, trang 25', nguonUrl: '' })).toBe(false);
+    expect(thieuNguon({ tacGia: 'A', nguon: 'Báo Nhi Đồng', nguonUrl: 'https://vidu.vn/a', trangThaiLink: 'CHUA_KIEM' })).toBe(true);
+    expect(thieuNguon({ tacGia: 'A', nguon: 'Báo Nhi Đồng', nguonUrl: 'https://vidu.vn/a', trangThaiLink: 'CON_TON_TAI' })).toBe(false);
+  });
+
+  it('đọc câu trả lời của AI, kể cả bọc trong ```json; trả lời hỏng hoặc rỗng thì coi như không tìm thấy', async () => {
+    const { docNguonAI } = await import('../src/core/reading-passages/tim-nguon-ai');
+    const ok = docNguonAI('Đây:\n```json\n{"daTimThay": true, "tacGia": "Ngọc Khánh", "nguon": "Báo Nhi Đồng", "nguonUrl": "https://vidu.vn/a", "doTinCay": "CAO", "ghiChu": "ok"}\n```');
+    expect(ok).toMatchObject({ daTimThay: true, tacGia: 'Ngọc Khánh', nguonUrl: 'https://vidu.vn/a', doTinCay: 'CAO' });
+    expect(docNguonAI('không biết')).toBeNull();
+    expect(docNguonAI('{"daTimThay": true, "tacGia": "", "nguon": "", "nguonUrl": ""}')?.daTimThay).toBe(false);
+    expect(docNguonAI('{"daTimThay": true, "tacGia": "A", "doTinCay": "chắc chắn"}')?.doTinCay).toBe('THAP');
+  });
+
+  it('lời nhắc có tên bài, đoạn đầu và dặn không bịa', async () => {
+    const { loiNhacTimNguon } = await import('../src/core/reading-passages/tim-nguon-ai');
+    const s = loiNhacTimNguon({ tieuDe: 'Biển đẹp', tacGia: '', noiDung: 'Biển rất đẹp. '.repeat(100) });
+    expect(s).toContain('Biển đẹp');
+    expect(s).toContain('Đoạn đầu');
+    expect(s).toContain('Không tìm thấy');
+  });
+});

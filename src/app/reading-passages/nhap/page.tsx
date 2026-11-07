@@ -12,6 +12,9 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, FileText, FileUp, Inbox, Loader2, Search, Send, Sparkles, Trash2, X, XCircle } from 'lucide-react';
 import { docChuTuDocx } from '@/core/utils/docx-text';
 import { dauVetBaiDoc } from '@/core/reading-passages/phan-tich';
+import { thieuNguon } from '@/core/reading-passages/tim-nguon-ai';
+import { aiTimNguonChoBai, kiemLinkChoBai } from '@/lib/ai-tim-nguon-client';
+import { laDuongDanWeb } from '@/core/reading-passages/kiem-tra';
 import { CHU_DIEM_THEO_KY, chuDiemCuaKy, DANH_SACH_KY, TEN_LOAI, TEN_THE_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { useBoNao } from '@/lib/hooks/useBoNao';
 import { kiemTraBaiDoc } from '@/core/reading-passages/kiem-tra';
@@ -211,6 +214,44 @@ export default function NhapKhoBaiDocPage() {
     }
   };
 
+  const [dangTimNguonHangLoat, setDangTimNguonHangLoat] = useState(false);
+  const dsRef = useRef<BaiDocSua[]>([]);
+  dsRef.current = ds;
+  const soThieuNguon = ds.filter((b) => thieuNguon(b)).length;
+
+  /** Với từng bài thiếu nguồn: có link rồi thì mở thử, chưa có thì nhờ AI tìm. Làm lần lượt, bài xong tới đâu hiện tới đó. */
+  const timNguonHangLoat = async () => {
+    const can = ds.filter((b) => thieuNguon(b)).map((b) => b.khoa);
+    if (!can.length) return;
+    setDangTimNguonHangLoat(true);
+    setThongBao(null);
+    let tim = 0;
+    let khong = 0;
+    const lyDo: string[] = [];
+    for (let i = 0; i < can.length; i++) {
+      setTienDo(`AI tìm nguồn ${i + 1}/${can.length}`);
+      const hienTai = dsRef.current.find((x) => x.khoa === can[i]);
+      if (!hienTai) continue;
+      try {
+        let bai = hienTai;
+        // Đã có link web nhưng chưa kiểm: mở thử trước, đạt thì không cần AI
+        if (bai.nguonUrl?.trim() && laDuongDanWeb(bai.nguonUrl) && (bai.trangThaiLink ?? 'CHUA_KIEM') === 'CHUA_KIEM') {
+          bai = await kiemLinkChoBai(bai);
+          if (!thieuNguon(bai)) { setDs((cu) => cu.map((x) => (x.khoa === bai.khoa ? bai : x))); tim++; continue; }
+        }
+        const kq = await aiTimNguonChoBai(bai);
+        if (kq.daTim) { tim++; bai = kq.bai; } else { khong++; if (lyDo.length < 2) lyDo.push(`${bai.tieuDe}: ${kq.thongBao}`); }
+        setDs((cu) => cu.map((x) => (x.khoa === bai.khoa ? bai : x)));
+      } catch (e) {
+        khong++;
+        if (lyDo.length < 2) lyDo.push(`${hienTai.tieuDe}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    setTienDo('');
+    setDangTimNguonHangLoat(false);
+    setThongBao({ loai: tim ? 'ok' : 'loi', text: `AI tìm nguồn xong: ${tim}/${can.length} bài có nguồn mới${khong ? `, ${khong} bài chưa tìm được` : ''}.${lyDo.length ? ` Ví dụ: ${lyDo.join(' | ')}` : ''} Bài nào nguồn là sách in thì thầy cô đối chiếu sách trước khi gửi duyệt.` });
+  };
+
   const daChon = ds.filter((b) => b.chon);
   const soDat = daChon.filter((b) => kiemTraBaiDoc(b, [], boNao).hopLe).length;
 
@@ -373,6 +414,16 @@ export default function NhapKhoBaiDocPage() {
             <h2 className="font-semibold text-slate-900">Kết quả ({ds.length} bài)</h2>
             <span className="text-sm text-slate-600">Đã chọn {daChon.length} bài, {soDat} bài đạt kiểm tra</span>
           </div>
+          {soThieuNguon > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
+              <span>{soThieuNguon} bài chưa có đủ tác giả hoặc nguồn.</span>
+              <button type="button" className="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-white px-3 py-1.5 font-medium text-violet-800 hover:bg-violet-100 disabled:opacity-50" disabled={dangTimNguonHangLoat || dangXuLy || !ai?.daCauHinh} onClick={timNguonHangLoat}>
+                {dangTimNguonHangLoat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} AI tìm nguồn cho {soThieuNguon} bài
+              </button>
+              {dangTimNguonHangLoat && tienDo && <span>{tienDo}</span>}
+              {ai && !ai.daCauHinh && <Link href="/ai-settings" className="underline">Chưa dùng được AI, mở Cài đặt AI</Link>}
+            </div>
+          )}
           {ds.map((b) => (
             <div key={b.khoa} className="space-y-1">
               {b.tenFile && dsTep.length > 1 && <div className="text-xs text-slate-500 inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Từ file: {b.tenFile}</div>}

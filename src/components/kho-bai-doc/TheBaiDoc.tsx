@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Link2, Loader2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Link2, Loader2, Sparkles, XCircle } from 'lucide-react';
 import {
   chuDiemCuaKy,
   CHU_DIEM_TV4,
@@ -18,6 +18,7 @@ import {
   type TheLoaiBaiDoc,
 } from '@/core/reading-passages/quy-dinh';
 import type { BoNao } from '@/core/bo-nao/bo-nao';
+import { aiTimNguonChoBai } from '@/lib/ai-tim-nguon-client';
 import { kiemTraBaiDoc, laDuongDanWeb, type BaiDocCanKiem, type TrangThaiLink } from '@/core/reading-passages/kiem-tra';
 
 export interface BaiDocSua extends BaiDocCanKiem {
@@ -59,6 +60,8 @@ export function TheBaiDoc({
 }) {
   const [moNoiDung, setMoNoiDung] = useState(false);
   const [dangKiemLink, setDangKiemLink] = useState(false);
+  const [dangTimNguon, setDangTimNguon] = useState(false);
+  const [tinNguon, setTinNguon] = useState<{ ok: boolean; text: string } | null>(null);
   const kq = useMemo(() => kiemTraBaiDoc(bai, [], boNao), [bai, boNao]);
   const doi = (p: Partial<BaiDocSua>) => {
     if (!onDoi) return;
@@ -84,6 +87,20 @@ export function TheBaiDoc({
   };
 
   const linkSaiDang = !!bai.nguonUrl?.trim() && !laDuongDanWeb(bai.nguonUrl);
+  const timNguon = async () => {
+    setDangTimNguon(true);
+    setTinNguon(null);
+    try {
+      const kqNguon = await aiTimNguonChoBai(bai);
+      if (kqNguon.daTim) onDoi?.(kqNguon.bai);
+      setTinNguon({ ok: kqNguon.daTim, text: kqNguon.thongBao });
+    } catch (e) {
+      setTinNguon({ ok: false, text: e instanceof Error ? e.message : 'Không tìm nguồn được.' });
+    } finally {
+      setDangTimNguon(false);
+    }
+  };
+
   const link = linkSaiDang
     ? { ten: 'Ô link không phải link', mau: 'bg-red-50 text-red-700 border-red-200' }
     : NHAN_LINK[bai.nguonUrl?.trim() ? bai.trangThaiLink ?? 'CHUA_KIEM' : 'SACH_IN'];
@@ -121,7 +138,13 @@ export function TheBaiDoc({
               {dangKiemLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />} Kiểm tra link
             </button>
           )}
+          {!chiXem && (
+            <button type="button" onClick={timNguon} disabled={dangTimNguon || !bai.noiDung.trim()} title="AI tìm trên mạng tác giả, link hoặc tên sách và trang của bài này" className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-3 text-sm font-medium text-violet-800 hover:bg-violet-100 disabled:opacity-50">
+              {dangTimNguon ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} {dangTimNguon ? 'Đang tìm (1–3 phút)…' : 'AI tìm nguồn'}
+            </button>
+          )}
         </div>
+        {tinNguon && <div className={`md:col-span-2 text-xs ${tinNguon.ok ? 'text-emerald-700' : 'text-amber-800'}`}>{tinNguon.text}</div>}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
