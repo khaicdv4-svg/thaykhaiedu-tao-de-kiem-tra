@@ -268,6 +268,31 @@ export function taoGoiYTheoYccd(yccdKho: YccdGoiY[], tiet: TietGoiY[]): Map<stri
   return kq;
 }
 
+/** Một dòng mục lục SGK: trang đầu của một phần (Đọc, Viết…) trong một bài. */
+export interface MucLucSgk { baiSo: number; tuan: number | null; hoatDong: string; noiDung: string; trang: number }
+
+const boKhoangTrang = (s: string) => chuanHoa(s).replace(/\s+/g, '');
+
+/**
+ * Thầy chọn một bài trong danh sách PPCT thì lấy luôn tuần (tuần đầu của bài) và trang SGK (trang đầu của bài, theo mục lục).
+ * Chỉ trả về khi khớp đúng một bài trong PPCT; trang chỉ có khi mục lục SGK của môn đã được nhập.
+ * Ô nhập một dòng làm mất dấu xuống dòng trong tên bài, nên so sánh bỏ hết khoảng trắng.
+ */
+export function minhChungTuBai(baiHoc: string, tiet: TietGoiY[] | undefined, mucLuc: MucLucSgk[] | undefined): { baiHoc: string; tuan?: number; trangSgk?: string } | undefined {
+  const khoa = boKhoangTrang(baiHoc ?? '');
+  if (!khoa || !tiet?.length) return undefined;
+  const khop = tiet.filter((t) => t.baiTen && boKhoangTrang(t.baiTen) === khoa);
+  if (!khop.length) return undefined;
+  const tuan = khop.map((t) => t.tuan).filter((x): x is number => x !== null);
+  const n = soBai(khop[0].baiTen);
+  const trang = n && mucLuc?.length ? mucLuc.filter((m) => String(m.baiSo) === n).map((m) => m.trang) : [];
+  return {
+    baiHoc: khop[0].baiTen!.replace(/\s+/g, ' ').trim(),
+    tuan: tuan.length ? Math.min(...tuan) : undefined,
+    trangSgk: trang.length ? `tr. ${Math.min(...trang)}` : undefined,
+  };
+}
+
 const soBai = (s: string | null | undefined) => /(?:^|[^\p{L}\d])bài\s*(\d+)\b/iu.exec(s ?? '')?.[1];
 
 /**
@@ -284,16 +309,19 @@ export function goiYTheoBaiPpct(noiDung: string | null | undefined, tiet: TietGo
 }
 
 /** Điền lại bài, tuần từ PPCT vào các ô còn trống. Ô thầy đã điền thì giữ nguyên. */
-export function dienLaiTuPpct(d: DacTa, goiYTheoYccd: Map<string, GoiYMinhChung>, tiet: TietGoiY[]): { dacTa: DacTa; soDong: number } {
+export function dienLaiTuPpct(d: DacTa, goiYTheoYccd: Map<string, GoiYMinhChung>, tiet: TietGoiY[], mucLuc: MucLucSgk[] = []): { dacTa: DacTa; soDong: number } {
   let soDong = 0;
   const dong = d.dong.map((r) => {
     const g = goiYTheoYccd.get(chuanHoa(r.yccd)) ?? goiYTheoBaiPpct(r.noiDung ?? r.mach, tiet);
-    if (!g) return r;
-    const baiHoc = r.baiHoc || g.baiHoc || '';
-    const tuan = r.tuan ?? g.tuan ?? null;
-    if (baiHoc === r.baiHoc && tuan === r.tuan) return r;
+    const baiHoc = r.baiHoc || g?.baiHoc || '';
+    const tuan = r.tuan ?? g?.tuan ?? null;
+    // Có bài rồi (thầy chọn hoặc gợi ý) mà còn thiếu tuần, trang thì tra thêm trong PPCT và mục lục SGK
+    const them = baiHoc ? minhChungTuBai(baiHoc, tiet, mucLuc) : undefined;
+    const tuanCuoi = tuan ?? them?.tuan ?? null;
+    const trangSgk = r.trangSgk || them?.trangSgk || '';
+    if (baiHoc === r.baiHoc && tuanCuoi === r.tuan && trangSgk === (r.trangSgk ?? '')) return r;
     soDong++;
-    return { ...r, baiHoc, tuan };
+    return { ...r, baiHoc, tuan: tuanCuoi, trangSgk };
   });
   return { dacTa: { ...d, dong }, soDong };
 }

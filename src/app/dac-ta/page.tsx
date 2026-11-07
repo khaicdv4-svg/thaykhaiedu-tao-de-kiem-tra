@@ -18,6 +18,7 @@ import {
   dienLaiTuPpct,
   dungLaiDacTa,
   kiemDinhDacTa,
+  minhChungTuBai,
   taoDacTa,
   taoGoiYTheoYccd,
   trangThaiDacTaSauKhiSua,
@@ -27,6 +28,7 @@ import {
   type DongDacTa,
   type KetQuaKiemDinhDacTa,
   type MinhChungCau,
+  type MucLucSgk,
   type TrangThaiDacTa,
 } from '@/core/dac-ta/dac-ta';
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
@@ -77,6 +79,7 @@ export default function DacTaPage() {
   const [thongBao, setThongBao] = useState<string | null>(null);
   const [dangGui, setDangGui] = useState(false);
   const [tiet, setTiet] = useState<Tiet[]>([]);
+  const [mucLuc, setMucLuc] = useState<MucLucSgk[]>([]);
   const [yccdKho, setYccdKho] = useState<Yccd[]>([]);
   const [baiCu, setBaiCu] = useState<DacTa | null>(null); // đặc tả cũ khi ma trận đã có phiên bản mới hơn
 
@@ -91,7 +94,7 @@ export default function DacTaPage() {
 
   const tuanKiemTra = useMemo(() => (tiet.length ? khoangTuanTheoKy(tiet, ky).tuanDen : null), [tiet, ky]);
   const goiY = useMemo(() => taoGoiYTheoYccd(yccdKho, tiet), [yccdKho, tiet]);
-  const dsBaiPpct = useMemo(() => [...new Set(tiet.map((t) => t.baiTen).filter((b): b is string => !!b))], [tiet]);
+  const dsBaiPpct = useMemo(() => [...new Set(tiet.map((t) => t.baiTen?.replace(/\s+/g, ' ').trim()).filter((b): b is string => !!b))], [tiet]);
 
   const nap = useCallback(async () => {
     setDangTai(true);
@@ -104,13 +107,15 @@ export default function DacTaPage() {
     setDacTa(null);
     setMtrBan(null);
 
-    const [mtr, dt, pp, yc] = await Promise.all([
+    const [mtr, dt, pp, yc, ml] = await Promise.all([
       goiJson<{ moiNhat: BanMaTranRieng | null }>(`/api/ma-tran-rieng?mon=${maMon}&ky=${ky}`),
       goiJson<{ banNhap: BanDacTaApi | null; moiNhat: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
       goiJson<{ tiet: Tiet[] }>(`/api/chuong-trinh/ppct?mon=${maMon}&lop=${LOP}`),
       goiJson<{ yccd: Yccd[] }>(`/api/chuong-trinh/yccd?mon=${maMon}&lop=${LOP}&trangThai=DA_DUYET`),
+      goiJson<{ mucLuc: MucLucSgk[] }>(`/api/chuong-trinh/sgk-muc-luc?mon=${maMon}&lop=${LOP}`),
     ]);
     setTiet(pp.ok ? pp.j.tiet ?? [] : []);
+    setMucLuc(ml.ok ? ml.j.mucLuc ?? [] : []);
     setYccdKho(yc.ok ? yc.j.yccd ?? [] : []);
     if (!mtr.ok) { setLoiTai(mtr.j.error ?? 'Không đọc được ma trận riêng.'); setDangTai(false); return; }
     const moiNhat = mtr.j.moiNhat;
@@ -140,7 +145,7 @@ export default function DacTaPage() {
   const taoMoi = () => {
     if (!mtrBan) return;
     const { ma_tran_chung: mtc, ma_tran_rieng: mtr } = mtrBan.duLieu;
-    setDacTa(taoDacTa(mtc, mtr, mtrBan.phienBan ?? 1, { tuanKiemTra, goiYTheoYccd: goiY, tiet }));
+    setDacTa(dienLaiTuPpct(taoDacTa(mtc, mtr, mtrBan.phienBan ?? 1, { tuanKiemTra, goiYTheoYccd: goiY, tiet }), goiY, tiet, mucLuc).dacTa);
     setTrangThai('BAN_NHAP');
     setKetQua(null);
     setDaXemTruoc(false);
@@ -164,6 +169,11 @@ export default function DacTaPage() {
     setTrangThai((t) => trangThaiDacTaSauKhiSua(t));
     setKetQua(null);
     setDaXemTruoc(false);
+  };
+  // Chọn đúng một bài trong PPCT thì tự điền tuần, trang SGK vào ô còn trống (không ghi đè ô thầy đã điền)
+  const chonBai = (r: DongDacTa, giaTri: string) => {
+    const g = minhChungTuBai(giaTri, tiet, mucLuc);
+    suaDong(r.khoa, g ? { baiHoc: g.baiHoc, ...(r.tuan === null && g.tuan !== undefined ? { tuan: g.tuan } : {}), ...(!r.trangSgk.trim() && g.trangSgk ? { trangSgk: g.trangSgk } : {}) } : { baiHoc: giaTri });
   };
   const suaDong = (khoa: string, p: Partial<MinhChungCau>) => sua((d) => ({ ...d, dong: d.dong.map((r) => (r.khoa === khoa ? { ...r, ...p } : r)) }));
 
@@ -204,7 +214,7 @@ export default function DacTaPage() {
   const nhom = useMemo((): [string, DongDacTa[]][] => (dacTa ? [['Các câu theo thứ tự trong đề', xepDongTheoCau(dacTa.dong)]] : []), [dacTa]);
   const dienLai = () => {
     if (!dacTa) return;
-    const kq = dienLaiTuPpct(dacTa, goiY, tiet);
+    const kq = dienLaiTuPpct(dacTa, goiY, tiet, mucLuc);
     setDacTa(kq.dacTa);
     setThongBao(kq.soDong ? `Đã điền bài, tuần cho ${kq.soDong} câu từ phân phối chương trình. Thầy xem lại và ghi chú nếu cần.` : tiet.length ? 'Không có ô trống nào tìm được bài khớp trong phân phối chương trình. Thầy nhập tay giúp.' : 'Môn này chưa có phân phối chương trình trong hệ thống. Thầy nhập ở mục Phân phối chương trình trước.');
   };
@@ -307,7 +317,7 @@ export default function DacTaPage() {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-[2fr_90px_1fr] gap-2 items-start">
                           <label className="text-xs text-slate-500">Bài học (theo PPCT)
-                            <input aria-label={`Bài học câu ${r.cau}`} list="ds-bai-ppct" className={`${o} mt-0.5 ${r.baiHoc ? '' : 'border-amber-400 bg-amber-50'}`} disabled={daXacNhan} value={r.baiHoc} onChange={(e) => suaDong(r.khoa, { baiHoc: e.target.value })} />
+                            <input aria-label={`Bài học câu ${r.cau}`} list="ds-bai-ppct" className={`${o} mt-0.5 ${r.baiHoc ? '' : 'border-amber-400 bg-amber-50'}`} disabled={daXacNhan} value={r.baiHoc} onChange={(e) => chonBai(r, e.target.value)} />
                           </label>
                           <label className="text-xs text-slate-500">Tuần
                             <input aria-label={`Tuần câu ${r.cau}`} type="number" min={1} max={40} className={`${o} mt-0.5 ${r.tuan !== null ? '' : 'border-amber-400 bg-amber-50'}`} disabled={daXacNhan} value={r.tuan ?? ''} onChange={(e) => suaDong(r.khoa, { tuan: e.target.value ? Number(e.target.value) : null })} />

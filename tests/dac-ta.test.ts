@@ -8,6 +8,7 @@ import {
   xepDongTheoCau,
   kiemDinhDacTa,
   layMinhChung,
+  minhChungTuBai,
   taoDacTa,
   taoGoiYTheoYccd,
   trangThaiDacTaSauKhiSua,
@@ -252,5 +253,49 @@ describe('Gợi ý bài, tuần theo số bài trong PPCT', () => {
   });
   it('xếp theo số câu, câu không đánh số để cuối', () => {
     expect(xepDongTheoCau([{ cau: 'Viết' }, { cau: '10' }, { cau: '2' }]).map((x) => x.cau)).toEqual(['2', '10', 'Viết']);
+  });
+});
+
+describe('Chọn bài thì tự điền tuần và trang SGK', () => {
+  const tiet = [
+    { tuan: 1, baiTen: 'Bài 1\nĐiều kì diệu\n(3 tiết)' },
+    { tuan: 1, baiTen: 'Bài 2\nThi nhạc (4 tiết)' },
+    { tuan: 2, baiTen: 'Bài 1\nĐiều kì diệu\n(3 tiết)' },
+    { tuan: 2, baiTen: 'Bài 3\nAnh em sinh đôi (3 tiết)' },
+  ];
+  const mucLuc = [
+    { baiSo: 1, tuan: 1, hoatDong: 'Đọc', noiDung: 'Điều kì diệu', trang: 8 },
+    { baiSo: 1, tuan: 1, hoatDong: 'Viết', noiDung: 'Tìm hiểu đoạn văn và câu chủ đề', trang: 10 },
+    { baiSo: 2, tuan: 1, hoatDong: 'Đọc', noiDung: 'Thi nhạc', trang: 12 },
+  ];
+
+  it('lấy tuần đầu của bài và trang đầu của bài theo mục lục', () => {
+    expect(minhChungTuBai('Bài 1 Điều kì diệu (3 tiết)', tiet, mucLuc)).toEqual({ baiHoc: 'Bài 1 Điều kì diệu (3 tiết)', tuan: 1, trangSgk: 'tr. 8' });
+  });
+
+  it('ô nhập một dòng làm mất dấu xuống dòng vẫn khớp', () => {
+    expect(minhChungTuBai('Bài 2Thi nhạc (4 tiết)', tiet, mucLuc)?.trangSgk).toBe('tr. 12');
+  });
+
+  it('bài có trong PPCT nhưng mục lục chưa có thì chỉ điền tuần, để trống trang', () => {
+    const g = minhChungTuBai('Bài 3 Anh em sinh đôi (3 tiết)', tiet, mucLuc);
+    expect(g?.tuan).toBe(2);
+    expect(g?.trangSgk).toBeUndefined();
+  });
+
+  it('không khớp bài nào trong PPCT thì không điền gì (không đoán)', () => {
+    expect(minhChungTuBai('Bài 99 Không có', tiet, mucLuc)).toBeUndefined();
+    expect(minhChungTuBai('', tiet, mucLuc)).toBeUndefined();
+    expect(minhChungTuBai('Bài 1 Điều kì diệu (3 tiết)', undefined, mucLuc)).toBeUndefined();
+  });
+
+  it('điền lại từ PPCT bổ sung trang cho dòng đã có bài, giữ nguyên ô thầy đã điền', () => {
+    const d = { loai: 'DAC_TA', ma_mon: 'X', ky_kiem_tra: 'CUOI_HK1', phien_ban_ma_tran_rieng: 1, tuan_kiem_tra: null, dong: [
+      { cau: '1', noiDung: 'n', mach: 'm', yccd: '', baiHoc: 'Bài 1 Điều kì diệu (3 tiết)', tuan: null, trangSgk: '' },
+      { cau: '2', noiDung: 'n', mach: 'm', yccd: '', baiHoc: 'Bài 2 Thi nhạc (4 tiết)', tuan: 5, trangSgk: 'tr. 99' },
+    ] } as never as DacTa;
+    const kq = dienLaiTuPpct(d, new Map(), tiet, mucLuc).dacTa;
+    expect(kq.dong[0]).toMatchObject({ tuan: 1, trangSgk: 'tr. 8' });
+    expect(kq.dong[1]).toMatchObject({ tuan: 5, trangSgk: 'tr. 99' });
   });
 });

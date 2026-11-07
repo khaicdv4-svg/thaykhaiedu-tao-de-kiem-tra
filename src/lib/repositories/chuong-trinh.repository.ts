@@ -206,3 +206,22 @@ export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: num
     .filter((r) => !moiNhat.id || r.source_id === moiNhat.id)
     .map((r) => ({ thuTu: r.thu_tu as number, tuan: r.tuan as number | null, hocKi: r.hoc_ki as number | null, chuDe: r.chu_de as string | null, baiTen: r.bai_ten as string | null, tietTen: (r.tiet_ten as string | null) ?? null }));
 }
+
+/**
+ * Mục lục SGK của một môn (trang đầu từng phần trong từng bài), do giáo viên nhập từ SGK đang dùng.
+ * Môn chưa nhập mục lục thì trả danh sách rỗng, không báo lỗi: ô trang SGK để thầy tự điền.
+ */
+export async function dsMucLucSgk(mon: string, lop: number): Promise<{ baiSo: number; tuan: number | null; hoatDong: string; noiDung: string; trang: number }[]> {
+  if (!MON_SANG_PPCT[mon]) return [];
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase
+    .from('sgk_muc_luc')
+    .select('bai_so, tuan, hoat_dong, noi_dung, trang')
+    .eq('organization_id', orgId)
+    .eq('ma_mon', mon)
+    .eq('khoi', lop)
+    .order('bai_so')
+    .limit(2000);
+  if (error) throw new Error(`Không đọc được mục lục SGK: ${error.message}`);
+  return (data ?? []).map((r) => ({ baiSo: r.bai_so as number, tuan: r.tuan as number | null, hoatDong: r.hoat_dong as string, noiDung: r.noi_dung as string, trang: r.trang as number }));
+}
