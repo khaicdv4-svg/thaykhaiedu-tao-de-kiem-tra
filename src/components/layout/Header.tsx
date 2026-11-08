@@ -7,6 +7,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Bell, Database, LogOut, Menu, Search, X } from 'lucide-react';
 import { getAppDataMode } from '@/lib/supabase/config';
 import { useAuth } from '@/core/contexts/AuthContext';
@@ -35,6 +36,27 @@ export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
   const [tuKhoa, setTuKhoa] = useState('');
   const [moGoiY, setMoGoiY] = useState(false);
   const oTim = useRef<HTMLInputElement>(null);
+
+  // Thông báo trong trường (ví dụ: ma trận của tổ được cập nhật)
+  interface TB { id: string; tieuDe: string; noiDung: string; lienKet: string | null; luc: string; daDoc: boolean }
+  const [thongBao, setThongBao] = useState<TB[]>([]);
+  const [moChuong, setMoChuong] = useState(false);
+  const chua = thongBao.filter((t) => !t.daDoc).length;
+
+  useEffect(() => {
+    let huy = false;
+    const nap = () => fetch('/api/thong-bao').then((r) => r.json()).then((r) => { if (!huy && r.thongBao) setThongBao(r.thongBao); }).catch(() => undefined);
+    nap();
+    const t = setInterval(nap, 120_000);
+    return () => { huy = true; clearInterval(t); };
+  }, []);
+
+  const docHet = () => {
+    const ids = thongBao.filter((t) => !t.daDoc).map((t) => t.id);
+    if (ids.length === 0) return;
+    setThongBao((ds) => ds.map((t) => ({ ...t, daDoc: true })));
+    fetch('/api/thong-bao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }).catch(() => undefined);
+  };
 
   const roleTitle = ROLE_TITLE_MAP[activeRole] || 'Giáo viên';
   const tenNgan = profile.fullName?.trim().split(/\s+/).slice(-1)[0] ?? '';
@@ -142,9 +164,44 @@ export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
             {dataMode === 'REAL_DATA' ? 'Dữ liệu thật' : 'Dữ liệu mẫu'}
           </span>
 
-          <button className="relative p-2.5 rounded-xl text-slate-500 hover:text-indigo-700 hover:bg-indigo-50" title="Thông báo" aria-label="Thông báo">
-            <Bell className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              className="relative p-2.5 rounded-xl text-slate-500 hover:text-indigo-700 hover:bg-indigo-50"
+              title="Thông báo"
+              aria-label={chua ? `Thông báo, ${chua} chưa đọc` : 'Thông báo'}
+              onClick={() => setMoChuong((v) => !v)}
+            >
+              <Bell className="w-5 h-5" />
+              {chua > 0 && (
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">{chua > 9 ? '9+' : chua}</span>
+              )}
+            </button>
+            {moChuong && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl z-50">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+                  <span className="text-sm font-bold text-slate-900">Thông báo</span>
+                  <button type="button" className="text-xs font-medium text-indigo-700 hover:underline disabled:text-slate-400" disabled={chua === 0} onClick={docHet}>Đánh dấu đã đọc hết</button>
+                </div>
+                {thongBao.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-slate-500 text-center">Chưa có thông báo nào.</p>
+                ) : (
+                  <ul className="divide-y divide-slate-100">
+                    {thongBao.map((t) => (
+                      <li key={t.id} className={`px-4 py-3 ${t.daDoc ? '' : 'bg-indigo-50/50'}`}>
+                        <div className="text-sm font-semibold text-slate-900">{t.tieuDe}</div>
+                        <div className="text-[11px] text-slate-500 mb-1">{new Date(t.luc).toLocaleString('vi-VN')}</div>
+                        <p className="text-xs text-slate-700 whitespace-pre-line">{t.noiDung}</p>
+                        {t.lienKet && (
+                          <Link href={t.lienKet} className="inline-block mt-1.5 text-xs font-medium text-indigo-700 hover:underline" onClick={() => { setMoChuong(false); docHet(); }}>Xem ma trận</Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Tài khoản */}
           <div className="flex items-center gap-2.5 pl-2 sm:pl-3 border-l border-slate-200">

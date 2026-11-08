@@ -7,6 +7,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { KhoiVanBan } from '@/core/utils/docx-bang';
 import { DANH_SACH_KY_MA_TRAN, DANH_SACH_MON, type KyMaTran, type LoaiMaTranTo } from '@/core/kho-ma-tran/phan-loai';
+import { soSanhMaTran, tomTatThayDoi } from '@/core/kho-ma-tran/so-sanh';
 
 const KHOI = 4;
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -175,6 +176,41 @@ export async function xacNhanTaiLieu(id: string): Promise<void> {
     .select('id');
   if (error) throw new Error(`Không xác nhận được: ${error.message}`);
   if (!data?.length) throw new Error('File không còn ở trạng thái chờ xác nhận.');
+  // Báo cho giáo viên trong trường. Báo lỗi cũng không làm hỏng việc xác nhận.
+  await baoMaTranCapNhat(supabase, user.id, orgId, id).catch(() => undefined);
+}
+
+/** Tạo thông báo "ma trận đã cập nhật" kèm tóm tắt những gì thay đổi so với bản đã xác nhận trước đó. */
+async function baoMaTranCapNhat(supabase: Awaited<ReturnType<typeof layNguoiDung>>['supabase'], userId: string, orgId: string, id: string): Promise<void> {
+  const { data: moi } = await supabase
+    .from('tai_lieu_ma_tran')
+    .select('loai, ma_mon, ky_kiem_tra, phien_ban, ten_file, noi_dung, ghi_chu')
+    .eq('organization_id', orgId).eq('id', id).single();
+  if (!moi) return;
+
+  let q = supabase.from('tai_lieu_ma_tran')
+    .select('phien_ban, noi_dung')
+    .eq('organization_id', orgId).eq('khoi', KHOI).eq('loai', moi.loai).eq('ma_mon', moi.ma_mon)
+    .eq('trang_thai', 'DA_XAC_NHAN').lt('phien_ban', moi.phien_ban);
+  q = moi.ky_kiem_tra ? q.eq('ky_kiem_tra', moi.ky_kiem_tra) : q.is('ky_kiem_tra', null);
+  const { data: truoc } = await q.order('phien_ban', { ascending: false }).limit(1);
+
+  const mon = DANH_SACH_MON.find((m) => m.ma === moi.ma_mon)?.ten ?? moi.ma_mon;
+  const ky = DANH_SACH_KY_MA_TRAN.find((k) => k.ma === moi.ky_kiem_tra)?.ten;
+  const ten = moi.loai === 'CHUNG' ? `Ma trận chung ${mon} – ${ky ?? ''}`.trim() : `Ma trận nội dung cả năm ${mon}`;
+  const ban = truoc?.[0];
+  const phan = ban
+    ? [`Bản ${moi.phien_ban} thay bản ${ban.phien_ban}.`, moi.ghi_chu ? `Ghi chú: ${moi.ghi_chu}.` : '', tomTatThayDoi(soSanhMaTran(ban.noi_dung, moi.noi_dung))]
+    : [`Đã có ma trận chính thức (bản ${moi.phien_ban}).`, moi.ghi_chu ? `Ghi chú: ${moi.ghi_chu}.` : '']
+  ;
+  await supabase.from('thong_bao').insert({
+    organization_id: orgId,
+    loai: 'MA_TRAN',
+    tieu_de: `${ten} đã được cập nhật`,
+    noi_dung: phan.filter(Boolean).join('\n').slice(0, 4900),
+    lien_ket: moi.loai === 'CHUNG' ? '/ma-tran-chung' : '/ma-tran-ca-nam',
+    tao_boi: userId,
+  });
 }
 
 /**
