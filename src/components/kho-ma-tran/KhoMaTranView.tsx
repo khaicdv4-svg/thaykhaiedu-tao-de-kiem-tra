@@ -340,6 +340,27 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     napDanhSach();
   };
 
+  /** Xóa mọi phiên bản của ô đang xem để tải lại từ đầu. */
+  const xoaCaO = async () => {
+    const ds = dangXem;
+    if (ds.length === 0) return;
+    const coDaXacNhan = ds.some((t) => t.trangThai === 'DA_XAC_NHAN');
+    const hoi = `Xóa TẤT CẢ ${ds.length} bản của ô này${coDaXacNhan ? ' (có bản ĐÃ XÁC NHẬN)' : ''} để tải lại từ đầu? Không khôi phục được.`;
+    if (!window.confirm(hoi)) return;
+    let loiDau: string | null = null;
+    let daXoa = 0;
+    for (const t of ds) {
+      const r = await fetch(`/api/kho-ma-tran?id=${t.id}`, { method: 'DELETE' }).then((x) => x.json());
+      if (r.error) { loiDau = r.error; break; }
+      daXoa++;
+    }
+    setThongBao(loiDau
+      ? { loai: 'loi', text: `Đã xóa ${daXoa}/${ds.length} bản, dừng vì: ${loiDau}` }
+      : { loai: 'ok', text: `Đã xóa ${daXoa} bản. Thầy cô tải file mới cho ô này.` });
+    if (!loiDau) setODangXem(null);
+    napDanhSach();
+  };
+
   const moChu = async (id: string) => {
     const r = await fetch(`/api/kho-ma-tran/noi-dung?id=${id}`).then((x) => x.json());
     if (r.error) setThongBao({ loai: 'loi', text: r.error });
@@ -558,6 +579,9 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
             <div className="flex flex-wrap items-center gap-2 border-t pt-3">
               <button type="button" className={nutPhu} onClick={() => thayRef.current?.click()}><FileUp className="w-4 h-4" /> Tải bản thay thế cho ô này</button>
               <input ref={thayRef} type="file" accept=".docx" className="hidden" onChange={chonFileThay} />
+              {dangXem.some((t) => (t.trangThai === 'DA_XAC_NHAN' ? duocXacNhan : duocTai)) && dangXem.every((t) => (t.trangThai === 'DA_XAC_NHAN' ? duocXacNhan : duocTai)) && (
+                <button type="button" className={`${nutPhu} text-red-700 hover:bg-red-50`} onClick={xoaCaO}><Trash2 className="w-4 h-4" /> Xóa cả ô để làm lại</button>
+              )}
               <span className="text-xs text-slate-500">File mới thành bản tiếp theo của đúng ô này, không cần đặt tên file theo môn, kì.</span>
             </div>
           )}
