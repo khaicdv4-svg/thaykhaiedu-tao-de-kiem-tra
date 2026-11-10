@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { BadgeCheck, Loader2, Search, Trash2 } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import type { NoiDungCau } from '@/core/de/de';
+import { VietLaiCauAI } from './VietLaiCauAI';
 
 interface Cau {
   id: string; maMon: string; muc: number; hinhThuc: 'TN' | 'TL'; dang: string | null; yccd: string; chuDe: string;
@@ -66,6 +67,11 @@ export function NganHangCauHoi({ mon: monCoDinh, muc: mucMacDinh, hinhThuc: htMa
     const r = await fetch(`/api/ngan-hang?id=${c.id}`, { method: 'DELETE' });
     if (!r.ok) setLoi((await r.json()).error ?? 'Không xóa được.'); else void tai();
   };
+  const luuBanMoi = async (c: Cau, nd: NoiDungCau) => {
+    const r = await fetch('/api/ngan-hang', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hanhDong: 'LUU', mon: c.maMon, chuDe: c.chuDe, cau: { ...nd, muc: c.muc, hinhThuc: c.hinhThuc, dang: c.dang, yccd: c.yccd, diem: c.diemGoiY ?? 0.5 } }) });
+    const j = await r.json();
+    if (!r.ok) setLoi(j.error ?? 'Không lưu được.'); else void tai();
+  };
   const datKiemDinh = async (c: Cau) => {
     const r = await fetch('/api/ngan-hang', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hanhDong: 'KIEM_DINH', id: c.id, daKiemDinh: !c.daKiemDinh }) });
     if (!r.ok) setLoi((await r.json()).error ?? 'Không cập nhật được.'); else void tai();
@@ -122,6 +128,7 @@ export function NganHangCauHoi({ mon: monCoDinh, muc: mucMacDinh, hinhThuc: htMa
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-2 text-xs">
+                <VietLaiCauAI mon={c.maMon} meta={{ muc: c.muc, hinhThuc: c.hinhThuc, dang: c.dang, yccd: c.yccd }} noiDung={c.noiDung} nhanDung="Lưu thành câu mới (giữ câu cũ)" onDung={(nd) => luuBanMoi(c, nd)} />
                 <button type="button" className="rounded border border-slate-300 px-2 py-1 hover:bg-slate-50" onClick={() => setMo(dangMo ? null : c.id)}>{dangMo ? 'Thu gọn' : 'Xem đủ'}</button>
                 {onChon && <button type="button" className="nut-tke text-xs" onClick={() => onChon(c)}>Dùng câu này</button>}
                 {duocDuyet && <button type="button" className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-emerald-800" onClick={() => void datKiemDinh(c)}>{c.daKiemDinh ? 'Bỏ đánh dấu kiểm định' : 'Đánh dấu đã kiểm định'}</button>}

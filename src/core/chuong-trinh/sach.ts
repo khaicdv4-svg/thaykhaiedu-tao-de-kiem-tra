@@ -148,3 +148,46 @@ export function docKetQuaDoiChieu(traLoi: string): KetQuaDoiChieu | null {
     nhanXet: Array.isArray(j.nhanXet) ? j.nhanXet.map(chu).filter(Boolean).slice(0, 8) : [], goiY: chu(j.goiY),
   };
 }
+
+/** Soạn NHIỀU câu cùng yêu cầu cần đạt để bổ sung ngân hàng câu hỏi. */
+export const HE_THONG_SOAN_NHIEU_CAU = `Bạn là giáo viên tiểu học Việt Nam soạn NHIỀU câu cho ngân hàng câu hỏi lớp 4, bám sát sách giáo khoa.
+Quy tắc bắt buộc:
+- Chỉ dùng kiến thức, số liệu, ngữ liệu có trong các trang sách được cung cấp ("SGK") hoặc kiến thức cơ bản của đúng bài đó. TUYỆT ĐỐI không bịa nội dung sách. Nếu các trang không đủ để soạn, trả {"khongDuCanCu": true, "ghiChu": "..."}.
+- KHÔNG chép nguyên bài tập, câu hỏi, đoạn văn trong sách. Các câu phải KHÁC NHAU rõ rệt về tình huống, số liệu hoặc cách hỏi, không lặp ý nhau.
+- Đúng yêu cầu cần đạt, mức độ, dạng câu. Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam, không đánh đố.
+- Trắc nghiệm nhiều lựa chọn: đúng 4 phương án, chỉ MỘT đáp án đúng, phương án gây nhiễu hợp lí, độ dài tương đương. Đúng sai: mỗi ý một nhận định, đáp án là chuỗi Đ/S theo thứ tự ý.
+- Toán: tính lại đáp án thật cẩn thận. Không dùng định dạng Markdown.
+- Chỉ trả về MỘT khối JSON, không lời dẫn: {"cau": [{"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string}], "khongDuCanCu": boolean, "ghiChu": string}.
+  luaChon: 4 phương án (NLC) hoặc các ý (Đúng sai) hoặc [] cho dạng khác. huongDanCham: từng bước và điểm từng ý cho câu tự luận, "" cho trắc nghiệm.`;
+
+export function loiNhacSoanNhieuCau(c: CauChoAI, soCau: number, ngu: Pick<NguCanhSach, 'sgk' | 'sgv'>): string {
+  return `${mota(c)}\n\nCác trang sách tra được:\n${ngu.sgk || '(không có trang SGK)'}\n${ngu.sgv ? `\n${ngu.sgv}` : ''}\n\nSoạn đúng ${soCau} câu khác nhau theo yêu cầu trên.`;
+}
+
+export interface KetQuaSoanNhieu { cau: CauAISoan[]; khongDuCanCu: boolean; ghiChu: string }
+export function docNhieuCauAISoan(traLoi: string): KetQuaSoanNhieu | null {
+  const j = layJson(traLoi);
+  if (!j) return null;
+  const khong = j.khongDuCanCu === true;
+  const ds = Array.isArray(j.cau) ? j.cau : [];
+  const cau = ds
+    .map((x): CauAISoan | null => (x && typeof x === 'object'
+      ? { deBai: chu((x as any).deBai), luaChon: Array.isArray((x as any).luaChon) ? (x as any).luaChon.map(chu) : [], dapAn: chu((x as any).dapAn), huongDanCham: chu((x as any).huongDanCham), khongDuCanCu: false, ghiChu: '' }
+      : null))
+    .filter((x): x is CauAISoan => !!x && !!x.deBai);
+  if (!khong && !cau.length) return null;
+  return { cau, khongDuCanCu: khong, ghiChu: chu(j.ghiChu) };
+}
+
+/** Viết lại MỘT câu theo ý giáo viên (dễ hiểu hơn, đáp án ngắn hơn, đổi số liệu…). */
+export const HE_THONG_VIET_LAI_CAU = `Bạn là giáo viên tiểu học Việt Nam chỉnh sửa MỘT câu của đề kiểm tra lớp 4 theo đúng yêu cầu của giáo viên.
+Quy tắc bắt buộc:
+- Chỉ sửa theo yêu cầu của giáo viên. Giữ nguyên yêu cầu cần đạt, mức độ, dạng câu và số phương án, trừ khi giáo viên yêu cầu đổi.
+- Không bịa kiến thức. Nếu yêu cầu làm câu sai kiến thức hoặc không còn đúng yêu cầu cần đạt, vẫn viết lại nhưng ghi cảnh báo ngắn ở "ghiChu".
+- Đổi đề bài hay số liệu thì TÍNH LẠI đáp án và hướng dẫn chấm cho khớp (Toán: ghi phép tính). Trắc nghiệm: đúng 4 phương án, chỉ MỘT đáp án đúng.
+- Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam. Không dùng định dạng Markdown. Giữ nguyên các dòng "[Hình n]" nếu có.
+- Chỉ trả về MỘT khối JSON, không lời dẫn: {"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string, "khongDuCanCu": false, "ghiChu": string}.`;
+
+export function loiNhacVietLai(c: CauChoAI, yeuCau: string): string {
+  return `${mota(c)}\n\nYÊU CẦU CỦA GIÁO VIÊN: ${yeuCau}\n\nViết lại câu theo yêu cầu trên.`;
+}

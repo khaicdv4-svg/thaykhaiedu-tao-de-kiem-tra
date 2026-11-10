@@ -27,7 +27,14 @@ export async function POST(req: NextRequest) {
     const b = (await req.json()) as { hanhDong?: string; mon?: string; cau?: CauDe; chuDe?: string; id?: string; daKiemDinh?: boolean };
     if (b.hanhDong === 'LUU') {
       if (!b.mon || !b.cau) return loi('Thiếu môn hoặc nội dung câu.');
-      return NextResponse.json({ success: true, ...(await luuVaoNganHang(b.mon, b.cau, b.chuDe ?? '')) });
+      const c = b.cau;
+      const cauSach: CauDe = {
+        ...c,
+        deBai: String(c.deBai ?? ''), luaChon: Array.isArray(c.luaChon) ? c.luaChon.map(String) : [], dapAn: String(c.dapAn ?? ''),
+        huongDanCham: String(c.huongDanCham ?? ''), ghiChuHinh: String(c.ghiChuHinh ?? ''), yccd: String(c.yccd ?? ''),
+        hinh: Array.isArray(c.hinh) ? c.hinh : [], diem: Number(c.diem) || 0.5, dang: c.dang ?? null,
+      };
+      return NextResponse.json({ success: true, ...(await luuVaoNganHang(b.mon, cauSach, b.chuDe ?? '')) });
     }
     if (b.hanhDong === 'KIEM_DINH') {
       if (!b.id) return loi('Thiếu câu cần đánh dấu.');

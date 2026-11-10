@@ -14,6 +14,7 @@ import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
 import { XemTruocDe } from '@/components/de/XemTruocDe';
 import { NganHangCauHoi } from '@/components/de/NganHangCauHoi';
+import { VietLaiCauAI } from '@/components/de/VietLaiCauAI';
 import { goiYTuNganHang, type GoiYMotCau } from '@/core/de/goi-y-ngan-hang';
 import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
 import { svgSangHinh, xuLyAnhDe } from '@/core/utils/anh-de';
@@ -536,6 +537,9 @@ export default function TaoDePage() {
                         <button type="button" className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50" onClick={() => setMoNganHang(moNganHang === c.khoa ? null : c.khoa)}>{moNganHang === c.khoa ? 'Đóng ngân hàng' : 'Lấy từ ngân hàng'}</button>
                         <button type="button" className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40" disabled={!c.deBai.trim()} onClick={() => void luuNganHang(c)}>Lưu vào ngân hàng</button>
                         {tinNganHang[c.khoa] && <span className="text-slate-600">{tinNganHang[c.khoa]}</span>}
+                        {c.deBai.trim() && (
+                          <VietLaiCauAI mon={maMon} meta={{ muc: c.muc, hinhThuc: c.hinhThuc, dang: c.dang, yccd: c.yccd }} noiDung={c} nhanDung="Dùng bản này cho câu" onDung={(nd) => suaCau(c.khoa, { deBai: nd.deBai, luaChon: nd.luaChon, dapAn: nd.dapAn, huongDanCham: nd.huongDanCham })} />
+                        )}
                       </div>
                       {moNganHang === c.khoa && (
                         <div className="rounded-lg border border-sky-200 bg-sky-50/40 p-3">
