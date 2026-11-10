@@ -82,9 +82,25 @@ export async function layMaTranRieng(maMon: string, ky: string) {
   const { data: moiNhat, error: e2 } = await loc(supabase.from('ma_tran_rieng').select(COT_MTR)).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
   if (e2) throw new Error(`Không đọc được ma trận riêng: ${e2.message}`);
   const { data: ds } = await loc(supabase.from('ma_tran_rieng').select('id, phien_ban, xac_nhan_luc')).eq('la_ban_nhap', false).order('phien_ban', { ascending: false });
+  // Ma trận chung của tổ (kho ma trận) được xác nhận bản mới hơn sau khi ma trận riêng đã xác nhận → cần kiểm tra lại
+  let maTranChungMoiHon: { phienBan: number; xacNhanLuc: string; tenFile: string } | null = null;
+  const xacNhanRieng = moiNhat?.[0]?.xac_nhan_luc as string | undefined;
+  if (xacNhanRieng) {
+    const { data: kho } = await supabase
+      .from('tai_lieu_ma_tran')
+      .select('phien_ban, xac_nhan_luc, ten_file')
+      .eq('organization_id', orgId).eq('khoi', KHOI).eq('loai', 'CHUNG').eq('ma_mon', maMon).eq('ky_kiem_tra', ky)
+      .eq('trang_thai', 'DA_XAC_NHAN')
+      .order('xac_nhan_luc', { ascending: false }).limit(1);
+    const k = kho?.[0];
+    if (k?.xac_nhan_luc && new Date(k.xac_nhan_luc).getTime() > new Date(xacNhanRieng).getTime()) {
+      maTranChungMoiHon = { phienBan: k.phien_ban, xacNhanLuc: k.xac_nhan_luc, tenFile: k.ten_file };
+    }
+  }
   return {
     banNhap: nhap ? sangMtr(nhap) : null,
     moiNhat: moiNhat?.[0] ? sangMtr(moiNhat[0]) : null,
+    maTranChungMoiHon,
     cacPhienBan: ((ds ?? []) as any[]).map((r) => ({ id: r.id as string, phienBan: r.phien_ban as number, xacNhanLuc: r.xac_nhan_luc as string })),
   };
 }

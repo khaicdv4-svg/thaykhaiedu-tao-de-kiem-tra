@@ -185,6 +185,7 @@ export default function MatricesPage() {
   const [khungDung, setKhungDung] = useState<MaTranChung | null>(null);
   /** Số phiên bản ma trận riêng đã xác nhận trên hệ thống (null: chưa có). */
   const [phienBanXacNhan, setPhienBanXacNhan] = useState<number | null>(null);
+  const [chungMoiHon, setChungMoiHon] = useState<{ phienBan: number; xacNhanLuc: string } | null>(null);
   const [dangLuuHeThong, setDangLuuHeThong] = useState(false);
 
   const mtc = useMemo(
@@ -208,14 +209,16 @@ export default function MatricesPage() {
     setDaXemTruoc(false);
     setThongBao(nhap ? 'Đã mở lại bản nháp ma trận riêng đã lưu.' : null);
     setPhienBanXacNhan(null);
+    setChungMoiHon(null);
 
     // Bản lưu trên hệ thống (cả tổ cùng thấy) được ưu tiên hơn bản lưu trên máy
     let huy = false;
     fetch(`/api/ma-tran-rieng?mon=${mtc.ma_mon}&ky=${mtc.ky_kiem_tra}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((j: { banNhap?: { duLieu?: { ma_tran_chung?: MaTranChung; ma_tran_rieng?: MaTranRieng }; capNhatLuc?: string } | null; moiNhat?: { phienBan?: number | null } | null } | null) => {
+      .then((j: { banNhap?: { duLieu?: { ma_tran_chung?: MaTranChung; ma_tran_rieng?: MaTranRieng }; capNhatLuc?: string } | null; moiNhat?: { phienBan?: number | null } | null; maTranChungMoiHon?: { phienBan: number; xacNhanLuc: string } | null } | null) => {
         if (huy || !j) return;
         setPhienBanXacNhan(j.moiNhat?.phienBan ?? null);
+        setChungMoiHon(j.maTranChungMoiHon ?? null);
         const d = j.banNhap?.duLieu;
         // Chỉ dùng khi đúng cùng ma trận chung (khung dựng từ chương trình có thể đã khác)
         if (d?.ma_tran_rieng && d.ma_tran_chung && JSON.stringify(d.ma_tran_chung) === JSON.stringify(mtc)) {
@@ -399,6 +402,12 @@ export default function MatricesPage() {
         <Stepper buoc={buoc} xong={xong} />
       </div>
 
+      {chungMoiHon && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          Ma trận chung của tổ vừa được cập nhật (bản {chungMoiHon.phienBan}, xác nhận {new Date(chungMoiHon.xacNhanLuc).toLocaleDateString('vi-VN')}) sau khi ma trận riêng này được xác nhận.
+          Thầy cô mở lại, đối chiếu với ma trận chung mới rồi xác nhận lại. Bản đặc tả và đề làm từ ma trận riêng này cũng cần kiểm tra lại.
+        </div>
+      )}
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
 
       {buoc === 0 && dangDung && maMon && (
