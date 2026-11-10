@@ -13,6 +13,7 @@ import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
 import { XemTruocDe } from '@/components/de/XemTruocDe';
+import { NganHangCauHoi } from '@/components/de/NganHangCauHoi';
 import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
 import { svgSangHinh, xuLyAnhDe } from '@/core/utils/anh-de';
 import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
@@ -176,6 +177,18 @@ export default function TaoDePage() {
     setThongBao(`Đã dựng lại theo đặc tả phiên bản ${dacTaBan.phienBan}, giữ nội dung câu còn lại.${kq.moi.length ? ` Câu mới cần soạn: ${kq.moi.length}.` : ''}${kq.bo.length ? ` Câu không còn trong đặc tả: ${kq.bo.length}.` : ''}`);
   };
 
+  const [moNganHang, setMoNganHang] = useState<string | null>(null);
+  const [tinNganHang, setTinNganHang] = useState<Record<string, string>>({});
+  const luuNganHang = async (c: CauDe) => {
+    const r = await goiJson<{ daCo?: boolean }>('/api/ngan-hang', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hanhDong: 'LUU', mon: maMon, cau: c, chuDe: c.yccd }) });
+    setTinNganHang((t) => ({ ...t, [c.khoa]: r.ok ? (r.j.daCo ? 'Câu này đã có trong ngân hàng.' : 'Đã lưu vào ngân hàng.') : (r.j.error ?? 'Chưa lưu được.') }));
+  };
+  const dungTuNganHang = (c: CauDe, n: NoiDungCau) => {
+    if (c.deBai.trim() && !window.confirm('Câu này đã có nội dung. Thay bằng câu từ ngân hàng?')) return;
+    suaCau(c.khoa, { deBai: n.deBai, luaChon: n.luaChon, dapAn: n.dapAn, huongDanCham: n.huongDanCham, ghiChuHinh: n.ghiChuHinh, hinh: n.hinh ?? [] });
+    setSach((g) => ({ ...g, [c.khoa]: {} }));
+    setMoNganHang(null);
+  };
   const suaCau = (khoa: string, p: Partial<NoiDungCau>) => {
     setDe((d) => (d ? { ...d, cau: d.cau.map((c) => (c.khoa === khoa ? { ...c, ...p } : c)) } : d));
     setTrangThai((t) => trangThaiDeSauKhiSua(t));
@@ -459,6 +472,16 @@ export default function TaoDePage() {
                       </div>
                       <div className="text-xs text-slate-500">YCCĐ: {c.yccd || 'chưa có'}</div>
 
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <button type="button" className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50" onClick={() => setMoNganHang(moNganHang === c.khoa ? null : c.khoa)}>{moNganHang === c.khoa ? 'Đóng ngân hàng' : 'Lấy từ ngân hàng'}</button>
+                        <button type="button" className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40" disabled={!c.deBai.trim()} onClick={() => void luuNganHang(c)}>Lưu vào ngân hàng</button>
+                        {tinNganHang[c.khoa] && <span className="text-slate-600">{tinNganHang[c.khoa]}</span>}
+                      </div>
+                      {moNganHang === c.khoa && (
+                        <div className="rounded-lg border border-sky-200 bg-sky-50/40 p-3">
+                          <NganHangCauHoi mon={maMon} muc={c.muc} hinhThuc={c.hinhThuc} dang={c.dang} onChon={(x) => dungTuNganHang(c, x.noiDung)} />
+                        </div>
+                      )}
                       <label className="block text-xs text-slate-500">Đề bài
                         <textarea aria-label={`Đề bài ${nhanCau(c)}`} rows={3} className={`${o} mt-0.5 ${c.deBai.trim() ? '' : 'border-amber-400 bg-amber-50'}`} value={c.deBai} onChange={(e) => { conTro.current[c.khoa] = e.target.selectionStart; suaCau(c.khoa, { deBai: e.target.value }); }} onSelect={(e) => { conTro.current[c.khoa] = e.currentTarget.selectionStart; }} onBlur={(e) => { conTro.current[c.khoa] = e.currentTarget.selectionStart; }} />
                       </label>
