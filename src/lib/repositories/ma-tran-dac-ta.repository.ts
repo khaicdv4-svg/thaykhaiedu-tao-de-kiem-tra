@@ -72,6 +72,22 @@ const sangMtr = (r: any): BanMaTranRieng => ({
   id: r.id, phienBan: r.phien_ban, trangThai: r.trang_thai, capNhatLuc: r.updated_at, xacNhanLuc: r.xac_nhan_luc, duLieu: r.du_lieu,
 });
 
+/** Ma trận chung của tổ (kho ma trận) được xác nhận bản mới hơn sau khi ma trận riêng đã xác nhận → cần kiểm tra lại. */
+async function timMaTranChungMoiHon(supabase: any, orgId: string, maMon: string, ky: string, xacNhanRieng: string | undefined) {
+  if (!xacNhanRieng) return null;
+  const { data: kho } = await supabase
+    .from('tai_lieu_ma_tran')
+    .select('phien_ban, xac_nhan_luc, ten_file')
+    .eq('organization_id', orgId).eq('khoi', KHOI).eq('loai', 'CHUNG').eq('ma_mon', maMon).eq('ky_kiem_tra', ky)
+    .eq('trang_thai', 'DA_XAC_NHAN')
+    .order('xac_nhan_luc', { ascending: false }).limit(1);
+  const k = kho?.[0];
+  if (k?.xac_nhan_luc && new Date(k.xac_nhan_luc).getTime() > new Date(xacNhanRieng).getTime()) {
+    return { phienBan: k.phien_ban as number, xacNhanLuc: k.xac_nhan_luc as string, tenFile: k.ten_file as string };
+  }
+  return null;
+}
+
 /** Bản nháp và phiên bản đã xác nhận mới nhất, kèm danh sách các phiên bản (không kèm nội dung). */
 export async function layMaTranRieng(maMon: string, ky: string) {
   kiemMonKy(maMon, ky);
@@ -82,21 +98,7 @@ export async function layMaTranRieng(maMon: string, ky: string) {
   const { data: moiNhat, error: e2 } = await loc(supabase.from('ma_tran_rieng').select(COT_MTR)).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
   if (e2) throw new Error(`Không đọc được ma trận riêng: ${e2.message}`);
   const { data: ds } = await loc(supabase.from('ma_tran_rieng').select('id, phien_ban, xac_nhan_luc')).eq('la_ban_nhap', false).order('phien_ban', { ascending: false });
-  // Ma trận chung của tổ (kho ma trận) được xác nhận bản mới hơn sau khi ma trận riêng đã xác nhận → cần kiểm tra lại
-  let maTranChungMoiHon: { phienBan: number; xacNhanLuc: string; tenFile: string } | null = null;
-  const xacNhanRieng = moiNhat?.[0]?.xac_nhan_luc as string | undefined;
-  if (xacNhanRieng) {
-    const { data: kho } = await supabase
-      .from('tai_lieu_ma_tran')
-      .select('phien_ban, xac_nhan_luc, ten_file')
-      .eq('organization_id', orgId).eq('khoi', KHOI).eq('loai', 'CHUNG').eq('ma_mon', maMon).eq('ky_kiem_tra', ky)
-      .eq('trang_thai', 'DA_XAC_NHAN')
-      .order('xac_nhan_luc', { ascending: false }).limit(1);
-    const k = kho?.[0];
-    if (k?.xac_nhan_luc && new Date(k.xac_nhan_luc).getTime() > new Date(xacNhanRieng).getTime()) {
-      maTranChungMoiHon = { phienBan: k.phien_ban, xacNhanLuc: k.xac_nhan_luc, tenFile: k.ten_file };
-    }
-  }
+  const maTranChungMoiHon = await timMaTranChungMoiHon(supabase, orgId, maMon, ky, moiNhat?.[0]?.xac_nhan_luc as string | undefined);
   return {
     banNhap: nhap ? sangMtr(nhap) : null,
     moiNhat: moiNhat?.[0] ? sangMtr(moiNhat[0]) : null,
@@ -163,8 +165,11 @@ export async function xacNhanMaTranRieng(maMon: string, ky: string, d: DuLieuMaT
     && JSON.stringify((cu.du_lieu as DuLieuMaTranRieng).ma_tran_chung) === JSON.stringify(d.ma_tran_chung);
 
   let ban: BanMaTranRieng;
-  if (giongCu) ban = sangMtr(cu);
-  else {
+  if (giongCu) {
+    // Giáo viên kiểm tra lại và xác nhận: ghi nhận lần xác nhận mới để hết cảnh báo ma trận chung mới hơn.
+    const { data: moi, error } = await supabase.from('ma_tran_rieng').update({ xac_nhan_luc: new Date().toISOString(), xac_nhan_boi: user.id }).eq('id', cu.id).select(COT_MTR).single();
+    ban = error || !moi ? sangMtr(cu) : sangMtr(moi);
+  } else {
     const { data, error } = await supabase.from('ma_tran_rieng').insert({
       organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, la_ban_nhap: false, phien_ban: (cu?.phien_ban ?? 0) + 1,
       phien_ban_ma_tran_chung: d.ma_tran_chung.phien_ban_mau, du_lieu: duLieu, trang_thai: 'DA_XAC_NHAN',
@@ -246,6 +251,8 @@ export async function xacNhanDacTa(maMon: string, ky: string, maTranRiengId: str
   if (dacTa.ma_mon !== maMon || dacTa.ky_kiem_tra !== ky) throw new Error('Đặc tả không đúng môn hoặc kì đã chọn.');
   const { chon, moiNhat } = await layMaTranRiengDeKeThua(supabase, orgId, maMon, ky, maTranRiengId);
   if (chon.phienBan !== dacTa.phien_ban_ma_tran_rieng) throw new Error('Số phiên bản ma trận riêng ghi trong đặc tả không đúng.');
+  const chungMoi = await timMaTranChungMoiHon(supabase, orgId, maMon, ky, moiNhat.xacNhanLuc ?? undefined);
+  if (chungMoi) throw new Error(`Ma trận chung của tổ vừa có bản ${chungMoi.phienBan} mới hơn. Vào Ma trận riêng, kiểm tra và xác nhận lại trước khi xác nhận đặc tả.`);
   const kq = kiemDinhDacTa(chon.duLieu.ma_tran_chung, chon.duLieu.ma_tran_rieng, dacTa, { phienBanMaTranRiengMoiNhat: moiNhat.phienBan ?? undefined });
   if (!kq.hopLe) throw new Error(`Đặc tả còn lỗi, chưa xác nhận được: ${kq.loi[0]}`);
 

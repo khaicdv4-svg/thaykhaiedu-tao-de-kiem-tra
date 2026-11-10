@@ -83,6 +83,7 @@ export default function DacTaPage() {
   const [tiet, setTiet] = useState<Tiet[]>([]);
   const [mucLuc, setMucLuc] = useState<MucLucSgk[]>([]);
   const [yccdKho, setYccdKho] = useState<Yccd[]>([]);
+  const [chungMoiHon, setChungMoiHon] = useState<{ phienBan: number } | null>(null); // ma trận chung của tổ mới hơn ma trận riêng
   const [baiCu, setBaiCu] = useState<DacTa | null>(null); // đặc tả cũ khi ma trận đã có phiên bản mới hơn
 
   // Đọc ?mon=&ky= từ địa chỉ (trang ma trận dẫn sang)
@@ -110,7 +111,7 @@ export default function DacTaPage() {
     setMtrBan(null);
 
     const [mtr, dt, pp, yc, ml] = await Promise.all([
-      goiJson<{ moiNhat: BanMaTranRieng | null }>(`/api/ma-tran-rieng?mon=${maMon}&ky=${ky}`),
+      goiJson<{ moiNhat: BanMaTranRieng | null; maTranChungMoiHon?: { phienBan: number } | null }>(`/api/ma-tran-rieng?mon=${maMon}&ky=${ky}`),
       goiJson<{ banNhap: BanDacTaApi | null; moiNhat: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
       goiJson<{ tiet: Tiet[] }>(`/api/chuong-trinh/ppct?mon=${maMon}&lop=${LOP}`),
       goiJson<{ yccd: Yccd[] }>(`/api/chuong-trinh/yccd?mon=${maMon}&lop=${LOP}&trangThai=DA_DUYET`),
@@ -122,6 +123,7 @@ export default function DacTaPage() {
     if (!mtr.ok) { setLoiTai(mtr.j.error ?? 'Không đọc được ma trận riêng.'); setDangTai(false); return; }
     const moiNhat = mtr.j.moiNhat;
     setMtrBan(moiNhat);
+    setChungMoiHon(mtr.j.maTranChungMoiHon ?? null);
     if (!moiNhat) { setDangTai(false); return; }
     if (!dt.ok) { setLoiTai(dt.j.error ?? 'Không đọc được bản đặc tả.'); setDangTai(false); return; }
 
@@ -273,6 +275,13 @@ export default function DacTaPage() {
         </div>
       )}
 
+      {chungMoiHon && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3">
+          <span>Ma trận chung của tổ vừa có bản {chungMoiHon.phienBan} mới hơn ma trận riêng này. Cần kiểm tra và xác nhận lại ma trận riêng trước khi xác nhận đặc tả.</span>
+          <a href="/matrices" className={nutChinh}>Mở Ma trận riêng</a>
+        </div>
+      )}
+
       {baiCu && mtrBan && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3">
           <span>Ma trận riêng đã có phiên bản {mtrBan.phienBan}, đặc tả này đang theo phiên bản {baiCu.phien_ban_ma_tran_rieng}. Dựng lại để khớp ma trận mới; phần bài, tuần, trang thầy đã điền được giữ nguyên.</span>
@@ -407,7 +416,7 @@ export default function DacTaPage() {
               <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>
               {cheDo === 'sua'
                 ? <button type="button" className={nutChinh} onClick={xemTruoc}><Eye className="w-4 h-4" /> Xem trước đặc tả</button>
-                : <button type="button" className={nutChinh} disabled={!daXemTruoc || daXacNhan || dangGui} onClick={() => void gui('XAC_NHAN')}>
+                : <button type="button" className={nutChinh} disabled={!daXemTruoc || daXacNhan || dangGui || !!chungMoiHon} onClick={() => void gui('XAC_NHAN')}>
                     {dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {daXacNhan ? 'Đã xác nhận' : 'Xác nhận đặc tả'}
                   </button>}
             </div>
