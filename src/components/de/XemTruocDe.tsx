@@ -41,7 +41,9 @@ function LuoiY({ y, datTinh }: { y: { nhan: string; nd: string }[]; datTinh: boo
 function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
   const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
   const doan = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
-  const conLai = chiSoHinhChuaGan(c).map((i) => (c.hinh ?? [])[i]).filter((h) => h?.anh);
+  const iPhai = (c.hinh ?? []).findIndex((h) => h.canh === 'PHAI' && h.anh);
+  const conLai = chiSoHinhChuaGan(c).filter((i) => i !== iPhai).map((i) => (c.hinh ?? [])[i]).filter((h) => h?.anh);
+  const hPhai = iPhai >= 0 ? (c.hinh ?? [])[iPhai] : undefined;
   const manhHinh = (h: NonNullable<CauDe['hinh']>[number] | undefined, k: number) => h?.anh ? (
     <figure key={k} className="text-center m-0 py-1">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -55,9 +57,22 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
       <div className="pr-2 pt-1 border-r border-black">…/{fmt(c.diem)}đ</div>
       <div className="pl-3 pb-3 space-y-1.5 leading-[1.55]">
         {doan.length === 0 && <div>{nhanC}<i className="text-slate-400">(chưa có đề bài)</i></div>}
-        {doan.map((d, k) => d.khung !== undefined
-          ? manhHinh((c.hinh ?? [])[d.khung - 1], k)
-          : <div key={k}>{k === 0 && nhanC}{d.chu}</div>)}
+        {(() => {
+          const cacDoan = doan.map((d, k) => d.khung !== undefined
+            ? (hPhai && d.khung - 1 === iPhai ? null : manhHinh((c.hinh ?? [])[d.khung - 1], k))
+            : <div key={k}>{k === 0 && nhanC}{d.chu}</div>);
+          if (!hPhai) return cacDoan;
+          return (
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
+              <div className="space-y-1.5">{cacDoan}</div>
+              <figure className="text-center m-0 py-1" style={{ maxWidth: 200 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={hPhai.anh} alt={hPhai.chuThich || hPhai.ten} className="mx-auto max-h-[200px] object-contain" />
+                {hPhai.chuThich.trim() && <figcaption className="text-[15px]">{hPhai.chuThich}</figcaption>}
+              </figure>
+            </div>
+          );
+        })()}
         {conLai.length > 0 ? (
           <div className="flex flex-wrap items-end justify-around gap-3 py-1">
             {conLai.map((h, i) => (

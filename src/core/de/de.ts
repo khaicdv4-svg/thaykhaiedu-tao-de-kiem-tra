@@ -39,6 +39,8 @@ export interface HinhCau {
   cao: number;
   /** Mô tả thầy viết để AI vẽ hình (giữ lại để vẽ lại). */
   moTa?: string;
+  /** 'PHAI': hình đặt bên phải đề bài, chữ ở bên trái (bài toán ngắn có hình kèm số liệu). Bỏ trống: hình nằm riêng theo [Hình n]. */
+  canh?: 'PHAI';
 }
 
 export const TOI_DA_HINH_MOT_CAU = 6;

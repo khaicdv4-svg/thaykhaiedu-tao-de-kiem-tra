@@ -117,6 +117,17 @@ describe('Thông báo kiểm định theo thứ tự câu', () => {
     expect(xml).not.toContain('[Hình 1]');
   });
 
+  it('hình đặt bên phải chữ: chữ và hình nằm hai cột cùng một hàng', async () => {
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const d2 = { ...de, cau: de.cau.map((c, i) => (i === 0 ? { ...c, deBai: 'Mảnh vườn hình chữ nhật như hình bên.\n[Hình 1]\nTính diện tích mảnh vườn.', hinh: [{ ten: 'a', chuThich: 'Hình V', anh: png, rong: 120, cao: 80, canh: 'PHAI' as const }] } : c)) };
+    const buf = await Packer.toBuffer(dungTaiLieuDe(tt, d2));
+    const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+    expect(xml).toContain('Mảnh vườn hình chữ nhật như hình bên.');
+    expect(xml).toContain('Tính diện tích mảnh vườn.');
+    expect(xml).toContain('Hình V');
+    expect(xml).not.toContain('[Hình 1]');
+  });
+
   it('câu trắc nghiệm chỉ hiện đáp án, không hiện hướng dẫn chấm', async () => {
     const d3 = { ...de, cau: de.cau.map((c) => (c.hinhThuc === 'TN' ? { ...c, huongDanCham: 'GHI CHU CHAM TRAC NGHIEM' } : c)) };
     expect(d3.cau.some((c) => c.hinhThuc === 'TN')).toBe(true);

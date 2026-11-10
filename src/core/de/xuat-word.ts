@@ -203,25 +203,60 @@ function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean): Table {
   return new Table({ width: { size: rong * 2, type: WidthType.DXA }, columnWidths: [rong, rong], layout: TableLayoutType.FIXED, rows: hang });
 }
 
+/** Đề bài bên trái, hình (và chú thích) bên phải; hai cột không viền, hình không đè lên chữ. */
+function bangChuHinhPhai(trai: Paragraph[], h: NonNullable<CauDe['hinh']>[number]): Table | null {
+  const m = /^data:image\/(jpeg|png);base64,(.+)$/.exec(h.anh);
+  if (!m) return null;
+  const tong = RONG_NOI_DUNG - 200;
+  const phai = Math.min(Math.floor(tong * 0.38), Math.round(h.rong * 15) + 320);
+  const traiW = tong - phai;
+  const tile = Math.min(1, Math.floor((phai - 160) / 15) / h.rong, 220 / h.cao);
+  const ps: Paragraph[] = [new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 40, after: 20 },
+    keepNext: true,
+    children: [new ImageRun({ type: m[1] === 'png' ? 'png' : 'jpg', data: Buffer.from(m[2], 'base64'), transformation: { width: Math.max(1, Math.round(h.rong * tile)), height: Math.max(1, Math.round(h.cao * tile)) } })],
+  })];
+  if (h.chuThich.trim()) ps.push(doan([tr(h.chuThich.trim())], { align: AlignmentType.CENTER, dong: DAN_CAU }));
+  return new Table({
+    width: { size: tong, type: WidthType.DXA },
+    columnWidths: [traiW, phai],
+    layout: TableLayoutType.FIXED,
+    rows: [new TableRow({ cantSplit: true, children: [o2(trai, traiW), o2(ps, phai)] })],
+  });
+}
+
 function noiDungCau(c: CauDe, inDam = false, maMon = ''): (Paragraph | Table)[] {
   const kq: (Paragraph | Table)[] = [];
+  const iPhai = (c.hinh ?? []).findIndex((h) => h.canh === 'PHAI' && h.anh && /^data:image\/(jpeg|png);base64,/.test(h.anh));
   const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
   const doanDau = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
   const nhan = tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true });
   let daNhan = false;
+  const trai: Paragraph[] = [];
+  const sauBang: Table[] = [];
+  const dich = iPhai >= 0 ? trai : kq;
   for (const d of doanDau) {
     if (d.khung !== undefined) {
-      if (!daNhan) { kq.push(doan([nhan], { dong: DAN_CAU })); daNhan = true; }
+      if (iPhai >= 0 && d.khung - 1 === iPhai) {
+        if (!daNhan) { dich.push(doan([nhan], { dong: DAN_CAU })); daNhan = true; }
+        continue;
+      }
+      if (!daNhan) { dich.push(doan([nhan], { dong: DAN_CAU })); daNhan = true; }
       const h = (c.hinh ?? [])[d.khung - 1];
-      if (h?.anh) kq.push(...hinhCau([h]));
-      else kq.push(doan([tr(`[Hình ${d.khung}: chưa có ảnh]`, { italics: true })], { dong: DAN_CAU }));
+      if (h?.anh) (iPhai >= 0 ? sauBang : kq).push(...hinhCau([h]));
+      else dich.push(doan([tr(`[Hình ${d.khung}: chưa có ảnh]`, { italics: true })], { dong: DAN_CAU }));
     } else {
-      kq.push(doan(daNhan ? [tr(d.chu ?? '', { bold: inDam })] : [nhan, tr(d.chu ?? '', { bold: inDam })], { dong: DAN_CAU }));
+      dich.push(doan(daNhan ? [tr(d.chu ?? '', { bold: inDam })] : [nhan, tr(d.chu ?? '', { bold: inDam })], { dong: DAN_CAU }));
       daNhan = true;
     }
   }
-  if (!daNhan) kq.push(doan([nhan], { dong: DAN_CAU }));
-  const conLai = chiSoHinhChuaGan(c).map((i) => c.hinh![i]).filter((h) => h.anh);
+  if (!daNhan) dich.push(doan([nhan], { dong: DAN_CAU }));
+  if (iPhai >= 0) {
+    const b = bangChuHinhPhai(trai, c.hinh![iPhai]);
+    if (b) { kq.push(b, ...sauBang); } else { kq.push(...trai, ...sauBang); }
+  }
+  const conLai = chiSoHinhChuaGan(c).filter((i) => i !== iPhai).map((i) => c.hinh![i]).filter((h) => h.anh);
   if (conLai.length) kq.push(...hinhCau(conLai));
   else if (!(c.hinh ?? []).length && c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
 

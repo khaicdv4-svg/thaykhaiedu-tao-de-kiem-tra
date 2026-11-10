@@ -258,11 +258,18 @@ export default function TaoDePage() {
     setLoiHinh((l) => ({ ...l, [c.khoa]: loi.join(' ') }));
     suaCau(c.khoa, { hinh: ds });
   };
-  const suaHinh = (c: CauDe, i: number, p: { chuThich?: string; xoa?: boolean; doi?: number }) => {
+  const suaHinh = (c: CauDe, i: number, p: { chuThich?: string; xoa?: boolean; doi?: number; canh?: 'PHAI' | null }) => {
     const ds = [...(c.hinh ?? [])];
     let deBai = c.deBai;
     if (p.xoa) { ds.splice(i, 1); deBai = xoaKhungKhoiDeBai(deBai, i + 1); }
     else if (p.doi) { const j = i + p.doi; if (j >= 0 && j < ds.length) { [ds[i], ds[j]] = [ds[j], ds[i]]; deBai = doiKhungTrongDeBai(deBai, i + 1, j + 1); } }
+    else if (p.canh !== undefined) {
+      // Chỉ một hình bên phải mỗi câu: bật hình này thì tắt các hình khác.
+      for (let k = 0; k < ds.length; k++) {
+        const { canh: _bo, ...con } = ds[k];
+        ds[k] = k === i && p.canh ? { ...con, canh: 'PHAI' } : con;
+      }
+    }
     else ds[i] = { ...ds[i], chuThich: p.chuThich ?? ds[i].chuThich };
     suaCau(c.khoa, { hinh: ds, deBai });
   };
@@ -525,6 +532,10 @@ export default function TaoDePage() {
                                       <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" aria-label={`Tải hình vào khung ${i + 1} ${nhanCau(c)}`} onChange={(e) => { void taiVaoKhung(c, i, e.target.files?.[0]); e.target.value = ''; }} />
                                     </label>
                                     <button type="button" className="rounded border border-violet-300 bg-violet-50 px-2 py-1 text-violet-800" onClick={() => moVeAI(c, i)}>AI vẽ</button>
+                                    <label className="inline-flex items-center gap-1 rounded border border-slate-300 px-2 py-1">
+                                      <input type="checkbox" checked={h.canh === 'PHAI'} aria-label={`Đặt hình ${i + 1} bên phải chữ ${nhanCau(c)}`} onChange={(e) => suaHinh(c, i, { canh: e.target.checked ? 'PHAI' : null })} />
+                                      Bên phải chữ
+                                    </label>
                                     <button type="button" className="rounded border px-1.5 py-1 disabled:opacity-40" disabled={i === 0} onClick={() => suaHinh(c, i, { doi: -1 })} aria-label="Dời khung lên trước">◀</button>
                                     <button type="button" className="rounded border px-1.5 py-1 disabled:opacity-40" disabled={i === (c.hinh ?? []).length - 1} onClick={() => suaHinh(c, i, { doi: 1 })} aria-label="Dời khung ra sau">▶</button>
                                     <button type="button" className="ml-auto inline-flex items-center gap-1 text-red-700" onClick={() => suaHinh(c, i, { xoa: true })}><Trash2 className="w-3 h-3" /> Xóa</button>
