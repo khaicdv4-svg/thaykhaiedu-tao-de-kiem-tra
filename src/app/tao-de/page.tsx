@@ -14,6 +14,7 @@ import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
 import { XemTruocDe } from '@/components/de/XemTruocDe';
 import { NganHangCauHoi } from '@/components/de/NganHangCauHoi';
+import { goiYTuNganHang, type GoiYMotCau } from '@/core/de/goi-y-ngan-hang';
 import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
 import { svgSangHinh, xuLyAnhDe } from '@/core/utils/anh-de';
 import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
@@ -177,6 +178,30 @@ export default function TaoDePage() {
     setThongBao(`Đã dựng lại theo đặc tả phiên bản ${dacTaBan.phienBan}, giữ nội dung câu còn lại.${kq.moi.length ? ` Câu mới cần soạn: ${kq.moi.length}.` : ''}${kq.bo.length ? ` Câu không còn trong đặc tả: ${kq.bo.length}.` : ''}`);
   };
 
+  const [goiYNH, setGoiYNH] = useState<{ ds: GoiYMotCau[]; chon: Record<string, boolean>; tin?: string } | null>(null);
+  const [dangGoiYNH, setDangGoiY] = useState(false);
+  const layGoiYNH = async () => {
+    if (!de) return;
+    setDangGoiY(true);
+    const r = await goiJson<{ cau?: Parameters<typeof goiYTuNganHang>[1] extends (infer T)[] ? (T & { noiDung: NoiDungCau })[] : never }>(`/api/ngan-hang?mon=${maMon}`);
+    setDangGoiY(false);
+    if (!r.ok) { setGoiYNH({ ds: [], chon: {}, tin: r.j.error ?? 'Không đọc được ngân hàng câu hỏi.' }); return; }
+    const ds = goiYTuNganHang(de.cau, r.j.cau ?? []);
+    const conTrong = de.cau.filter((c) => !c.deBai.trim()).length;
+    setGoiYNH({
+      ds, chon: Object.fromEntries(ds.map((g) => [g.khoa, true])),
+      tin: ds.length === 0 ? (conTrong === 0 ? 'Các câu đều đã có nội dung.' : 'Ngân hàng chưa có câu nào hợp với các câu còn trống (cùng mức, hình thức, dạng câu).') : undefined,
+    });
+  };
+  const apDungGoiYNH = () => {
+    if (!goiYNH) return;
+    for (const g of goiYNH.ds) {
+      if (!goiYNH.chon[g.khoa]) continue;
+      const n = g.cauNganHang.noiDung;
+      suaCau(g.khoa, { deBai: n.deBai, luaChon: n.luaChon, dapAn: n.dapAn, huongDanCham: n.huongDanCham, ghiChuHinh: n.ghiChuHinh, hinh: n.hinh ?? [] });
+    }
+    setGoiYNH(null);
+  };
   const [moNganHang, setMoNganHang] = useState<string | null>(null);
   const [tinNganHang, setTinNganHang] = useState<Record<string, string>>({});
   const luuNganHang = async (c: CauDe) => {
@@ -455,6 +480,41 @@ export default function TaoDePage() {
               <div className="h-full bg-emerald-500" style={{ width: `${tienDo.tong ? (tienDo.xong / tienDo.tong) * 100 : 0}%` }} />
             </div>
           </div>
+
+          {de.cau.some((c) => !c.deBai.trim()) && (
+            <div className="the-tke p-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <button type="button" className={nutPhu} disabled={dangGoiYNH} onClick={() => void layGoiYNH()}>
+                  {dangGoiYNH ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Gợi ý câu từ ngân hàng cho các câu còn trống
+                </button>
+                <span className="text-slate-500">Chỉ gợi ý, thầy xem rồi chọn câu nào dùng.</span>
+              </div>
+              {goiYNH?.tin && <div className="text-sm text-slate-600">{goiYNH.tin}</div>}
+              {goiYNH && goiYNH.ds.length > 0 && (
+                <div className="space-y-2">
+                  <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                    {goiYNH.ds.map((g) => {
+                      const c = de.cau.find((x) => x.khoa === g.khoa)!;
+                      return (
+                        <li key={g.khoa} className="p-3 flex gap-3 items-start">
+                          <input type="checkbox" className="mt-1" aria-label={`Dùng gợi ý cho ${nhanCau(c)}`} checked={!!goiYNH.chon[g.khoa]} onChange={(e) => setGoiYNH((v) => (v ? { ...v, chon: { ...v.chon, [g.khoa]: e.target.checked } } : v))} />
+                          <div className="text-sm space-y-0.5">
+                            <div className="font-semibold text-slate-900">{nhanCau(c)} <span className="font-normal text-xs text-slate-500">· {TEN_MUC[c.muc]}{g.cauNganHang.daKiemDinh ? ' · câu đã kiểm định' : ''}{g.cauNganHang.yccd && g.cauNganHang.yccd === c.yccd ? ' · cùng YCCĐ' : ''}</span></div>
+                            <div className="text-slate-800 whitespace-pre-line">{g.cauNganHang.noiDung.deBai.split('\n').slice(0, 3).join('\n')}</div>
+                            <div className="text-xs text-slate-500">Đáp án: {g.cauNganHang.noiDung.dapAn || 'chưa có'}</div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="flex gap-2">
+                    <button type="button" className={nutChinh} onClick={apDungGoiYNH}>Dùng {Object.values(goiYNH.chon).filter(Boolean).length} câu đã chọn</button>
+                    <button type="button" className={nutPhu} onClick={() => setGoiYNH(null)}>Đóng</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {de.tiengViet && <BaiDocTiengViet ky={ky as KyKiemTraBaiDoc} gia={de.tiengViet} onDoi={suaTiengViet} />}
 
