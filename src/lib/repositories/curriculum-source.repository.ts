@@ -342,12 +342,22 @@ export class CurriculumSourceRepository {
   }> {
     const supabase = await createServerSupabaseClient();
     if (!supabase) throw new Error('Chưa cấu hình Supabase.');
+    // Lịch tiết đọc từ kho chung (bản đã công bố của môn), không đọc bảng nháp ppct_tiet nữa.
+    const { data: nguon, error: nguonErr } = await supabase
+      .from('curriculum_sources')
+      .select('subject_id, grade, academic_year')
+      .eq('id', sourceId)
+      .maybeSingle();
+    if (nguonErr) throw new Error(`Không đọc được nguồn: ${nguonErr.message}`);
+    if (!nguon) throw new Error('Không tìm thấy nguồn chương trình.');
     const [t, o] = await Promise.all([
       supabase
-        .from('ppct_tiet')
-        .select('thu_tu, tuan, hoc_ki, chu_de, bai_ten, tiet_ten, tiet_so, ghi_chu, yccd_external_ids')
-        .eq('source_id', sourceId)
-        .order('thu_tu')
+        .from('ppct_kho_chung_tiet')
+        .select('tiet_ppct, tuan, hoc_ki, chu_de, bai, ten_tiet')
+        .eq('grade_id', `grade-${nguon.grade}`)
+        .eq('subject_id', nguon.subject_id)
+        .eq('school_year', nguon.academic_year)
+        .order('tiet_ppct')
         .limit(2000),
       supabase
         .from('curriculum_outcomes')
@@ -359,16 +369,17 @@ export class CurriculumSourceRepository {
     if (t.error) throw new Error(`Không đọc được lịch tiết: ${t.error.message}`);
     if (o.error) throw new Error(`Không đọc được YCCĐ: ${o.error.message}`);
     return {
+      // Kho chung không có ghi chú và liên kết YCCĐ theo tiết, nên hai trường này để trống.
       tiet: (t.data ?? []).map((r) => ({
-        thuTu: r.thu_tu,
+        thuTu: r.tiet_ppct,
         tuan: r.tuan,
         hocKi: r.hoc_ki,
         chuDe: r.chu_de,
-        baiTen: r.bai_ten,
-        tietTen: r.tiet_ten,
-        tietSo: r.tiet_so,
-        ghiChu: r.ghi_chu,
-        yccd: r.yccd_external_ids ?? [],
+        baiTen: r.bai,
+        tietTen: r.ten_tiet,
+        tietSo: r.tiet_ppct,
+        ghiChu: null,
+        yccd: [],
       })),
       yccd: (o.data ?? []).map((r) => ({ ma: r.external_hub_id, maHienThi: r.code, noiDung: r.content, mach: r.strand_name })),
     };
