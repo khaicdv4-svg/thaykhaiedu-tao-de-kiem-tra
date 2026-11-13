@@ -69,6 +69,20 @@ export function gopTrang(nhan: string, trangs: TrangSach[], gioiHan = TOI_DA_KY_
     .join('\n\n');
 }
 
+export interface BaiSgkChu { soBai: string; ten: string; trangTu: number; trangDen: number; noiDung: string }
+export const TOI_DA_BAI_SGK = 3;
+export const GHI_CHU_OCR = 'Chữ SGK ở đây do máy quét đọc từ ảnh, chưa được kiểm; phân số, công thức, bảng và hình có thể bị thiếu hoặc sai. Không suy đoán phần thiếu.';
+
+/** Chữ SGK theo từng bài (kho SGK chung), chọn các bài giao với khoảng trang [tu, den], tối đa 3 bài. */
+export function gopBaiSgk(bais: BaiSgkChu[], tu: number, den: number, gioiHan = TOI_DA_KY_TU_TRANG): string {
+  return bais
+    .filter((b) => b.noiDung.trim() && b.trangTu <= den && b.trangDen >= tu)
+    .sort((a, b) => a.trangTu - b.trangTu)
+    .slice(0, TOI_DA_BAI_SGK)
+    .map((b) => `[SGK ${b.soBai ? `Bài ${b.soBai} ` : ''}${b.ten}, tr. ${b.trangTu}–${b.trangDen}]\n${b.noiDung.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, gioiHan)}`)
+    .join('\n\n');
+}
+
 export interface NguCanhSach {
   sgk: string;
   sgv: string;

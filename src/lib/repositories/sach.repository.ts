@@ -5,7 +5,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { canQuyenSua } from '@/lib/repositories/quyen-nap';
 import { dsMucLucSgk } from '@/lib/repositories/chuong-trinh.repository';
-import { chonTrangSgv, gopTrang, khoangTrangCuaCau, trangPdfTuTrangSach, type NguCanhSach, type TrangSach } from '@/core/chuong-trinh/sach';
+import { chonTrangSgv, gopBaiSgk, gopTrang, GHI_CHU_OCR, type BaiSgkChu, khoangTrangCuaCau, trangPdfTuTrangSach, type NguCanhSach, type TrangSach } from '@/core/chuong-trinh/sach';
 
 const VAI_TRO_SUA = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 export const TOI_DA_TRANG_PDF = 400;
@@ -92,6 +92,25 @@ async function trangCuaSach(supabase: any, sachId: string, tuPdf?: number, denPd
   return ((data ?? []) as any[]).map((r) => ({ trangPdf: r.trang_pdf as number, noiDung: r.noi_dung as string }));
 }
 
+/** Mã môn của Xưởng → mã môn trong kho SGK chung (chỉ những cuốn đã nạp). */
+const MON_KHO_CHUNG: Record<string, string> = { TOAN: 'subj-toan4' };
+
+/** Chữ SGK theo bài từ kho SGK chung (bảng sgk_sections). Lỗi hoặc không có thì trả mảng rỗng, không làm hỏng luồng chính. */
+async function baiSgkKhoChung(supabase: any, mon: string, lop: number, tap: number, tu: number, den: number): Promise<BaiSgkChu[]> {
+  const subject = MON_KHO_CHUNG[mon];
+  if (!subject) return [];
+  const { data: sach } = await supabase.from('sgk_books').select('id').eq('subject_id', subject).eq('grade', lop).eq('volume', tap).limit(1);
+  const bookId = (sach as { id: string }[] | null)?.[0]?.id;
+  if (!bookId) return [];
+  const { data, error } = await supabase.from('sgk_sections')
+    .select('number_label, title, printed_page_start, printed_page_end, text_content')
+    .eq('book_id', bookId).neq('kind', 'CHU_DE').not('text_content', 'is', null)
+    .lte('printed_page_start', den).gte('printed_page_end', tu).order('order_index').limit(TOI_DA_BAI);
+  if (error) return [];
+  return ((data ?? []) as any[]).map((r) => ({ soBai: String(r.number_label ?? '').replace(/\D+/g, ''), ten: String(r.title ?? ''), trangTu: r.printed_page_start as number, trangDen: r.printed_page_end as number, noiDung: String(r.text_content ?? '') }));
+}
+const TOI_DA_BAI = 6;
+
 /**
  * Ngữ cảnh sách cho một câu: trang SGK theo đặc tả (hoặc mục lục) và trang SGV tìm theo tên bài.
  * Thiếu sách, thiếu trang, trang chưa có chữ đều được ghi vào `thieu` để AI và thầy biết căn cứ chưa đủ.
@@ -120,6 +139,17 @@ export async function nguCanhChoCau(mon: string, lop: number, dong: { baiHoc: st
       rong.trangSgkCoChu = trangs.map((x) => x.trang);
       if (!trangs.length) thieu.push(`SGK tr. ${khoang.tu}–${khoang.den} chưa có chữ (PDF ảnh quét chưa được đọc hoặc trang nằm ngoài file). Thầy kiểm tra "Trang số 1 của sách" khi tải lên, hoặc cho AI đọc các trang này.`);
       else if (trangs.length < khoang.den - khoang.tu + 1) thieu.push(`Chỉ có chữ của ${trangs.length}/${khoang.den - khoang.tu + 1} trang SGK trong khoảng tr. ${khoang.tu}–${khoang.den}.`);
+    }
+  }
+  if (khoang && !rong.sgk) {
+    const bai = await baiSgkKhoChung(supabase, mon, lop, tap, khoang.tu, khoang.den);
+    const chu = gopBaiSgk(bai, khoang.tu, khoang.den);
+    if (chu) {
+      rong.sgk = chu;
+      rong.trangSgkCoChu = Array.from({ length: khoang.den - khoang.tu + 1 }, (_, i) => khoang.tu + i);
+      const i = thieu.findIndex((x) => x.startsWith(`SGK tr. ${khoang.tu}`));
+      if (i >= 0) thieu.splice(i, 1);
+      thieu.push(GHI_CHU_OCR);
     }
   }
   const sgvSach = sach.find((s) => s.loai === 'SGV' && s.tap === tap) ?? sach.find((s) => s.loai === 'SGV');
