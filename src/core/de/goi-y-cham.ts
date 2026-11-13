@@ -3,6 +3,7 @@
  * AI chỉ dựa vào đề bài và đáp án thầy đã nhập, không đổi đáp án. Kết quả hiện ở ô gợi ý, thầy kiểm tra rồi mới dùng.
  */
 import type { CauDe } from '@/core/de/de';
+import { DAN_AI_PHAN_SO } from '@/core/de/phan-so';
 
 export const HE_THONG_GOI_Y_CHAM = `Bạn là giáo viên tiểu học Việt Nam viết hướng dẫn chấm cho đề kiểm tra lớp 4.
 Quy tắc bắt buộc:
@@ -11,7 +12,7 @@ Quy tắc bắt buộc:
 - Mỗi dòng là một bước hoặc một ý cho điểm và kết thúc bằng điểm trong ngoặc, ví dụ "Đổi 3 tấn = 3 000 kg (0,5 điểm)".
 - Điểm chia theo bước 0,5 (câu 0,5 điểm thì một ý). Tổng điểm các ý ĐÚNG bằng số điểm của câu.
 - Dòng cuối (nếu có): "Lưu ý chấm: ..." nêu cách xử lí lỗi thường gặp (sai phép tính nhưng đúng cách làm, thiếu đơn vị, thiếu đáp số, cách làm khác đúng).
-- Toán: ghi rõ phép tính, kết quả từng bước và đáp số có đơn vị. Không dùng định dạng Markdown, không dùng dấu *, #.
+- Toán: ghi rõ phép tính, kết quả từng bước và đáp số có đơn vị. Không dùng định dạng Markdown, không dùng dấu *, #. ${DAN_AI_PHAN_SO}
 - Chỉ trả về nội dung hướng dẫn chấm, không lời dẫn.`;
 
 export function loiNhacGoiYCham(p: { tenMon: string; c: Pick<CauDe, 'deBai' | 'luaChon' | 'dapAn' | 'diem' | 'dang' | 'hinhThuc' | 'muc' | 'yccd'> }): string {

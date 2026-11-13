@@ -2,6 +2,8 @@
  * Kho sách giáo khoa (SGK) và sách giáo viên (SGV): tra đúng trang theo đặc tả, dựng lời nhắc cho AI soạn câu và đối chiếu.
  * Hàm thuần, không đọc ghi cơ sở dữ liệu. AI chỉ được dùng chữ của những trang tra được; không có thì nói thẳng là thiếu căn cứ.
  */
+import { boNhanPhuongAn, chuanHoaPhanSo, DAN_AI_PHAN_SO } from '@/core/de/phan-so';
+
 const chuanHoaTen = (s: string) => s.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
 
 export interface TrangSach { trang: number; noiDung: string }
@@ -100,7 +102,8 @@ Quy tắc bắt buộc:
 - Đúng yêu cầu cần đạt, mức độ, dạng câu và điểm trong yêu cầu. Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam, không đánh đố.
 - Trắc nghiệm nhiều lựa chọn: đúng 4 phương án, chỉ MỘT đáp án đúng, các phương án gây nhiễu hợp lí, độ dài tương đương. Đúng sai: mỗi ý một nhận định, đáp án là chuỗi Đ/S theo thứ tự ý.
 - Sách giáo viên ("SGV") nếu có chỉ để tham khảo cách hiểu bài và gợi ý đáp án; không chép lời giải của sách.
-- Toán: tính lại đáp án thật cẩn thận, ghi phép tính. Không dùng định dạng Markdown.
+- Toán: tính lại đáp án thật cẩn thận, ghi phép tính. Không dùng định dạng Markdown. ${DAN_AI_PHAN_SO}
+- Phương án viết thẳng nội dung, KHÔNG ghi sẵn chữ cái "A.", "B." ở đầu.
 - Chỉ trả về MỘT khối JSON, không lời dẫn: {"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string, "khongDuCanCu": boolean, "ghiChu": string}.
   luaChon: 4 phương án (NLC) hoặc các ý (Đúng sai) hoặc [] cho dạng khác. huongDanCham: từng bước và điểm từng ý cho câu tự luận, "" cho trắc nghiệm.`;
 
@@ -139,7 +142,8 @@ function layJson(t: string): Record<string, unknown> | null {
   if (a < 0 || b <= a) return null;
   try { const j = JSON.parse(s.slice(a, b + 1)); return j && typeof j === 'object' ? (j as Record<string, unknown>) : null; } catch { return null; }
 }
-const chu = (x: unknown) => (typeof x === 'string' ? x.replace(/\*\*/g, '').trim() : '');
+const chu = (x: unknown) => (typeof x === 'string' ? chuanHoaPhanSo(x.replace(/\*\*/g, '')).trim() : '');
+const phuongAn = (x: unknown) => boNhanPhuongAn(chu(x));
 
 export interface CauAISoan { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string }
 export function docCauAISoan(traLoi: string): CauAISoan | null {
@@ -148,7 +152,7 @@ export function docCauAISoan(traLoi: string): CauAISoan | null {
   const khong = j.khongDuCanCu === true;
   const deBai = chu(j.deBai);
   if (!khong && !deBai) return null;
-  return { deBai, luaChon: Array.isArray(j.luaChon) ? j.luaChon.map(chu) : [], dapAn: chu(j.dapAn), huongDanCham: chu(j.huongDanCham), khongDuCanCu: khong, ghiChu: chu(j.ghiChu) };
+  return { deBai, luaChon: Array.isArray(j.luaChon) ? j.luaChon.map(phuongAn) : [], dapAn: chu(j.dapAn), huongDanCham: chu(j.huongDanCham), khongDuCanCu: khong, ghiChu: chu(j.ghiChu) };
 }
 
 export type KetLuan = 'co' | 'khong' | 'khong_du_can_cu';
@@ -170,7 +174,8 @@ Quy tắc bắt buộc:
 - KHÔNG chép nguyên bài tập, câu hỏi, đoạn văn trong sách. Các câu phải KHÁC NHAU rõ rệt về tình huống, số liệu hoặc cách hỏi, không lặp ý nhau.
 - Đúng yêu cầu cần đạt, mức độ, dạng câu. Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam, không đánh đố.
 - Trắc nghiệm nhiều lựa chọn: đúng 4 phương án, chỉ MỘT đáp án đúng, phương án gây nhiễu hợp lí, độ dài tương đương. Đúng sai: mỗi ý một nhận định, đáp án là chuỗi Đ/S theo thứ tự ý.
-- Toán: tính lại đáp án thật cẩn thận. Không dùng định dạng Markdown.
+- Toán: tính lại đáp án thật cẩn thận. Không dùng định dạng Markdown. ${DAN_AI_PHAN_SO}
+- Phương án viết thẳng nội dung, KHÔNG ghi sẵn chữ cái "A.", "B." ở đầu.
 - Chỉ trả về MỘT khối JSON, không lời dẫn: {"cau": [{"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string}], "khongDuCanCu": boolean, "ghiChu": string}.
   luaChon: 4 phương án (NLC) hoặc các ý (Đúng sai) hoặc [] cho dạng khác. huongDanCham: từng bước và điểm từng ý cho câu tự luận, "" cho trắc nghiệm.`;
 
@@ -186,7 +191,7 @@ export function docNhieuCauAISoan(traLoi: string): KetQuaSoanNhieu | null {
   const ds = Array.isArray(j.cau) ? j.cau : [];
   const cau = ds
     .map((x): CauAISoan | null => (x && typeof x === 'object'
-      ? { deBai: chu((x as any).deBai), luaChon: Array.isArray((x as any).luaChon) ? (x as any).luaChon.map(chu) : [], dapAn: chu((x as any).dapAn), huongDanCham: chu((x as any).huongDanCham), khongDuCanCu: false, ghiChu: '' }
+      ? { deBai: chu((x as any).deBai), luaChon: Array.isArray((x as any).luaChon) ? (x as any).luaChon.map(phuongAn) : [], dapAn: chu((x as any).dapAn), huongDanCham: chu((x as any).huongDanCham), khongDuCanCu: false, ghiChu: '' }
       : null))
     .filter((x): x is CauAISoan => !!x && !!x.deBai);
   if (!khong && !cau.length) return null;
@@ -199,7 +204,7 @@ Quy tắc bắt buộc:
 - Chỉ sửa theo yêu cầu của giáo viên. Giữ nguyên yêu cầu cần đạt, mức độ, dạng câu và số phương án, trừ khi giáo viên yêu cầu đổi.
 - Không bịa kiến thức. Nếu yêu cầu làm câu sai kiến thức hoặc không còn đúng yêu cầu cần đạt, vẫn viết lại nhưng ghi cảnh báo ngắn ở "ghiChu".
 - Đổi đề bài hay số liệu thì TÍNH LẠI đáp án và hướng dẫn chấm cho khớp (Toán: ghi phép tính). Trắc nghiệm: đúng 4 phương án, chỉ MỘT đáp án đúng.
-- Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam. Không dùng định dạng Markdown. Giữ nguyên các dòng "[Hình n]" nếu có.
+- Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam. Không dùng định dạng Markdown. Giữ nguyên các dòng "[Hình n]" nếu có. ${DAN_AI_PHAN_SO} Phương án viết thẳng nội dung, không ghi sẵn chữ cái "A.", "B." ở đầu.
 - Chỉ trả về MỘT khối JSON, không lời dẫn: {"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string, "khongDuCanCu": false, "ghiChu": string}.`;
 
 export function loiNhacVietLai(c: CauChoAI, yeuCau: string): string {
