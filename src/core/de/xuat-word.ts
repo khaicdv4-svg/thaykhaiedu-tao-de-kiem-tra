@@ -15,9 +15,13 @@ import {
   Document,
   ImageRun,
   LeaderType,
+  Math as MathWord,
+  MathFraction,
+  MathRun,
   PageOrientation,
   type ISectionOptions,
   Paragraph,
+  type ParagraphChild,
   Table,
   TableCell,
   TableLayoutType,
@@ -29,6 +33,7 @@ import {
 } from 'docx';
 import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, nhanCau, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
+import { tachPhanSo } from '@/core/de/phan-so';
 
 export interface ThongTinDe {
   tenTruong: string;
@@ -54,11 +59,22 @@ const VIEN_DEN: Vien = { style: BorderStyle.SINGLE, size: 6, color: '000000' };
 const CAC_VIEN_KHONG: CacVien = { top: KHONG_VIEN, bottom: KHONG_VIEN, left: KHONG_VIEN, right: KHONG_VIEN };
 
 const fmtDiem = (x: number) => String(x).replace('.', ',');
-const tr = (text: string, o: { bold?: boolean; italics?: boolean; size?: number } = {}) => new TextRun({ text, font: FONT, size: o.size ?? CO, bold: o.bold, italics: o.italics });
+type Manh = ParagraphChild;
+type Run = Manh | Manh[];
+const trChu = (text: string, o: { bold?: boolean; italics?: boolean; size?: number } = {}) => new TextRun({ text, font: FONT, size: o.size ?? CO, bold: o.bold, italics: o.italics });
+/** Đoạn chữ; phân số dạng a/b được dựng thành công thức Word (tử trên, mẫu dưới). Không có phân số thì chỉ là một đoạn chữ. */
+const tr = (text: string, o: { bold?: boolean; italics?: boolean; size?: number } = {}): Run => {
+  const manh = tachPhanSo(text);
+  if (!manh.some((m) => m.loai === 'ps')) return trChu(text, o);
+  return manh.map((m): Manh => m.loai === 'chu'
+    ? trChu(m.chu, o)
+    : new MathWord({ children: [new MathFraction({ numerator: [new MathRun(m.tu)], denominator: [new MathRun(m.mau)] })] }));
+};
+const phang = (runs: Run[]): Manh[] => runs.flat();
 
-function doan(runs: TextRun[] | string, o: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; truoc?: number; sau?: number; thut?: number; giuDong?: boolean; dong?: number } = {}) {
+function doan(runs: Run[] | string, o: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; truoc?: number; sau?: number; thut?: number; giuDong?: boolean; dong?: number } = {}) {
   return new Paragraph({
-    children: typeof runs === 'string' ? [tr(runs)] : runs,
+    children: typeof runs === 'string' ? phang([tr(runs)]) : phang(runs),
     alignment: o.align,
     spacing: { line: o.dong ?? DAN_DONG, before: o.truoc ?? 0, after: o.sau ?? 0 },
     indent: o.thut ? { left: o.thut } : undefined,
@@ -263,7 +279,7 @@ function noiDungCau(c: CauDe, inDam = false, maMon = ''): (Paragraph | Table)[] 
   if (c.dang === 'DS') {
     (c.yNho ?? c.luaChon.map((_, i) => String.fromCharCode(97 + i))).forEach((y, i) => {
       kq.push(new Paragraph({
-        children: [tr(`${y}) ${c.luaChon[i] ?? ''}`), tr('\tĐ  /  S')],
+        children: phang([tr(`${y}) ${c.luaChon[i] ?? ''}`), tr('\tĐ  /  S')]),
         tabStops: [{ type: TabStopType.RIGHT, position: RONG_NOI_DUNG - 200 }],
         spacing: { line: DAN_DONG },
         indent: { left: 300 },
@@ -398,17 +414,17 @@ function dongTacGia(tacGia: string): string {
 function khoiBaiDoc(b: { tieuDe: string; noiDung: string; tacGia: string; nguon: string }, co: number, o: { tieuDeTruoc?: string } = {}): Paragraph[] {
   const ps: Paragraph[] = [];
   ps.push(new Paragraph({
-    children: [...(o.tieuDeTruoc ? [tr(o.tieuDeTruoc, { bold: true, size: co })] : []), tr(b.tieuDe.toUpperCase(), { bold: true, size: co })],
+    children: [...(o.tieuDeTruoc ? [trChu(o.tieuDeTruoc, { bold: true, size: co })] : []), trChu(b.tieuDe.toUpperCase(), { bold: true, size: co })],
     alignment: AlignmentType.CENTER,
     spacing: { line: DAN_DONG, before: 60, after: 60 },
     keepNext: true,
   }));
   for (const d of dongTheoDoan(b.noiDung)) {
-    ps.push(new Paragraph({ children: [tr(d, { size: co })], alignment: AlignmentType.JUSTIFIED, indent: { firstLine: 480 }, spacing: { line: DAN_DONG, after: 0 } }));
+    ps.push(new Paragraph({ children: [trChu(d, { size: co })], alignment: AlignmentType.JUSTIFIED, indent: { firstLine: 480 }, spacing: { line: DAN_DONG, after: 0 } }));
   }
   const tg = dongTacGia(b.tacGia);
-  if (tg) ps.push(new Paragraph({ children: [tr(tg, { size: co })], alignment: AlignmentType.RIGHT, spacing: { line: DAN_DONG } }));
-  if (b.nguon.trim()) ps.push(new Paragraph({ children: [tr(b.nguon.trim(), { italics: true, size: 22 })], alignment: AlignmentType.RIGHT, spacing: { line: 276 } }));
+  if (tg) ps.push(new Paragraph({ children: [trChu(tg, { size: co })], alignment: AlignmentType.RIGHT, spacing: { line: DAN_DONG } }));
+  if (b.nguon.trim()) ps.push(new Paragraph({ children: [trChu(b.nguon.trim(), { italics: true, size: 22 })], alignment: AlignmentType.RIGHT, spacing: { line: 276 } }));
   return ps;
 }
 
@@ -577,7 +593,7 @@ const TRANG_NGANG = { page: { size: { width: 11906, height: 16838, orientation: 
 
 const ONHO = 22; // 11 pt cho bảng rộng
 const trN = (text: string, o: { bold?: boolean } = {}) => tr(text, { bold: o.bold, size: ONHO });
-const doanN = (text: string, o: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) => new Paragraph({ children: [trN(text, { bold: o.bold })], alignment: o.align, spacing: { line: 252 } });
+const doanN = (text: string, o: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) => new Paragraph({ children: phang([trN(text, { bold: o.bold })]), alignment: o.align, spacing: { line: 252 } });
 const VIEN_TAT_CA: CacVien = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
 const oN = (text: string[], rong: number, o: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; span?: number } = {}) =>
   o2(text.map((x) => doanN(x, o)), rong, VIEN_TAT_CA, o.span ?? 1);

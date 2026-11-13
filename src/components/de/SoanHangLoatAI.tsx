@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { ChuPhanSo } from '@/components/de/ChuPhanSo';
 import { Loader2, Sparkles } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { VietLaiCauAI } from './VietLaiCauAI';
@@ -142,8 +143,8 @@ export function SoanHangLoatAI({ onDaLuu }: { onDaLuu: () => void }) {
                   <input type="checkbox" className="mt-1" aria-label={`Lưu câu ${i + 1}`} checked={n.chon} onChange={(e) => setNhap((v) => v.map((x, k) => (k === i ? { ...x, chon: e.target.checked } : x)))} />
                   <span className="space-y-0.5">
                     <span className="block font-semibold text-slate-900">Câu {i + 1}</span>
-                    <span className="block whitespace-pre-line text-slate-900">{n.noiDung.deBai}</span>
-                    {n.noiDung.luaChon.filter((x) => x.trim()).map((x, k) => <span key={k} className="block text-slate-800">{hinhThuc === 'TN' && dang !== 'DS' ? `${'ABCD'[k]}. ` : ''}{x}</span>)}
+                    <span className="block whitespace-pre-line text-slate-900"><ChuPhanSo chu={n.noiDung.deBai} /></span>
+                    {n.noiDung.luaChon.filter((x) => x.trim()).map((x, k) => <span key={k} className="block text-slate-800">{hinhThuc === 'TN' && dang !== 'DS' ? `${'ABCD'[k]}. ` : ''}<ChuPhanSo chu={x} /></span>)}
                     <span className="block"><b>Đáp án:</b> {n.noiDung.dapAn || 'chưa có'}</span>
                     {n.noiDung.huongDanCham && <span className="block whitespace-pre-line"><b>Cách chấm:</b> {n.noiDung.huongDanCham}</span>}
                   </span>

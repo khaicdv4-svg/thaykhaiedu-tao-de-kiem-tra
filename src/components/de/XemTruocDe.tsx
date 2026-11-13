@@ -5,6 +5,7 @@
  * đường kẻ dọc, phương án A–B / C–D hai bên, dòng chấm chừa chỗ làm bài. Chỉ để xem; xuất Word dùng cùng quy tắc.
  */
 import React, { useState } from 'react';
+import { ChuPhanSo as PS } from '@/components/de/ChuPhanSo';
 import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 
 const fmt = (x: number) => String(x).replace('.', ',');
@@ -16,7 +17,7 @@ function PhuongAn({ c }: { c: CauDe }) {
   const dai = ds.some((x) => x.v.length > 34) || ds.length < 4;
   return (
     <div className={dai ? 'pl-4 space-y-1' : 'pl-4 grid grid-cols-2 gap-x-4 gap-y-1.5'}>
-      {ds.map((x) => <div key={x.n}><b>{x.n}.</b> {x.v}</div>)}
+      {ds.map((x) => <div key={x.n}><b>{x.n}.</b> <PS chu={x.v} /></div>)}
     </div>
   );
 }
@@ -30,7 +31,7 @@ function LuoiY({ y, datTinh }: { y: { nhan: string; nd: string }[]; datTinh: boo
     <div className="grid grid-cols-2 gap-x-6 gap-y-3 pl-1">
       {y.map((k) => (
         <div key={k.nhan}>
-          <div><b>{k.nhan})</b> {k.nd}</div>
+          <div><b>{k.nhan})</b> <PS chu={k.nd} /></div>
           {datTinh ? <div style={{ height: 130 }} aria-hidden /> : <DongCham n={3} cao={30} />}
         </div>
       ))}
@@ -60,7 +61,7 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
         {(() => {
           const cacDoan = doan.map((d, k) => d.khung !== undefined
             ? (hPhai && d.khung - 1 === iPhai ? null : manhHinh((c.hinh ?? [])[d.khung - 1], k))
-            : <div key={k}>{k === 0 && nhanC}{d.chu}</div>);
+            : <div key={k}>{k === 0 && nhanC}<PS chu={d.chu ?? ''} /></div>);
           if (!hPhai) return cacDoan;
           return (
             <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
@@ -86,7 +87,7 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
         ) : !(c.hinh ?? []).length && c.ghiChuHinh.trim() && <div className="italic">[{c.ghiChuHinh.trim()}]</div>}
         {c.dang === 'DS' ? (
           (c.yNho ?? c.luaChon.map((_, i) => String.fromCharCode(97 + i))).map((y, i) => (
-            <div key={y} className="pl-3 flex justify-between gap-4"><span>{y}) {c.luaChon[i] ?? ''}</span><span className="shrink-0">Đ / S</span></div>
+            <div key={y} className="pl-3 flex justify-between gap-4"><span>{y}) <PS chu={c.luaChon[i] ?? ''} /></span><span className="shrink-0">Đ / S</span></div>
           ))
         ) : nhieuY ? <LuoiY y={nhieuY.y} datTinh={nhieuY.datTinh} /> : c.hinhThuc === 'TN' ? <PhuongAn c={c} /> : <DongCham n={soDongTraLoi(c, maMon)} cao={maMon === 'TOAN' ? 32 : 29} />}
       </div>
@@ -126,9 +127,9 @@ export function XemTruocDe({ de, truong, tenMon, phut }: { de: DeKiemTra; truong
                   <tr key={c.khoa} className="align-top">
                     <td className="border border-black p-1 text-center">{nhanCau(c).replace(/^Câu /, '')}</td>
                     <td className="border border-black p-1.5 leading-[1.5]">
-                      {da && <div>{lamRo && <b>Đáp án: </b>}{lamRo ? <b>{da}</b> : da}</div>}
+                      {da && <div>{lamRo && <b>Đáp án: </b>}{lamRo ? <b><PS chu={da} /></b> : <PS chu={da} />}</div>}
                       {lamRo && c.huongDanCham.trim() && <div className="font-bold mt-1">Cách chấm:</div>}
-                      {(c.hinhThuc === 'TL') && dong(c.huongDanCham).map((d, i) => <div key={i} className={lamRo ? 'pl-3' : ''}>{d}</div>)}
+                      {(c.hinhThuc === 'TL') && dong(c.huongDanCham).map((d, i) => <div key={i} className={lamRo ? 'pl-3' : ''}><PS chu={d} /></div>)}
                     </td>
                     <td className="border border-black p-1 text-center">{fmt(c.diem)}</td>
                   </tr>

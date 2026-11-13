@@ -21,6 +21,7 @@ import { svgSangHinh, xuLyAnhDe } from '@/core/utils/anh-de';
 import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
+import { ChuPhanSo } from '@/components/de/ChuPhanSo';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
 import {
@@ -573,6 +574,7 @@ export default function TaoDePage() {
                           </div>
                         )}
                         <p className="text-xs text-slate-500">Muốn hình nằm đúng chỗ: đặt con trỏ vào đề bài rồi bấm &quot;Thêm khung hình&quot;. Khung hiện thành dòng [Hình 1] trong đề bài, sau đó thầy tải hình hoặc nhờ AI vẽ vào khung. Hình không có khung sẽ in thành một hàng dưới đề bài. Tối đa {TOI_DA_HINH_MOT_CAU} hình, app tự chuyển đen trắng.</p>
+                        <p className="text-xs text-slate-500">Phân số viết dạng 3/4, số hỗn hợp viết 2 1/3 (số nguyên, cách một chữ, rồi phân số). Ở phần xem trước và bản Word, app tự hiện thành phân số tử trên mẫu dưới.</p>
                         {loiHinh[c.khoa] && <div className="text-xs text-red-700">{loiHinh[c.khoa]}</div>}
 
                         {veAI[c.khoa]?.mo && (
@@ -710,10 +712,10 @@ export default function TaoDePage() {
                           <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-3 space-y-2">
                             <div className="text-xs font-semibold text-sky-900">Câu AI soạn từ sách (thầy đọc kĩ, sửa trước khi dùng)</div>
                             {sach[c.khoa]!.soan!.khongDuCanCu && <div className="text-xs text-amber-800">AI báo căn cứ trong sách chưa đủ, câu dưới đây chỉ để tham khảo.</div>}
-                            <div className="text-sm text-slate-800 whitespace-pre-line">{sach[c.khoa]!.soan!.deBai}</div>
-                            {sach[c.khoa]!.soan!.luaChon.filter((x) => x.trim()).map((x, i) => <div key={i} className="text-sm text-slate-700">{'ABCD'[i] ?? i + 1}. {x}</div>)}
+                            <div className="text-sm text-slate-800 whitespace-pre-line"><ChuPhanSo chu={sach[c.khoa]!.soan!.deBai} /></div>
+                            {sach[c.khoa]!.soan!.luaChon.filter((x) => x.trim()).map((x, i) => <div key={i} className="text-sm text-slate-700">{'ABCD'[i] ?? i + 1}. <ChuPhanSo chu={x} /></div>)}
                             <div className="text-sm text-slate-700">Đáp án: {sach[c.khoa]!.soan!.dapAn || '(chưa có)'}</div>
-                            {sach[c.khoa]!.soan!.huongDanCham && <div className="text-sm text-slate-700 whitespace-pre-line">Hướng dẫn chấm: {sach[c.khoa]!.soan!.huongDanCham}</div>}
+                            {sach[c.khoa]!.soan!.huongDanCham && <div className="text-sm text-slate-700 whitespace-pre-line">Hướng dẫn chấm: <ChuPhanSo chu={sach[c.khoa]!.soan!.huongDanCham} /></div>}
                             {sach[c.khoa]!.soan!.ghiChu && <div className="text-xs text-slate-600">{sach[c.khoa]!.soan!.ghiChu}</div>}
                             <div className="flex gap-2">
                               <button type="button" className={nutChinh} onClick={() => dungCauSach(c, sach[c.khoa]!.soan!)}>Dùng câu này</button>
