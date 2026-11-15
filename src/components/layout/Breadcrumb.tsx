@@ -29,6 +29,12 @@ const ROUTE_NAME_MAP: Record<string, string> = {
   settings: 'Cài đặt hệ thống',
   'ai-settings': 'Cài đặt AI',
   login: 'Đăng nhập',
+  'to-truong': 'Trang tổ trưởng',
+  'quan-tri': 'Trang quản trị',
+  'chuong-trinh': 'Kho chương trình GDPT 2018',
+  'bo-nao': 'Bộ não chuyên môn',
+  'phan-quyen': 'Vai trò và ủy quyền',
+  'bai-doc': 'Bài đọc',
 };
 
 export function Breadcrumb() {
@@ -42,7 +48,7 @@ export function Breadcrumb() {
   const segments = pathname.split('/').filter(Boolean);
 
   return (
-    <nav aria-label="Thanh điều hướng phân cấp" className="flex items-center text-xs text-slate-500 mb-4 sm:mb-6">
+    <nav aria-label="Thanh điều hướng phân cấp" className="flex items-center text-[13px] text-slate-500 mb-4 sm:mb-5">
       <ol className="flex items-center space-x-1 sm:space-x-2">
         <li className="flex items-center">
           <Link

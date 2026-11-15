@@ -28,9 +28,9 @@ function AppShellContent({ children }: AppShellProps) {
         onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
       />
       {/* Cột nội dung: chừa chỗ cho thanh menu bên trái */}
-      <div className={`flex flex-col min-h-screen transition-all duration-300 ${isDesktopCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+      <div className={`flex flex-col min-h-screen transition-all duration-300 ${isDesktopCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
         <Header isMobileOpen={isMobileOpen} onToggleMobileNav={() => setIsMobileOpen(!isMobileOpen)} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6 overflow-x-hidden">
           <Breadcrumb />
           {children}
         </main>

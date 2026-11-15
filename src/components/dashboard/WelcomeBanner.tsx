@@ -10,7 +10,6 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpenCheck, FileText, FolderOpen, History, Layers, Plus, Table2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 
 interface SoLieu {
   deDaTao: number | null;
@@ -24,6 +23,14 @@ const THE: { khoa: keyof SoLieu; ten: string; ghiChu: string; icon: typeof FileT
   { khoa: 'baiDocDaDuyet', ten: 'Bài đọc đã duyệt', ghiChu: 'kho ngữ liệu Tiếng Việt', icon: BookOpenCheck, mau: 'from-violet-500 to-fuchsia-500', href: '/reading-passages' },
   { khoa: 'maTranDaXacNhan', ten: 'Ma trận chung đã xác nhận', ghiChu: 'môn × kì kiểm tra', icon: Table2, mau: 'from-amber-400 to-orange-500', href: '/ma-tran-chung' },
   { khoa: 'monDaNhapPpct', ten: 'Môn đã nhập PPCT', ghiChu: 'phân phối chương trình', icon: Layers, mau: 'from-emerald-400 to-teal-500', href: '/sources' },
+];
+
+const BUOC_GIAI_THICH = [
+  { so: 1, ten: 'Thiết lập', moTa: 'Chọn khối, môn và kì kiểm tra', href: '/test-builder' },
+  { so: 2, ten: 'Ma trận riêng', moTa: 'Lấy từ ma trận chung của tổ, xem lại rồi xác nhận', href: '/matrices' },
+  { so: 3, ten: 'Bản đặc tả', moTa: 'Mỗi câu một YCCĐ, mức độ, bài và tuần học', href: '/dac-ta' },
+  { so: 4, ten: 'Soạn đề', moTa: 'Soạn câu theo đặc tả, kiểm tra và xuất Word', href: '/tao-de' },
+  { so: 5, ten: 'Duyệt đề', moTa: 'Kiểm tra chéo, tổ trưởng duyệt, gửi Ban giám hiệu', href: '/tests' },
 ];
 
 async function dem(bang: string, loc?: (q: any) => any): Promise<number | null> {
@@ -53,54 +60,74 @@ export function WelcomeBanner() {
 
   return (
     <div className="space-y-5">
-      {/* Thẻ số liệu */}
+      {/* Lối vào chính: tiêu đề, nút tạo đề và đường 5 bước */}
+      <section className="the-tke overflow-hidden" aria-labelledby="tieu-de-tao-de">
+        <div className="p-6 sm:p-8 flex flex-col lg:flex-row lg:items-end gap-6">
+          <div className="flex-1 space-y-2">
+            <h1 id="tieu-de-tao-de" className="text-[28px] sm:text-[34px] font-extrabold text-slate-900 tracking-tight leading-tight">
+              Tạo đề kiểm tra lớp 1–5
+            </h1>
+            <p className="text-[15px] text-slate-600 max-w-2xl">
+              Đề đi qua 5 bước, bước sau kế thừa bước trước đã xác nhận. AI làm phần nặng, thầy cô xem và quyết định.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <Link href="/test-builder" className="nut-tke text-base px-7 py-3.5">
+              <Plus className="w-5 h-5" /> Tạo đề kiểm tra mới
+            </Link>
+            <div className="flex gap-3">
+              <Link href="/tests" className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
+                <FolderOpen className="w-4 h-4 shrink-0" /> <span className="whitespace-nowrap">Kho đề của tôi</span>
+              </Link>
+              <Link href="/tests" className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
+                <History className="w-4 h-4 shrink-0" /> <span className="whitespace-nowrap">Tiếp tục bản nháp</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Đường 5 bước: các trạm nối nhau, mỗi trạm một câu giải thích */}
+        <ol className="grid grid-cols-1 md:grid-cols-5 border-t border-slate-100 bg-linear-to-b from-indigo-50/60 to-white">
+          {BUOC_GIAI_THICH.map((b, i) => (
+            <li key={b.so} className="relative">
+              <Link href={b.href} className="group flex md:flex-col gap-3 md:gap-2 p-4 sm:px-6 sm:py-5 h-full hover:bg-white focus-visible:bg-white">
+                {/* Đường nối giữa các trạm */}
+                {i < BUOC_GIAI_THICH.length - 1 && (
+                  <span aria-hidden className="hidden md:block absolute top-[39px] left-[calc(1.5rem+44px)] right-[calc(-1.5rem+4px)] h-0.5 bg-indigo-200" />
+                )}
+                {i < BUOC_GIAI_THICH.length - 1 && (
+                  <span aria-hidden className="md:hidden absolute left-[35px] sm:left-[43px] top-[60px] sm:top-[64px] -bottom-3 w-0.5 bg-indigo-200" />
+                )}
+                <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-lg font-extrabold text-indigo-700 ring-2 ring-indigo-200 group-hover:bg-indigo-600 group-hover:text-white group-hover:ring-indigo-600 transition-colors">
+                  {b.so}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-bold text-slate-900 group-hover:text-indigo-700">{b.ten}</span>
+                  <span className="block text-[13px] text-slate-500 leading-snug mt-0.5">{b.moTa}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Số liệu của trường */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {THE.map((t) => {
           const Icon = t.icon;
           const gt = so[t.khoa];
           return (
-            <Link key={t.khoa} href={t.href} className="the-tke p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 hover:-translate-y-0.5 transition">
-              <div className={`w-12 h-12 rounded-2xl bg-linear-to-br ${t.mau} text-white flex items-center justify-center shadow-md shrink-0`}>
-                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+            <Link key={t.khoa} href={t.href} className="the-tke p-4 flex items-center gap-3 hover:border-indigo-200">
+              <div className={`w-11 h-11 rounded-xl bg-linear-to-br ${t.mau} text-white flex items-center justify-center shrink-0`}>
+                <Icon className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-600 leading-snug">{t.ten}</div>
-                <div className="text-2xl font-extrabold text-slate-900 leading-tight">{gt === null ? '–' : gt.toLocaleString('vi-VN')}</div>
-                <div className="text-xs text-slate-400 leading-snug">{t.ghiChu}</div>
+                <div className="text-2xl font-extrabold text-slate-900 leading-none">{gt === null ? '–' : gt.toLocaleString('vi-VN')}</div>
+                <div className="text-[13px] font-medium text-slate-600 leading-snug mt-1">{t.ten}</div>
               </div>
             </Link>
           );
         })}
-      </div>
-
-      {/* Tiến trình 5 bước */}
-      <TienTrinh5Buoc choBam />
-
-      {/* Lối vào chính */}
-      <div className="the-tke p-6 sm:p-8 relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-violet-200/40 blur-3xl pointer-events-none" />
-        <div className="absolute right-24 -bottom-20 w-56 h-56 rounded-full bg-blue-200/40 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center gap-6">
-          <div className="flex-1 space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Tạo đề kiểm tra lớp 1–5</h1>
-            <p className="text-slate-600 max-w-2xl">
-              Lập đề theo ma trận và bản đặc tả đã xác nhận, bám yêu cầu cần đạt và phạm vi đã học. AI làm giúp phần nặng, thầy cô xem và quyết định.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-            <Link href="/test-builder" className="nut-tke text-base px-7 py-4">
-              <Plus className="w-5 h-5" /> Tạo đề kiểm tra mới
-            </Link>
-            <div className="flex gap-3">
-              <Link href="/tests" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
-                <FolderOpen className="w-4 h-4" /> Kho đề của tôi
-              </Link>
-              <Link href="/tests" className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
-                <History className="w-4 h-4" /> Tiếp tục bản nháp
-              </Link>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

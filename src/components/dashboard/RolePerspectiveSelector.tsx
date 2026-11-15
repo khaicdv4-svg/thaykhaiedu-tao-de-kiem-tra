@@ -32,23 +32,25 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: typeof UserCheck; des
   },
 ];
 
+const TEN_VAI_TRO: Record<string, string> = { TEACHER: 'Giáo viên', GROUP_LEADER: 'Tổ trưởng', DEPUTY_GROUP_LEADER: 'Tổ phó', SCHOOL_ADMIN: 'Ban giám hiệu', SCHOOL_LEADERSHIP: 'Ban giám hiệu', SYSTEM_ADMIN: 'Quản trị hệ thống' };
+
 export function RolePerspectiveSelector() {
   const { profile, activeRole, setActiveRole } = useAuth();
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs">
+    <div className="the-tke p-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
-          <span className="text-xs font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
-            Góc nhìn giao diện theo vai trò (RBAC):
+          <span className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block" />
+            Xem giao diện theo vai trò
           </span>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Tài khoản đăng nhập thực tế: <strong className="text-slate-800">{profile.fullName}</strong> ({profile.email || 'Hệ thống'}) — Vai trò gốc trong DB: <span className="font-semibold text-blue-700">{profile.role}</span>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Tài khoản đăng nhập thực tế: <strong className="text-slate-800">{profile.fullName}</strong> ({profile.email || 'Hệ thống'}) – vai trò: <span className="font-semibold text-indigo-700">{TEN_VAI_TRO[profile.role] ?? profile.role}</span>
           </p>
         </div>
 
-        <div className="text-[11px] text-slate-400 sm:text-right">
+        <div className="text-xs text-slate-400 sm:text-right">
           Đơn vị: <span className="font-semibold text-slate-700">{profile.organizationName}</span>
         </div>
       </div>
@@ -68,29 +70,29 @@ export function RolePerspectiveSelector() {
               onClick={() => setActiveRole(opt.role)}
               className={`flex items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
                 isSelected
-                  ? 'bg-blue-50/80 border-blue-300 ring-2 ring-blue-100 shadow-2xs'
+                  ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-100 shadow-2xs'
                   : 'bg-slate-50/50 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
               }`}
             >
               <div
                 className={`p-2 rounded-lg shrink-0 mr-2.5 ${
-                  isSelected ? 'bg-blue-600 text-white' : 'bg-white text-slate-500 border border-slate-200'
+                  isSelected ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 border border-slate-200'
                 }`}
               >
                 <Icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-xs font-bold ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>
+                  <span className={`text-sm font-bold ${isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>
                     {opt.label}
                   </span>
                   {isSelected && (
-                    <span className="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.2 rounded-full">
+                    <span className="text-[9px] bg-indigo-600 text-white font-bold px-1.5 py-0.5 rounded-full">
                       Đang xem
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
+                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
                   {opt.desc}
                 </p>
               </div>

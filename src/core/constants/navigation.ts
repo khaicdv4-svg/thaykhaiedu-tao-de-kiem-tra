@@ -21,6 +21,9 @@ import {
   Library,
   ListChecks,
   PenLine,
+  UsersRound,
+  ShieldEllipsis,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { UserRole } from '@/types/permissions';
 
@@ -33,11 +36,42 @@ export interface NavItem {
   description: string;
   badge?: string;
   allowedRoles?: UserRole[];
+  /** Nhóm hiển thị ở thanh bên trái (xem NHOM_DIEU_HUONG). */
+  nhom: MaNhom;
+  /** Tên ngắn khi nằm trong vùng 5 bước tạo đề. */
+  tenNgan?: string;
+  /** Nhóm thay thế khi người dùng không thấy nhóm chính (vd. tổ trưởng không thấy nhóm Quản trị). */
+  nhomDuPhong?: MaNhom;
 }
+
+export type MaNhom = 'chinh' | 'tao-de' | 'nguon' | 'kho' | 'to-truong' | 'quan-tri';
+
+export interface NhomDieuHuong {
+  ma: MaNhom;
+  ten: string;
+  moTa: string;
+  /** Trang gom chức năng của nhóm (nếu có). */
+  trangGom?: string;
+  /** Vai trò được thấy nhóm. Mục của nhóm bị ẩn sẽ dồn xuống nhóm "Khác". */
+  vaiTro?: UserRole[];
+}
+
+export const VAI_TRO_TO_TRUONG: UserRole[] = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
+export const VAI_TRO_QUAN_TRI: UserRole[] = ['SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
+
+export const NHOM_DIEU_HUONG: NhomDieuHuong[] = [
+  { ma: 'chinh', ten: 'Tổng quan', moTa: '' },
+  { ma: 'tao-de', ten: 'Tạo đề kiểm tra', moTa: 'Làm lần lượt 5 bước' },
+  { ma: 'nguon', ten: 'Nguồn chuyên môn', moTa: 'Chương trình, ma trận của tổ' },
+  { ma: 'kho', ten: 'Kho và kiểm định', moTa: 'Câu hỏi, bài đọc, kiểm định đề' },
+  { ma: 'to-truong', ten: 'Tổ trưởng', moTa: 'Việc của tổ trưởng, tổ phó', trangGom: '/to-truong', vaiTro: VAI_TRO_TO_TRUONG },
+  { ma: 'quan-tri', ten: 'Quản trị', moTa: 'Trường, tài khoản, AI', trangGom: '/quan-tri', vaiTro: VAI_TRO_QUAN_TRI },
+];
 
 export const MAIN_NAVIGATION: NavItem[] = [
   {
     id: 'dashboard',
+    nhom: 'chinh',
     title: 'Tổng quan',
     href: '/dashboard',
     iconName: 'LayoutDashboard',
@@ -47,6 +81,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'sources',
+    nhom: 'nguon',
     title: 'Phân phối chương trình',
     href: '/sources',
     iconName: 'BookOpen',
@@ -56,6 +91,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'chuong-trinh',
+    nhom: 'nguon',
     title: 'Kho chương trình GDPT 2018',
     href: '/chuong-trinh',
     iconName: 'Library',
@@ -65,6 +101,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'ma-tran-ca-nam',
+    nhom: 'nguon',
     title: 'Ma trận nội dung cả năm',
     href: '/ma-tran-ca-nam',
     iconName: 'CalendarRange',
@@ -74,6 +111,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'ma-tran-chung',
+    nhom: 'nguon',
     title: 'Ma trận chung',
     href: '/ma-tran-chung',
     iconName: 'Table2',
@@ -83,6 +121,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'test-builder',
+    nhom: 'tao-de', tenNgan: 'Thiết lập',
     title: '1. Thiết lập đề',
     href: '/test-builder',
     iconName: 'Sparkles',
@@ -92,6 +131,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'matrices',
+    nhom: 'tao-de', tenNgan: 'Ma trận riêng',
     title: '2. Ma trận riêng',
     href: '/matrices',
     iconName: 'Grid',
@@ -101,6 +141,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'dac-ta',
+    nhom: 'tao-de', tenNgan: 'Bản đặc tả',
     title: '3. Bản đặc tả',
     href: '/dac-ta',
     iconName: 'ListChecks',
@@ -110,6 +151,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'tao-de',
+    nhom: 'tao-de', tenNgan: 'Soạn đề',
     title: '4. Tạo đề',
     href: '/tao-de',
     iconName: 'PenLine',
@@ -119,6 +161,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'tests',
+    nhom: 'tao-de', tenNgan: 'Duyệt đề & kho đề',
     title: '5. Duyệt đề & kho đề',
     href: '/tests',
     iconName: 'FolderKanban',
@@ -128,6 +171,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'validation',
+    nhom: 'kho',
     title: 'Kiểm định đề',
     href: '/validation',
     iconName: 'ShieldCheck',
@@ -137,6 +181,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'questions',
+    nhom: 'kho',
     title: 'Ngân hàng câu hỏi',
     href: '/questions',
     iconName: 'FileQuestion',
@@ -146,6 +191,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'reading-passages',
+    nhom: 'kho',
     title: 'Kho ngữ liệu Tiếng Việt',
     href: '/reading-passages',
     iconName: 'FileText',
@@ -155,6 +201,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'templates',
+    nhom: 'to-truong',
     title: 'Mẫu đề & Định dạng',
     href: '/templates',
     iconName: 'FileSpreadsheet',
@@ -164,6 +211,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'bo-nao',
+    nhom: 'to-truong',
     title: 'Bộ não chuyên môn',
     href: '/bo-nao',
     iconName: 'Brain',
@@ -173,6 +221,8 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'ai-settings',
+    nhom: 'quan-tri',
+    nhomDuPhong: 'to-truong',
     title: 'Cài đặt AI',
     href: '/ai-settings',
     iconName: 'Bot',
@@ -182,6 +232,8 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'phan-quyen',
+    nhom: 'quan-tri',
+    nhomDuPhong: 'to-truong',
     title: 'Vai trò và ủy quyền',
     href: '/phan-quyen',
     iconName: 'Settings',
@@ -191,12 +243,33 @@ export const MAIN_NAVIGATION: NavItem[] = [
   },
   {
     id: 'settings',
+    nhom: 'quan-tri',
     title: 'Cài đặt hệ thống',
     href: '/settings',
-    iconName: 'Settings',
-    icon: Settings,
+    iconName: 'SlidersHorizontal',
+    icon: SlidersHorizontal,
     description: 'Cấu hình đơn vị trường, phân quyền giáo viên và tham số hệ thống',
     allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+  },
+  {
+    id: 'to-truong',
+    nhom: 'to-truong',
+    title: 'Trang tổ trưởng',
+    href: '/to-truong',
+    iconName: 'UsersRound',
+    icon: UsersRound,
+    description: 'Gom việc của tổ trưởng: ma trận chung, bộ não chuyên môn, mẫu đề, quyền giáo viên trong tổ',
+    allowedRoles: VAI_TRO_TO_TRUONG,
+  },
+  {
+    id: 'quan-tri',
+    nhom: 'quan-tri',
+    title: 'Trang quản trị',
+    href: '/quan-tri',
+    iconName: 'ShieldUser',
+    icon: ShieldEllipsis,
+    description: 'Gom việc quản trị: thông tin trường, năm học, tổ, tài khoản, vai trò, cài đặt AI',
+    allowedRoles: VAI_TRO_QUAN_TRI,
   },
 ];
 
@@ -207,4 +280,22 @@ export function getNavigationForRole(role: UserRole): NavItem[] {
   return MAIN_NAVIGATION.filter(
     (item) => !item.allowedRoles || item.allowedRoles.includes(role)
   );
+}
+
+/** Các nhóm và mục (đã lọc theo vai trò) để vẽ thanh bên trái. Mục thuộc nhóm bị ẩn dồn sang nhóm "Khác". */
+export function getNavGroupsForRole(role: UserRole): { nhom: NhomDieuHuong; muc: NavItem[] }[] {
+  const ds = getNavigationForRole(role);
+  const thay = new Set(NHOM_DIEU_HUONG.filter((n) => !n.vaiTro || n.vaiTro.includes(role)).map((n) => n.ma));
+  const nhomCua = (m: NavItem): MaNhom | null =>
+    thay.has(m.nhom) ? m.nhom : m.nhomDuPhong && thay.has(m.nhomDuPhong) ? m.nhomDuPhong : null;
+  const kq: { nhom: NhomDieuHuong; muc: NavItem[] }[] = [];
+  for (const n of NHOM_DIEU_HUONG) {
+    if (!thay.has(n.ma)) continue;
+    const muc = ds.filter((m) => nhomCua(m) === n.ma)
+      .sort((a, b) => Number(b.href === n.trangGom) - Number(a.href === n.trangGom));
+    if (muc.length) kq.push({ nhom: n, muc });
+  }
+  const le = ds.filter((m) => nhomCua(m) === null);
+  if (le.length) kq.push({ nhom: { ma: 'chinh', ten: 'Khác', moTa: '' }, muc: le });
+  return kq;
 }

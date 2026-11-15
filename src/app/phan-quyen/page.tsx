@@ -120,7 +120,7 @@ export default function PhanQuyenPage() {
       {tb && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{tb}</div>}
 
       {quyen?.laQuanTri && (
-        <div className="the-tke space-y-3 p-6">
+        <div id="email" className="the-tke space-y-3 p-6 scroll-mt-24">
           <h2 className="font-semibold text-slate-900">Đăng ký vai trò theo Gmail</h2>
           <p className="text-sm text-slate-600">Dán một hoặc nhiều Gmail (cách nhau bằng dấu cách, dấu phẩy hoặc xuống dòng). Khi người đó đăng nhập bằng Gmail này, tài khoản tự có đúng vai trò. Tài khoản chỉ có vai trò Ban giám hiệu thì chỉ dùng được chức năng Ban giám hiệu (duyệt đề, ủy quyền), không soạn đề được.</p>
           <div className="grid gap-2 md:grid-cols-4">
@@ -158,7 +158,7 @@ export default function PhanQuyenPage() {
       )}
 
       {(quyen?.laQuanTri || quyen?.laToTruong) && (
-        <div className="the-tke space-y-3 p-6">
+        <div id="quyen-to" className="the-tke space-y-3 p-6 scroll-mt-24">
           <h2 className="font-semibold text-slate-900">Quyền của giáo viên trong tổ</h2>
           <p className="text-sm text-slate-600">Mặc định giáo viên chỉ soạn đề. Tích vào ô quyền nào thì giáo viên đó được cấp quyền ấy, bỏ tích thì thu lại, rồi bấm Áp dụng. Tổ trưởng, tổ phó và Ban giám hiệu đã có quyền theo vai trò nên không chỉnh ở đây.</p>
           <div className="flex flex-wrap items-center gap-3">

@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Be Vietnam Pro", "Segoe UI", Arial, sans-serif;
+}
+
 @layer base {
   :root {
     --background: 210 40% 98%;
@@ -42,7 +46,9 @@ body {
     #f5f6fc;
   background-attachment: fixed;
   color: #0f172a;
-  font-family: var(--font-be-vietnam-pro), 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Be Vietnam Pro', 'Segoe UI', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -80,6 +86,32 @@ body {
   color: transparent;
 }
 
+/* Thanh bên trái: nền mực chàm đậm, đổi sắc rất nhẹ từ trên xuống để chữ trắng luôn rõ */
+@utility thanh-ben {
+  background-color: #241c6e;
+  background-image: linear-gradient(180deg, #2b2185 0%, #241c6e 45%, #1c2a78 100%);
+  box-shadow: 1px 0 0 rgb(255 255 255 / 0.04), 8px 0 24px -16px rgb(30 27 75 / 0.6);
+}
+
+/* Tiêu đề trang dùng chung: chữ to, đậm, đủ khoảng thở */
+@utility tieu-de-trang {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+/* Viền tiêu điểm rõ khi dùng bàn phím */
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid #6d28d9;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
 /* Custom scrollbar for sidebar & dashboard lists */
 ::-webkit-scrollbar {
   width: 6px;
@@ -95,3 +127,4 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+.thanh-ben ::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.2); }
