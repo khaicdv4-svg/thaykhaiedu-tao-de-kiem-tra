@@ -56,6 +56,16 @@ export interface IngestSubjectParams {
   periods?: TietPpct[];
 }
 
+/** YCCĐ lấy từ Chương trình GDPT 2018 hoặc ma trận cả năm, dùng để đối chiếu. */
+export interface YccdThamChieu { ma: string; nhom: string | null; phu: string | null; bai: string | null; noiDung: string; trangThai: string | null }
+
+/** Mã môn của nguồn → mã môn trong bảng ctgdpt_yccd / ctgdpt_matrix_yccd. */
+const MA_MON_GDPT: Record<string, string> = {
+  tv: 'TIENG_VIET', toan: 'TOAN', kh: 'KHOA_HOC', lsdl: 'LS_DIA', cn: 'CONG_NGHE',
+};
+/** "subj-kh4" → "KHOA_HOC" (bỏ số lớp ở cuối). */
+const maMonGdpt = (subjectId: string | null | undefined) => MA_MON_GDPT[(subjectId ?? '').replace(/^subj-/, '').replace(/\d+$/, '')];
+
 export class CurriculumSourceRepository {
   /**
    * Lấy danh sách các nguồn chương trình
@@ -339,6 +349,8 @@ export class CurriculumSourceRepository {
   async layPpctDaNhap(sourceId: string): Promise<{
     tiet: { thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null; tietTen: string; tietSo: number | null; ghiChu: string | null; yccd: string[] }[];
     yccd: { ma: string; maHienThi: string | null; noiDung: string; mach: string | null }[];
+    gdpt: YccdThamChieu[];
+    maTran: YccdThamChieu[];
   }> {
     const supabase = await createServerSupabaseClient();
     if (!supabase) throw new Error('Chưa cấu hình Supabase.');
@@ -368,7 +380,28 @@ export class CurriculumSourceRepository {
     ]);
     if (t.error) throw new Error(`Không đọc được lịch tiết: ${t.error.message}`);
     if (o.error) throw new Error(`Không đọc được YCCĐ: ${o.error.message}`);
+    const maMon = maMonGdpt(nguon.subject_id);
+    let gdpt: YccdThamChieu[] = [];
+    let maTran: YccdThamChieu[] = [];
+    if (maMon) {
+      const [g, m] = await Promise.all([
+        supabase.from('ctgdpt_yccd').select('code, strand, sub_strand, topic, content, description, order_index')
+          .eq('subject_code', maMon).eq('grade', nguon.grade).order('order_index').limit(2000),
+        supabase.from('ctgdpt_matrix_yccd').select('code, strand, period, content, description, link_status, order_index')
+          .eq('subject_code', maMon).eq('grade', nguon.grade).order('order_index').limit(2000),
+      ]);
+      if (g.error) throw new Error(`Không đọc được YCCĐ theo GDPT 2018: ${g.error.message}`);
+      if (m.error) throw new Error(`Không đọc được YCCĐ ma trận cả năm: ${m.error.message}`);
+      gdpt = (g.data ?? []).filter((r) => r.description).map((r) => ({
+        ma: r.code, nhom: r.strand, phu: [r.sub_strand, r.topic].filter(Boolean).join(' › ') || null, bai: r.content, noiDung: r.description, trangThai: null,
+      }));
+      maTran = (m.data ?? []).filter((r) => r.description).map((r) => ({
+        ma: r.code, nhom: r.period, phu: r.strand, bai: r.content, noiDung: r.description, trangThai: r.link_status,
+      }));
+    }
     return {
+      gdpt,
+      maTran,
       // Kho chung không có ghi chú và liên kết YCCĐ theo tiết, nên hai trường này để trống.
       tiet: (t.data ?? []).map((r) => ({
         thuTu: r.tiet_ppct,
