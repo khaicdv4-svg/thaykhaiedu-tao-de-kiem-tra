@@ -88,6 +88,7 @@ export const PROVENANCE_TYPE_MAP: Record<ProvenanceType, ProvenanceTypeConfig> =
 
 export type CurriculumSourceType =
   | 'PPCT_HUB_JSON'
+  | 'PPCT_HUB_SYNC'
   | 'DOCX_IMPORT'
   | 'XLSX_IMPORT'
   | 'MANUAL_ENTRY'

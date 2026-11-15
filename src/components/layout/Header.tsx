@@ -14,6 +14,7 @@ import { useAuth } from '@/core/contexts/AuthContext';
 import { getNavigationForRole } from '@/core/constants/navigation';
 import { chuanHoa } from '@/core/kho-ma-tran/phan-loai';
 import { UserRole } from '@/types/permissions';
+import { HuyHieuPpctHub } from '@/components/ppct-hub/HuyHieuPpctHub';
 
 interface HeaderProps {
   onToggleMobileNav?: () => void;
@@ -154,6 +155,9 @@ export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto md:ml-0">
+          {/* Kết nối kho chung PPCT HUB */}
+          {dataMode === 'REAL_DATA' && <HuyHieuPpctHub />}
+
           {/* Chế độ dữ liệu */}
           <span
             className={`hidden xl:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border ${

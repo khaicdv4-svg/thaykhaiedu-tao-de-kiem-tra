@@ -21,6 +21,7 @@ import { ScannedPdfManualTab } from '@/components/sources/ScannedPdfManualTab';
 import { PpctPdfTab } from '@/components/sources/PpctPdfTab';
 import { EmptySourcesState } from '@/components/sources/EmptySourcesState';
 import { PpctDaNhapView } from '@/components/sources/PpctDaNhapView';
+import { TrangThaiPpctHub } from '@/components/ppct-hub/TrangThaiPpctHub';
 import {
   CurriculumSource,
   ValidationSummary,
@@ -76,6 +77,13 @@ export default function SourcesPage() {
       setIsLoadingSources(false);
     }
   };
+
+  // Đồng bộ từ kho chung xong thì nạp lại danh sách nguồn
+  useEffect(() => {
+    const nap = () => { fetchSavedSources(); };
+    window.addEventListener('ppct-hub:cap-nhat', nap);
+    return () => window.removeEventListener('ppct-hub:cap-nhat', nap);
+  }, [grade, academicYear]);
 
   useEffect(() => {
     if (activeTab === 'saved_sources') {
@@ -567,6 +575,7 @@ export default function SourcesPage() {
       {/* TAB 4: KHO NGUỒN ĐÃ LƯU TRONG DB */}
       {activeTab === 'saved_sources' && (
         <div className="space-y-4">
+          <TrangThaiPpctHub lopMacDinh={grade} />
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
               Phân phối chương trình đã nhập (Khối {grade}, năm học {academicYear})

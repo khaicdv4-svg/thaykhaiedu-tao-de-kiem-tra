@@ -12,6 +12,7 @@ import { TeacherDashboardView } from '@/components/dashboard/TeacherDashboardVie
 import { GroupLeaderDashboardView } from '@/components/dashboard/GroupLeaderDashboardView';
 import { SchoolAdminDashboardView } from '@/components/dashboard/SchoolAdminDashboardView';
 import { SystemStatus } from '@/components/dashboard/SystemStatus';
+import { TrangThaiPpctHub } from '@/components/ppct-hub/TrangThaiPpctHub';
 import Link from 'next/link';
 import { useAuth } from '@/core/contexts/AuthContext';
 
@@ -45,7 +46,10 @@ export default function DashboardPage() {
         <SchoolAdminDashboardView />
       )}
 
-      {/* 4. Khu vực trạng thái hạ tầng hệ thống */}
+      {/* 4. Kết nối kho chung PPCT HUB */}
+      {activeRole !== 'SCHOOL_LEADERSHIP' && <TrangThaiPpctHub />}
+
+      {/* 5. Khu vực trạng thái hạ tầng hệ thống */}
       <SystemStatus />
     </div>
   );
