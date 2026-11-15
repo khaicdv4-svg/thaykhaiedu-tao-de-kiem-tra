@@ -21,6 +21,10 @@ interface Tiet {
   yccd: string[];
 }
 interface Yccd { ma: string; maHienThi: string | null; noiDung: string; mach: string | null }
+interface YccdTc { ma: string; nhom: string | null; phu: string | null; bai: string | null; noiDung: string; trangThai: string | null }
+type NguonYccd = 'daNhap' | 'gdpt' | 'maTran';
+const NHAN_NGUON: Record<NguonYccd, string> = { daNhap: 'Đã nhập (PPCT HUB)', gdpt: 'GDPT 2018', maTran: 'Ma trận cả năm' };
+const NHAN_PERIOD: Record<string, string> = { GK1: 'Giữa học kì I', CK1: 'Cuối học kì I', GK2: 'Giữa học kì II', CK2: 'Cuối học kì II' };
 
 const THU_TU_MON = ['subj-tv4', 'subj-toan4', 'subj-kh4', 'subj-lsdl4', 'subj-cn4', 'subj-dd4', 'subj-hdtn4'];
 
@@ -40,6 +44,9 @@ export function PpctDaNhapView({ sources, onNhapLai }: { sources: CurriculumSour
   const [loi, setLoi] = useState<string | null>(null);
   const [tiet, setTiet] = useState<Tiet[]>([]);
   const [yccd, setYccd] = useState<Yccd[]>([]);
+  const [gdpt, setGdpt] = useState<YccdTc[]>([]);
+  const [maTran, setMaTran] = useState<YccdTc[]>([]);
+  const [nguonYccd, setNguonYccd] = useState<NguonYccd>('daNhap');
   const [hocKi, setHocKi] = useState<0 | 1 | 2>(0);
   const [tim, setTim] = useState('');
   const [xem, setXem] = useState<'tiet' | 'yccd'>('tiet');
@@ -58,6 +65,8 @@ export function PpctDaNhapView({ sources, onNhapLai }: { sources: CurriculumSour
         if (r.error) throw new Error(r.error);
         setTiet(r.tiet);
         setYccd(r.yccd);
+        setGdpt(r.gdpt ?? []);
+        setMaTran(r.maTran ?? []);
       })
       .catch((e) => !huy && setLoi(e instanceof Error ? e.message : String(e)))
       .finally(() => !huy && setDangTai(false));
@@ -78,6 +87,19 @@ export function PpctDaNhapView({ sources, onNhapLai }: { sources: CurriculumSour
     const t = tim.trim().toLowerCase();
     return t ? yccd.filter((y) => [y.noiDung, y.mach, y.maHienThi].some((v) => v?.toLowerCase().includes(t))) : yccd;
   }, [yccd, tim]);
+
+  const tcLoc = useMemo(() => {
+    const ds = nguonYccd === 'gdpt' ? gdpt : maTran;
+    const t = tim.trim().toLowerCase();
+    const loc = t ? ds.filter((y) => [y.noiDung, y.bai, y.nhom, y.phu].some((v) => v?.toLowerCase().includes(t))) : ds;
+    // Gom theo nhóm (mạch với GDPT, giai đoạn kiểm tra với ma trận), giữ thứ tự xuất hiện.
+    const nhom = new Map<string, YccdTc[]>();
+    for (const y of loc) {
+      const k = y.nhom ? (NHAN_PERIOD[y.nhom] ?? y.nhom) : 'Khác';
+      nhom.set(k, [...(nhom.get(k) ?? []), y]);
+    }
+    return { tong: loc.length, nhom: [...nhom.entries()] };
+  }, [nguonYccd, gdpt, maTran, tim]);
 
   if (!nguon) return null;
   const soTuan = new Set(tiet.map((x) => x.tuan).filter((x) => x !== null)).size;
@@ -104,7 +126,7 @@ export function PpctDaNhapView({ sources, onNhapLai }: { sources: CurriculumSour
           <div>
             <h3 className="text-lg font-semibold text-slate-900">{tenNgan(nguon)}</h3>
             <p className="text-sm text-slate-600">
-              {dangTai ? 'Đang tải…' : `${tiet.length} tiết · ${soBai} bài · ${soTuan} tuần · ${yccd.length} YCCĐ`}
+              {dangTai ? 'Đang tải…' : `${tiet.length} tiết · ${soBai} bài · ${soTuan} tuần · ${yccd.length} YCCĐ đã nhập`}
               {' '}(trong file: {nguon.totalLessons} bài, {nguon.totalPeriods} tiết)
             </p>
           </div>
@@ -190,17 +212,65 @@ export function PpctDaNhapView({ sources, onNhapLai }: { sources: CurriculumSour
               </table>
             </div>
           )
-        ) : yccdLoc.length === 0 ? (
-          <p className="text-sm text-slate-500">Môn này chưa có YCCĐ trong dữ liệu đã nhập.</p>
         ) : (
-          <ol className="space-y-1.5 text-sm text-slate-800 list-decimal pl-6 max-h-[70vh] overflow-y-auto">
-            {yccdLoc.map((y) => (
-              <li key={y.ma}>
-                {y.noiDung}
-                {y.mach && <span className="text-xs text-slate-500"> · {y.mach}</span>}
-              </li>
-            ))}
-          </ol>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-slate-600">Nguồn YCCĐ:</span>
+              {(['daNhap', 'gdpt', 'maTran'] as const).map((k) => {
+                const sl = k === 'daNhap' ? yccd.length : k === 'gdpt' ? gdpt.length : maTran.length;
+                return (
+                  <button key={k} type="button" onClick={() => setNguonYccd(k)}
+                    className={`rounded-full border px-3 py-1 ${nguonYccd === k ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                    {NHAN_NGUON[k]} <span className="text-xs text-slate-500">({sl})</span>
+                  </button>
+                );
+              })}
+            </div>
+            {nguonYccd === 'daNhap' ? (
+              yccdLoc.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  Môn này chưa có YCCĐ nhập từ PPCT HUB.
+                  {(gdpt.length > 0 || maTran.length > 0) && ' Thầy xem YCCĐ ở mục "GDPT 2018" hoặc "Ma trận cả năm" phía trên.'}
+                </p>
+              ) : (
+                <ol className="space-y-1.5 text-sm text-slate-800 list-decimal pl-6 max-h-[70vh] overflow-y-auto">
+                  {yccdLoc.map((y) => (
+                    <li key={y.ma}>
+                      {y.noiDung}
+                      {y.mach && <span className="text-xs text-slate-500"> · {y.mach}</span>}
+                    </li>
+                  ))}
+                </ol>
+              )
+            ) : (nguonYccd === 'gdpt' ? gdpt : maTran).length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Môn này chưa có YCCĐ {nguonYccd === 'gdpt' ? 'theo Chương trình GDPT 2018' : 'trong ma trận cả năm'}.
+                {nguonYccd === 'gdpt' && maTran.length > 0 && ' Hiện kho GDPT 2018 mới có Tiếng Việt và Toán; thầy xem mục "Ma trận cả năm".'}
+              </p>
+            ) : tcLoc.tong === 0 ? (
+              <p className="text-sm text-slate-500">Không có YCCĐ nào khớp.</p>
+            ) : (
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                <p className="text-xs text-slate-500">
+                  {nguonYccd === 'gdpt' ? 'Theo Chương trình GDPT 2018, gom theo mạch nội dung.' : 'Theo ma trận cả năm của tổ, gom theo giai đoạn kiểm tra.'} {tcLoc.tong} ý.
+                </p>
+                {tcLoc.nhom.map(([ten, ds]) => (
+                  <section key={ten}>
+                    <h4 className="text-sm font-semibold text-slate-900 mb-1.5">{ten} <span className="font-normal text-xs text-slate-500">({ds.length})</span></h4>
+                    <ul className="space-y-1.5 text-sm text-slate-800 list-disc pl-6">
+                      {ds.map((y) => (
+                        <li key={y.ma}>
+                          {y.noiDung}
+                          {(y.bai || y.phu) && <span className="text-xs text-slate-500"> · {[y.bai, y.phu].filter(Boolean).join(' · ')}</span>}
+                          {y.trangThai === 'cho_duyet' && <span className="ml-1 text-xs text-amber-700">(chờ duyệt)</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         {!dangTai && xem === 'tiet' && tiet.length > 0 && tietLoc.length === 0 && <p className="text-sm text-slate-500">Không có tiết nào khớp.</p>}
       </div>
