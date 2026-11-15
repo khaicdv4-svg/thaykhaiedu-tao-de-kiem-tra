@@ -172,25 +172,26 @@ export async function xoaYccd(ids: string[]): Promise<void> {
   if (error) throw new Error(`Không xóa được: ${error.message}`);
 }
 
-/** Mã môn trong Kho chương trình → mã môn trong PPCT HUB (bảng ppct_tiet). */
+/** Mã môn trong Kho chương trình → tiền tố mã môn trong PPCT HUB (bảng ppct_tiet), cộng số lớp ở cuối. */
 const MON_SANG_PPCT: Record<string, string> = {
-  TOAN: 'subj-toan4',
-  TIENG_VIET: 'subj-tv4',
-  KHOA_HOC: 'subj-kh4',
-  LS_DL: 'subj-lsdl4',
-  CONG_NGHE: 'subj-cn4',
-  DAO_DUC: 'subj-dd4',
-  HDTN: 'subj-hdtn4',
+  TOAN: 'subj-toan',
+  TIENG_VIET: 'subj-tv',
+  KHOA_HOC: 'subj-kh',
+  LS_DL: 'subj-lsdl',
+  CONG_NGHE: 'subj-cn',
+  DAO_DUC: 'subj-dd',
+  HDTN: 'subj-hdtn',
 };
 
 /**
- * Lịch tiết đã nhập của một môn lớp 4 (PPCT HUB). Chỉ lớp 4 vì PPCT hiện nhập cho khối 4.
+ * Lịch tiết của một môn, lấy từ kho chung PPCT HUB về (xem /api/ppct-hub).
  * Nếu một môn có nhiều lần nhập thì lấy lần nhập mới nhất, tránh cộng dồn tiết.
  */
 export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null; tietTen: string | null }[]> {
-  const subjectId = MON_SANG_PPCT[mon];
-  if (!subjectId) throw new Error('Môn này chưa có phân phối chương trình trong ứng dụng.');
-  if (lop !== 4) throw new Error('Phân phối chương trình hiện mới nhập cho lớp 4.');
+  const tienTo = MON_SANG_PPCT[mon];
+  if (!tienTo) throw new Error('Môn này chưa có phân phối chương trình trong ứng dụng.');
+  if (!Number.isInteger(lop) || lop < 1 || lop > 5) throw new Error('Lớp phải từ 1 đến 5.');
+  const subjectId = `${tienTo}${lop}`;
   const { supabase, orgId } = await layNguoiDung();
   const { data, error } = await supabase
     .from('ppct_tiet')
@@ -202,6 +203,7 @@ export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: num
     .limit(2000);
   if (error) throw new Error(`Không đọc được phân phối chương trình: ${error.message}`);
   const hang = data ?? [];
+  if (hang.length === 0) throw new Error(`Lớp ${lop} chưa có phân phối chương trình môn này. Tổ trưởng vào mục Phân phối chương trình, bấm Đồng bộ để lấy từ kho chung PPCT HUB.`);
   const moiNhat = hang.reduce<{ id: string | null; luc: string }>((m, r) => (r.created_at > m.luc ? { id: r.source_id as string, luc: r.created_at as string } : m), { id: null, luc: '' });
   return hang
     .filter((r) => !moiNhat.id || r.source_id === moiNhat.id)
