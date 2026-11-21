@@ -6,7 +6,7 @@ import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '.
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
 import { kiemDinhDe, taoDeTuDacTa } from '../src/core/de/de';
 import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, xepCauTheoSo } from '../src/core/de/xuat-word';
-import { docChuTuDocx } from '../src/core/utils/docx-text';
+import { docChuTuDocx, docTepTrongZip } from '../src/core/utils/docx-text';
 
 const mtc = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'LS_DL')!;
 const lc: LuaChon = {};
@@ -83,7 +83,17 @@ describe('Xuất Word môn Tiếng Việt', () => {
     for (const s of ['MÔN TIẾNG VIỆT (ĐỌC HIỂU) - Lớp 4', 'Bài đọc hiểu:', 'MÔN TIẾNG VIỆT (VIẾT) - Lớp 4', 'MÔN TIẾNG VIỆT (Đọc thành tiếng) - Lớp 4', 'BÀI SỐ 4', 'HƯỚNG DẪN CHẤM MÔN TIẾNG VIỆT - LỚP 4', 'Tiêu chí chấm điểm', 'Trả lời bài 4.']) expect(xml).toContain(s);
   });
 
-  it('kiểm định: đề đủ thì đạt; thiếu bài đọc, thiếu câu hỏi, bài quá ngắn thì báo lỗi', () => {
+  it('bài đọc hiểu và bài đọc thành tiếng in cỡ 14, phần khác cỡ 13', async () => {
+    const buf = await Packer.toBuffer(dungTaiLieuTiengViet(ttTv, deTv));
+    const raw = new TextDecoder().decode((await docTepTrongZip(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, 'word/document.xml'))!);
+    const coCuaChu = (chu: string) => raw.match(new RegExp(`<w:r>(?:(?!</w:r>)[\\s\\S])*?w:sz w:val="(\\d+)"(?:(?!</w:r>)[\\s\\S])*?${chu}`))?.[1];
+    expect(coCuaChu('CUỘC PHIÊU LƯU CỦA BỒ CÔNG ANH')).toBe('28');
+    expect(coCuaChu('tiếng81')).toBe('28'); // nội dung bài đọc thành tiếng (82 tiếng)
+    expect(coCuaChu('Câu hỏi bài 3\\?')).toBe('28');
+    expect(coCuaChu('Câu hỏi đọc hiểu số 1 về bài đọc')).toBe('26');
+  });
+
+    it('kiểm định: đề đủ thì đạt; thiếu bài đọc, thiếu câu hỏi, bài quá ngắn thì báo lỗi', () => {
     const dt = taoDacTa(tv, mtrTv, 1, { tuanKiemTra: 18 });
     expect(kiemDinhDe(dt, deTv).loi.filter((l) => /Bài đọc|bài đọc|tiếng/.test(l))).toEqual([]);
     const thieu = { ...deTv, tiengViet: undefined };

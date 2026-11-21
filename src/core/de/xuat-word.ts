@@ -46,6 +46,8 @@ export interface ThongTinDe {
 
 const FONT = 'Times New Roman';
 const CO = 26; // 13 pt
+/** Bài đọc hiểu, bài đọc thành tiếng: tổ ưu tiên cỡ 14 cho học sinh dễ đọc */
+const CO_BAI_DOC = 28;
 const DAN_DONG = 312; // 1,3 dòng
 const DAN_CAU = 348; // 1,45 dòng cho nội dung câu hỏi: thoáng hơn để dễ đọc
 const LE = 567; // 1 cm
@@ -506,8 +508,8 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
     doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`KIỂM TRA ${kyDay} - LỚP 4`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`NĂM HỌC: ${namHoc}`, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
-    new Paragraph({ children: [new TextRun({ text: 'Bài đọc hiểu:', font: FONT, size: 28, bold: true, underline: {} })], spacing: { line: DAN_DONG, after: 60 } }),
-    ...khoiBaiDoc(tv.baiDocHieu, 28),
+    new Paragraph({ children: [new TextRun({ text: 'Bài đọc hiểu:', font: FONT, size: CO_BAI_DOC, bold: true, underline: {} })], spacing: { line: DAN_DONG, after: 60 } }),
+    ...khoiBaiDoc(tv.baiDocHieu, CO_BAI_DOC),
   ];
 
   // 3. Viết
@@ -546,8 +548,8 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
     doan([tr('Bài đọc thành tiếng', { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr('Học sinh đọc một trong các bài sau và trả lời câu hỏi.', { italics: true })], { align: AlignmentType.CENTER, sau: 80 }),
     ...kh.flatMap((b, i) => [
-      ...khoiBaiDoc(b, CO, { tieuDeTruoc: `☐  Bài đọc ${i + 1}:  ` }),
-      doan([tr('Câu hỏi: ', { bold: true }), tr(b.cauHoi)], { truoc: 40, sau: 80 }),
+      ...khoiBaiDoc(b, CO_BAI_DOC, { tieuDeTruoc: `☐  Bài đọc ${i + 1}:  ` }),
+      doan([trChu('Câu hỏi: ', { bold: true, size: CO_BAI_DOC }), trChu(b.cauHoi, { size: CO_BAI_DOC })], { truoc: 40, sau: 80 }),
     ]),
   ];
 
