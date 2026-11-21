@@ -57,3 +57,21 @@ describe('YCCĐ cho câu nhiều ý nhỏ', () => {
     expect(dongRieng.yccd).toEqual(c8.dong.yccd.slice(0, 2));
   });
 });
+
+describe('Chuyển bản nháp sang ma trận chung mới', () => {
+  it('giữ YCCĐ và chỗ sửa còn khớp, đổi sang phiên bản mới, bỏ phần không khớp', async () => {
+    const { chuyenMaTranRiengSangBanMoi } = await import('@/core/matrix/matrix-template');
+    const moi = { ...toan, phien_ban_mau: 'kho-2' };
+    const cu = mtrDu();
+    cu.cau_hoi.push({ khoa: 'chinh/p1/99', yccd: 'câu không còn' });
+    cu.cau_hoi = cu.cau_hoi.map((x) => (x.khoa === c8.khoa ? { ...x, yccd_them: [c8.dong.yccd[1]] } : x));
+    cu.sua_cau = { [c8.khoa]: { diem: 1.5 } };
+    const { mtr, giu, bo } = chuyenMaTranRiengSangBanMoi(moi, cu);
+    expect(mtr.phien_ban_ma_tran_chung).toBe('kho-2');
+    expect(giu).toBe(cau.length);
+    expect(bo).toBe(1);
+    expect(mtr.cau_hoi.find((x) => x.khoa === c8.khoa)?.yccd_them).toEqual([c8.dong.yccd[1]]);
+    expect(mtr.sua_cau).toEqual({ [c8.khoa]: { diem: 1.5 } });
+    expect(kiemDinhMaTranRieng(moi, mtr).loi.filter((l) => l.includes('phiên bản'))).toEqual([]);
+  });
+});

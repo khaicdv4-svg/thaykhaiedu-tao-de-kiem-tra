@@ -18,6 +18,7 @@ import {
   apDungSuaCau,
   cacNhomLuaChon,
   chuanHoaSuaCau,
+  chuyenMaTranRiengSangBanMoi,
   danhSachCau,
   dungMaTranRieng,
   kiemDinhMaTranChung,
@@ -234,14 +235,20 @@ export default function MatricesPage() {
   // Nạp bản nháp (nếu có) khi chọn môn
   useEffect(() => {
     if (!mtc) return;
-    const nhap = docBanNhap(mtc);
+    const nhapGoc = docBanNhap(mtc);
+    // Bản nháp lập theo phiên bản ma trận chung khác (ví dụ mẫu viết sẵn 1.0 → file của tổ trong kho):
+    // chuyển sang phiên bản mới, giữ YCCĐ và chỗ sửa còn khớp
+    const chuyen = nhapGoc && nhapGoc.phien_ban_ma_tran_chung !== mtc.phien_ban_mau ? chuyenMaTranRiengSangBanMoi(mtc, nhapGoc) : null;
+    const nhap = chuyen ? chuyen.mtr : nhapGoc;
     // Tiếng Việt: khung có sẵn danh sách YCCĐ từng dòng (một phần lấy từ tên tiết Luyện từ và câu, không có trong Kho),
     // nên chọn YCCĐ theo dòng của khung. Các môn khác: chọn từ Kho chương trình.
     const khoiTao = laKhungDung(mtc) && mtc.ma_mon !== 'TIENG_VIET' ? { ...taoMaTranRiengRong(mtc), nguon_yccd: 'CHUONG_TRINH' as const } : taoMaTranRiengRong(mtc);
     setMtr(ganSanYccdDuyNhat(mtc, nhap ?? khoiTao));
     setKetQua(null);
     setDaXemTruoc(false);
-    setThongBao(nhap ? 'Đã mở lại bản nháp ma trận riêng đã lưu.' : null);
+    setThongBao(chuyen
+      ? `Ma trận chung đã đổi (bản ${nhapGoc!.phien_ban_ma_tran_chung} → ${mtc.phien_ban_mau}). App đã chuyển bản nháp sang ma trận chung mới: giữ ${chuyen.giu} YCCĐ đã chọn${chuyen.bo ? `, bỏ ${chuyen.bo} chỗ không còn khớp` : ''}. Thầy cô kiểm tra lại rồi xác nhận.`
+      : nhap ? 'Đã mở lại bản nháp ma trận riêng đã lưu.' : null);
     setPhienBanXacNhan(null);
     setChungMoiHon(null);
 
@@ -258,6 +265,11 @@ export default function MatricesPage() {
         if (d?.ma_tran_rieng && d.ma_tran_chung && JSON.stringify(d.ma_tran_chung) === JSON.stringify(mtc)) {
           setMtr(ganSanYccdDuyNhat(mtc, d.ma_tran_rieng));
           setThongBao(`Đã mở bản nháp ma trận riêng lưu trên hệ thống${j.moiNhat?.phienBan ? ` (đã xác nhận đến phiên bản ${j.moiNhat.phienBan})` : ''}.`);
+        } else if (d?.ma_tran_rieng && !nhapGoc && d.ma_tran_rieng.phien_ban_ma_tran_chung !== mtc.phien_ban_mau) {
+          // Bản nháp trên hệ thống lập theo ma trận chung cũ: chuyển sang bản mới, giữ phần còn khớp
+          const c = chuyenMaTranRiengSangBanMoi(mtc, d.ma_tran_rieng);
+          setMtr(ganSanYccdDuyNhat(mtc, c.mtr));
+          setThongBao(`Ma trận chung đã đổi (bản ${d.ma_tran_rieng.phien_ban_ma_tran_chung} → ${mtc.phien_ban_mau}). App đã chuyển bản nháp trên hệ thống sang ma trận chung mới: giữ ${c.giu} YCCĐ đã chọn${c.bo ? `, bỏ ${c.bo} chỗ không còn khớp` : ''}. Thầy cô kiểm tra lại rồi xác nhận.`);
         }
       })
       .catch(() => { /* không có mạng hoặc chưa đăng nhập: dùng bản trên máy */ });

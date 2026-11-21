@@ -341,6 +341,44 @@ export function kiemDinhMaTranChung(mtc: MaTranChung): KetQuaKiemDinh {
 /** Câu bài viết đánh giá cả bài theo mọi YCCĐ của thể loại, không chọn một YCCĐ. */
 export const laCauBaiViet = (c: CauTrongMaTran) => c.cau.dang === 'VIET' || c.phan.kieu === 'VIET';
 
+/**
+ * Chuyển bản nháp ma trận riêng lập theo phiên bản ma trận chung cũ sang phiên bản mới
+ * (ví dụ mẫu viết sẵn "1.0" → file của tổ "kho-2"). Không xóa bừa công giáo viên:
+ * giữ phương án, YCCĐ đã chọn và chỗ sửa câu nếu vẫn khớp với ma trận chung mới; bỏ phần không còn khớp.
+ * Kết quả luôn là bản nháp, giáo viên kiểm tra rồi xác nhận lại.
+ */
+export function chuyenMaTranRiengSangBanMoi(mtc: MaTranChung, cu: MaTranRieng): { mtr: MaTranRieng; giu: number; bo: number } {
+  const luaChon: LuaChon = {};
+  for (const nhom of cacNhomLuaChon(mtc)) {
+    const ma = cu.lua_chon_da_dung?.[nhom.ma];
+    if (ma && nhom.phuong_an.some((p) => p.ma === ma)) luaChon[nhom.ma] = ma;
+  }
+  // Câu theo mọi phương án (chưa chọn đủ phương án thì vẫn giữ YCCĐ của câu thuộc phương án nào cũng được)
+  const cauTheoKhoa = new Map(toHopLuaChon(mtc).flatMap((lc) => danhSachCau(mtc, { ...lc, ...luaChon })).map((c) => [c.khoa, c]));
+  const nguonCT = cu.nguon_yccd === 'CHUONG_TRINH';
+  let giu = 0;
+  let bo = 0;
+  const cauHoi: CauHoiMaTranRieng[] = [];
+  for (const ch of cu.cau_hoi ?? []) {
+    const c = cauTheoKhoa.get(ch.khoa);
+    const hopLe = (y: string) => !!c && (nguonCT || c.dong.yccd.includes(y));
+    if (!c || !hopLe(ch.yccd)) { bo++; continue; }
+    const them = (ch.yccd_them ?? []).filter(hopLe).slice(0, soYccdToiDa(c.cau) - 1);
+    bo += (ch.yccd_them ?? []).length - them.length;
+    giu++;
+    cauHoi.push(them.length ? { khoa: ch.khoa, yccd: ch.yccd, yccd_them: them } : { khoa: ch.khoa, yccd: ch.yccd });
+  }
+  const sua = cu.sua_cau ? chuanHoaSuaCau(mtc, cu.sua_cau) : {};
+  const mtr: MaTranRieng = {
+    ...taoMaTranRiengRong(mtc),
+    lua_chon_da_dung: luaChon,
+    cau_hoi: cauHoi,
+    ...(Object.keys(sua).length ? { sua_cau: sua } : {}),
+    ...(cu.nguon_yccd ? { nguon_yccd: cu.nguon_yccd } : {}),
+  };
+  return { mtr, giu, bo };
+}
+
 export function taoMaTranRiengRong(mtc: MaTranChung): MaTranRieng {
   return {
     loai: 'MA_TRAN_RIENG',
