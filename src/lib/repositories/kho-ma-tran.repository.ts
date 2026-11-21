@@ -252,6 +252,8 @@ export interface MaTranChungTuKho {
   tenFile?: string;
   phienBan?: number;
   xacNhanLuc?: string | null;
+  /** Bản mới hơn đang chờ tổ trưởng xác nhận (đã sửa nhưng chưa dùng được) */
+  banChoXacNhan?: { phienBan: number; taiLenLuc: string } | null;
 }
 
 /**
@@ -276,8 +278,18 @@ export async function maTranChungTuKho(maMon: string, ky: string): Promise<MaTra
     .limit(1);
   if (error) throw new Error(`Không đọc được kho ma trận: ${error.message}`);
   const ban = data?.[0];
-  if (!ban) return { coFile: false, mtc: null, canhBao: [] };
-  const goc = { coFile: true, tenFile: ban.ten_file as string, phienBan: ban.phien_ban as number, xacNhanLuc: ban.xac_nhan_luc as string | null };
+  // Bản sửa mới hơn nhưng chưa xác nhận: báo để tổ trưởng xác nhận, bước 2 chưa dùng
+  const { data: cho } = await supabase
+    .from('tai_lieu_ma_tran')
+    .select('phien_ban, created_at')
+    .eq('organization_id', orgId).eq('khoi', KHOI).eq('loai', 'CHUNG').eq('ma_mon', maMon).eq('ky_kiem_tra', ky)
+    .eq('trang_thai', 'CHO_XAC_NHAN')
+    .gt('phien_ban', (ban?.phien_ban as number | undefined) ?? 0)
+    .order('phien_ban', { ascending: false })
+    .limit(1);
+  const banChoXacNhan = cho?.[0] ? { phienBan: cho[0].phien_ban as number, taiLenLuc: cho[0].created_at as string } : null;
+  if (!ban) return { coFile: false, mtc: null, canhBao: [], banChoXacNhan };
+  const goc = { coFile: true, tenFile: ban.ten_file as string, phienBan: ban.phien_ban as number, xacNhanLuc: ban.xac_nhan_luc as string | null, banChoXacNhan };
   if (!Array.isArray(ban.cau_truc) || ban.cau_truc.length === 0) {
     return { ...goc, mtc: null, canhBao: [], loi: 'File này chưa có dạng bảng. Vào Ma trận chung, bấm "Chọn lại thư mục để hiện dạng bảng" rồi thử lại.' };
   }

@@ -132,9 +132,15 @@ export default function DacTaPage() {
       setDaLuuId(nhap.id);
       setTrangThai(nhap.trangThai);
       if (nhap.phienBanMaTranRieng < (moiNhat.phienBan ?? 0)) {
-        setBaiCu(nhap.duLieu); // đặc tả theo phiên bản ma trận cũ
-        setDacTa(nhap.duLieu);
+        // Ma trận riêng đã có bản mới: tự dựng lại bản nháp đặc tả theo bản mới, giữ bài, tuần, trang đã điền.
+        // Không ghi đè bản đặc tả đã xác nhận; thầy cô xem lại, lưu và xác nhận lại.
+        const { ma_tran_chung: mtcMoi, ma_tran_rieng: mtrMoi } = moiNhat.duLieu;
+        const kq = dungLaiDacTa(mtcMoi, mtrMoi, moiNhat.phienBan ?? 1, nhap.duLieu);
+        setDacTa(kq.dacTa);
         setTrangThai('CAN_XAC_NHAN_LAI');
+        const them = kq.moi.length ? ` Câu mới cần điền: ${kq.moi.join('; ')}.` : '';
+        const bo = kq.bo.length ? ` Câu không còn trong ma trận: ${kq.bo.join('; ')}.` : '';
+        setThongBao(`Ma trận riêng đã lên phiên bản ${moiNhat.phienBan} (đặc tả đang theo phiên bản ${nhap.phienBanMaTranRieng}). App đã tự cập nhật bản nháp đặc tả theo ma trận mới, giữ bài, tuần, trang thầy đã điền.${them}${bo} Thầy cô xem lại, bấm Lưu nháp rồi xác nhận lại.`);
       } else setDacTa(nhap.duLieu);
     } else {
       setDaLuuId(null);

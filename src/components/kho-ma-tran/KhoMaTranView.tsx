@@ -274,7 +274,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     setSuaBan((sb) => (sb && !sb.daDoi ? { ...sb, daDoi: true } : sb));
   };
 
-  const luuSua = async () => {
+  const luuSua = async (xacNhanLuon = false) => {
     if (!suaBan) return;
     // Rời ô đang gõ để ghi chữ trước khi lưu
     (document.activeElement as HTMLElement | null)?.blur();
@@ -292,9 +292,22 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
       if (r.error) throw new Error(r.error);
       const kq = r.ketQua?.[0];
       if (!kq?.ok) throw new Error(kq?.loi ?? 'Không lưu được.');
+      let daXacNhan = false;
+      if (xacNhanLuon && !kq.boSung) {
+        // Tìm đúng bản vừa lưu rồi xác nhận, để ma trận riêng, đặc tả dùng được ngay
+        const ds = await fetch(`/api/kho-ma-tran?loai=${loai}`).then((x) => x.json());
+        const moi = (ds.taiLieu as TaiLieuMaTran[] | undefined)?.find((t) => t.maMon === tu.maMon && t.ky === tu.ky && t.phienBan === kq.phienBan);
+        if (moi) {
+          const xn = await fetch('/api/kho-ma-tran/xac-nhan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi.id }) }).then((x) => x.json());
+          if (xn.error) throw new Error(`Đã lưu bản ${kq.phienBan} nhưng chưa xác nhận được: ${xn.error}`);
+          daXacNhan = true;
+        }
+      }
       setThongBao(kq.boSung
         ? { loai: 'ok', text: 'Nội dung không khác bản mới nhất nên không tạo bản mới.' }
-        : { loai: 'ok', text: `Đã lưu bản sửa thành bản ${kq.phienBan} (chờ xác nhận).` });
+        : daXacNhan
+          ? { loai: 'ok', text: `Đã lưu và xác nhận bản ${kq.phienBan}. Ma trận riêng và đặc tả của môn, kì này sẽ được nhắc cập nhật theo bản mới.` }
+          : { loai: 'ok', text: `Đã lưu bản sửa thành bản ${kq.phienBan}. Bản này CHỜ XÁC NHẬN: chưa xác nhận thì ma trận riêng vẫn dùng bản cũ.` });
       setSuaBan(null);
       napDanhSach();
     } catch (e) {
@@ -678,13 +691,18 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
             <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b">
               <div>
                 <div className="font-semibold text-slate-900">Sửa: {suaBan.tu.tenFile} (bản {suaBan.tu.phienBan})</div>
-                <div className="text-xs text-slate-500">Bấm vào ô hoặc dòng chữ để sửa. Lưu xong thành bản mới chờ xác nhận, bản {suaBan.tu.phienBan} vẫn giữ.</div>
+                <div className="text-xs text-slate-500">Bấm vào ô hoặc dòng chữ để sửa. Lưu xong thành bản mới, bản {suaBan.tu.phienBan} vẫn giữ. Bản mới chỉ được dùng ở ma trận riêng khi đã xác nhận.</div>
               </div>
               <div className="flex gap-2">
                 <button type="button" className={nutPhu} disabled={dangLuuSua} onClick={() => { if (!suaBan.daDoi || window.confirm('Bỏ những chỗ đã sửa?')) setSuaBan(null); }}>Hủy</button>
-                <button type="button" className={nutChinh} disabled={dangLuuSua} onClick={luuSua}>
+                <button type="button" className={duocXacNhan ? nutPhu : nutChinh} disabled={dangLuuSua} onClick={() => void luuSua(false)}>
                   {dangLuuSua ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Lưu thành bản mới
                 </button>
+                {duocXacNhan && (
+                  <button type="button" className={nutChinh} disabled={dangLuuSua} onClick={() => void luuSua(true)} title="Lưu bản sửa và xác nhận ngay để ma trận riêng, đặc tả dùng bản mới">
+                    {dangLuuSua ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Lưu và xác nhận luôn
+                  </button>
+                )}
               </div>
             </div>
             <div className="p-4 overflow-auto"><XemTaiLieuWord khoi={suaBan.khoi} onSua={ghiSua} /></div>

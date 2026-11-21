@@ -186,7 +186,7 @@ export default function MatricesPage() {
   const [dangDung, setDangDung] = useState(false);
   const [kyDung, setKyDung] = useState<KyDung>('CUOI_HK1');
   /** Ma trận chung đọc từ file tổ đã tải lên và xác nhận (Kho ma trận chung) */
-  const [khoMtc, setKhoMtc] = useState<{ coFile: boolean; mtc: MaTranChung | null; canhBao: string[]; loi?: string; tenFile?: string; phienBan?: number } | null>(null);
+  const [khoMtc, setKhoMtc] = useState<{ coFile: boolean; mtc: MaTranChung | null; canhBao: string[]; loi?: string; tenFile?: string; phienBan?: number; banChoXacNhan?: { phienBan: number; taiLenLuc: string } | null } | null>(null);
   const [dangTaiKho, setDangTaiKho] = useState(false);
   /** Tổ chưa tải ma trận chung Cuối HKI: cho dùng mẫu có sẵn trong app như trước */
   const [dungMauCo, setDungMauCo] = useState(false);
@@ -470,6 +470,15 @@ export default function MatricesPage() {
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           Ma trận chung của tổ vừa được cập nhật (bản {chungMoiHon.phienBan}, xác nhận {new Date(chungMoiHon.xacNhanLuc).toLocaleDateString('vi-VN')}) sau khi ma trận riêng này được xác nhận.
           Thầy cô mở lại, đối chiếu với ma trận chung mới rồi xác nhận lại. Bản đặc tả và đề làm từ ma trận riêng này cũng cần kiểm tra lại.
+        </div>
+      )}
+      {cachLap === 'MA_TRAN_CHUNG' && khoMtc?.banChoXacNhan && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3">
+          <span>
+            Ma trận chung có <b>bản {khoMtc.banChoXacNhan.phienBan}</b> (sửa lúc {new Date(khoMtc.banChoXacNhan.taiLenLuc).toLocaleString('vi-VN')}) đang <b>chờ xác nhận</b>.
+            Bước này vẫn dùng bản {khoMtc.phienBan ?? 'đã xác nhận'}. Tổ trưởng xác nhận bản mới thì ma trận riêng, đặc tả mới cập nhật theo.
+          </span>
+          <Link href="/ma-tran-chung" className={nutChinh}>Mở Ma trận chung để xác nhận</Link>
         </div>
       )}
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
