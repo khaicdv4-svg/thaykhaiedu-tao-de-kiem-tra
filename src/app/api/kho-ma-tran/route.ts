@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { danhSachTaiLieu, luuNhieuFile, xoaTaiLieu, type FileTaiLen } from '@/lib/repositories/kho-ma-tran.repository';
+import { capNhatSauMaTranChung, type BuocLienKet } from '@/lib/repositories/lien-ket.repository';
 
 const loi = (e: unknown, status = 400) => NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status });
 
@@ -17,7 +18,20 @@ export async function POST(req: NextRequest) {
   try {
     const { files } = (await req.json()) as { files?: FileTaiLen[] };
     if (!Array.isArray(files)) return loi('Thiếu danh sách file.');
-    return NextResponse.json({ success: true, ketQua: await luuNhieuFile(files) });
+    const ketQua = await luuNhieuFile(files);
+    // Ma trận chung vừa tự xác nhận: cập nhật luôn ma trận riêng, đặc tả của môn, kì đó (mỗi ô một lần)
+    const daLam = new Set<string>();
+    const lienKet: { maMon: string; ky: string; buoc: BuocLienKet[] }[] = [];
+    for (const k of ketQua) {
+      if (!k.daXacNhan || k.loai !== 'CHUNG' || !k.maMon || !k.ky || daLam.has(`${k.maMon}|${k.ky}`)) continue;
+      daLam.add(`${k.maMon}|${k.ky}`);
+      try {
+        lienKet.push({ maMon: k.maMon, ky: k.ky, buoc: await capNhatSauMaTranChung(k.maMon, k.ky) });
+      } catch (e) {
+        lienKet.push({ maMon: k.maMon, ky: k.ky, buoc: [{ buoc: 'MA_TRAN_RIENG', ok: false, thongBao: `Chưa cập nhật được ma trận riêng: ${e instanceof Error ? e.message : String(e)}` }] });
+      }
+    }
+    return NextResponse.json({ success: true, ketQua, lienKet });
   } catch (e) {
     return loi(e);
   }

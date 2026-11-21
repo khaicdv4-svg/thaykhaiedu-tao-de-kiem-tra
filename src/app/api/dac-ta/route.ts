@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { layDacTa, luuNhapDacTa, xacNhanDacTa } from '@/lib/repositories/ma-tran-dac-ta.repository';
+import { luuDacTaTuDong } from '@/lib/repositories/lien-ket.repository';
 import type { DacTa, TrangThaiDacTa } from '@/core/dac-ta/dac-ta';
 
 const loi = (e: unknown, ma = 400) => NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: ma });
@@ -15,11 +16,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** POST { hanhDong: 'LUU_NHAP' | 'XAC_NHAN', mon, ky, maTranRiengId, dacTa, trangThai? } */
+/** POST { hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN', mon, ky, maTranRiengId, dacTa, trangThai? } */
 export async function POST(req: NextRequest) {
   try {
     const b = (await req.json()) as { hanhDong?: string; mon?: string; ky?: string; maTranRiengId?: string; dacTa?: DacTa; trangThai?: TrangThaiDacTa };
     if (!b.mon || !b.ky || !b.maTranRiengId || !b.dacTa) return loi('Thiếu môn, kì, ma trận riêng hoặc nội dung đặc tả.');
+    if (b.hanhDong === 'LUU') return NextResponse.json({ success: true, ...(await luuDacTaTuDong(b.mon, b.ky, b.maTranRiengId, b.dacTa, b.trangThai ?? 'BAN_NHAP')) });
     if (b.hanhDong === 'LUU_NHAP') return NextResponse.json({ success: true, ban: await luuNhapDacTa(b.mon, b.ky, b.maTranRiengId, b.dacTa, b.trangThai ?? 'BAN_NHAP') });
     if (b.hanhDong === 'XAC_NHAN') return NextResponse.json({ success: true, ...(await xacNhanDacTa(b.mon, b.ky, b.maTranRiengId, b.dacTa)) });
     return loi('Thao tác không hợp lệ.');

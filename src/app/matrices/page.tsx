@@ -21,6 +21,7 @@ import {
   chuyenMaTranRiengSangBanMoi,
   danhSachCau,
   dungMaTranRieng,
+  ganSanYccdDuyNhat as ganSanYccdCore,
   kiemDinhMaTranChung,
   kiemDinhMaTranRieng,
   taoMaTranRiengRong,
@@ -38,6 +39,10 @@ import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
 import { DungTiengViet } from '@/components/matrices/DungTiengViet';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { useAuth } from '@/core/contexts/AuthContext';
+
+/** Tổ trưởng, quản trị: bấm Lưu là app tự kiểm tra, xác nhận và cập nhật đặc tả. */
+const VAI_TRO_TU_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
 const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
 
@@ -82,14 +87,7 @@ function ghiBanNhap(m: MaTranChung, mtr: MaTranRieng): boolean {
 }
 
 /** Câu chỉ có một YCCĐ thì gắn sẵn, giáo viên không phải chọn. */
-function ganSanYccdDuyNhat(mtc: MaTranChung, mtr: MaTranRieng): MaTranRieng {
-  if (mtr.nguon_yccd === 'CHUONG_TRINH' && !laKhungDung(mtc)) return mtr;
-  const daCo = new Set(mtr.cau_hoi.map((c) => c.khoa));
-  const them = danhSachCau(mtc, mtr.lua_chon_da_dung)
-    .filter((c) => c.cau.dang !== 'VIET' && c.phan.kieu !== 'VIET' && c.dong.yccd.length === 1 && !daCo.has(c.khoa))
-    .map((c) => ({ khoa: c.khoa, yccd: c.dong.yccd[0] }));
-  return them.length ? { ...mtr, cau_hoi: [...mtr.cau_hoi, ...them] } : mtr;
-}
+const ganSanYccdDuyNhat = (mtc: MaTranChung, mtr: MaTranRieng): MaTranRieng => ganSanYccdCore(mtc, mtr, laKhungDung(mtc));
 
 function Stepper({ buoc, xong }: { buoc: number; xong: boolean[] }) {
   return (
@@ -195,6 +193,8 @@ export default function MatricesPage() {
   const [phienBanXacNhan, setPhienBanXacNhan] = useState<number | null>(null);
   const [chungMoiHon, setChungMoiHon] = useState<{ phienBan: number; xacNhanLuc: string } | null>(null);
   const [dangLuuHeThong, setDangLuuHeThong] = useState(false);
+  const { activeRole } = useAuth();
+  const tuXacNhan = VAI_TRO_TU_XAC_NHAN.includes(activeRole as string);
 
   const mtc = useMemo(
     () => (cachLap === 'CHUONG_TRINH'
@@ -396,6 +396,42 @@ export default function MatricesPage() {
     if (kq.ket === 'OK') { ghiBanNhap(mtc, mtr); setThongBao('Đã lưu bản nháp lên hệ thống. Cả tổ cùng thấy bản này.'); return; }
     if (kq.ket === 'LOI') { setThongBao(`Chưa lưu lên hệ thống: ${kq.thongBao}`); return; }
     setThongBao(ghiBanNhap(mtc, mtr) ? `Đã lưu bản nháp trên máy này (${kq.thongBao ?? 'tài khoản chưa được lưu lên hệ thống'}).` : 'Không lưu được bản nháp trên trình duyệt này.');
+  };
+
+  /** Tổ trưởng bấm Lưu: hệ thống tự kiểm tra; không có lỗi thì xác nhận luôn và cập nhật đặc tả. */
+  const luuTuDong = async () => {
+    if (!mtc || !mtr) return;
+    const kq = kiemDinhMaTranRieng(mtc, mtr, dsYccdCT);
+    setKetQua(kq);
+    setDangLuuHeThong(true);
+    let r: Response | null = null;
+    let j: { error?: string; daXacNhan?: boolean; loiXacNhan?: string; taoPhienBanMoi?: boolean; ban?: { phienBan?: number | null }; lienKet?: { ok: boolean; thongBao: string }[] } = {};
+    try {
+      r = await fetch('/api/ma-tran-rieng', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hanhDong: 'LUU', mon: mtc.ma_mon, ky: mtc.ky_kiem_tra, duLieu: { ma_tran_chung: mtc, ma_tran_rieng: mtr } }),
+      });
+      j = await r.json().catch(() => ({}));
+    } catch {
+      /* mất mạng: xử lí ở dưới */
+    }
+    setDangLuuHeThong(false);
+    if (!r || !r.ok) {
+      setThongBao(ghiBanNhap(mtc, mtr) ? `Chưa lưu lên hệ thống (${j.error ?? 'không kết nối được'}). Đã giữ bản nháp trên máy này.` : `Chưa lưu được: ${j.error ?? 'không kết nối được'}`);
+      return;
+    }
+    if (j.daXacNhan) {
+      const daXacNhan: MaTranRieng = { ...mtr, trang_thai: 'DA_XAC_NHAN' };
+      setMtr(daXacNhan);
+      ghiBanNhap(mtc, daXacNhan);
+      setPhienBanXacNhan(j.ban?.phienBan ?? null);
+      const dacTa = (j.lienKet ?? []).map((b) => b.thongBao).join(' ');
+      setThongBao(`${j.taoPhienBanMoi === false ? `Đã lưu. Nội dung không đổi so với phiên bản ${j.ban?.phienBan}.` : `Đã lưu và dùng ngay, phiên bản ${j.ban?.phienBan}.`}${dacTa ? ` ${dacTa}` : ' Bước tiếp theo: bản đặc tả.'}`);
+      return;
+    }
+    ghiBanNhap(mtc, mtr);
+    setThongBao(`Đã lưu bản nháp. Chưa dùng được vì còn lỗi: ${j.loiXacNhan ?? 'xem kết quả kiểm tra bên dưới'}. Sửa xong bấm Lưu lại.`);
   };
 
   const xacNhan = async () => {
@@ -779,7 +815,7 @@ export default function MatricesPage() {
           <div className="flex flex-wrap justify-between gap-2">
             <button type="button" className={nutPhu} onClick={() => setBuoc(1)}><ArrowLeft className="w-4 h-4" /> Quay lại</button>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void luuNhap()}><Save className="w-4 h-4" /> Lưu bản nháp</button>
+              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void (tuXacNhan ? luuTuDong() : luuNhap())} title={tuXacNhan ? 'Lưu, app tự kiểm tra; không có lỗi thì dùng ngay và cập nhật đặc tả' : undefined}>{dangLuuHeThong ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {tuXacNhan ? 'Lưu' : 'Lưu bản nháp'}</button>
               <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>
               <button
                 type="button"
@@ -810,13 +846,13 @@ export default function MatricesPage() {
           <div className="flex flex-wrap justify-between gap-2">
             <button type="button" className={nutPhu} onClick={() => setBuoc(2)}><ArrowLeft className="w-4 h-4" /> Chỉnh sửa ma trận</button>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void luuNhap()}><Save className="w-4 h-4" /> Lưu bản nháp</button>
+              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void (tuXacNhan ? luuTuDong() : luuNhap())} title={tuXacNhan ? 'Lưu, app tự kiểm tra; không có lỗi thì dùng ngay và cập nhật đặc tả' : undefined}>{dangLuuHeThong ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {tuXacNhan ? 'Lưu' : 'Lưu bản nháp'}</button>
               {mtr.trang_thai === 'DA_XAC_NHAN' && phienBanXacNhan !== null ? (
                 <Link href={`/dac-ta?mon=${mtc.ma_mon}&ky=${mtc.ky_kiem_tra}`} className={nutChinh}>
                   <ListChecks className="w-4 h-4" /> Sang bước 3: Đặc tả
                 </Link>
               ) : (
-                <button type="button" className={nutChinh} disabled={!daXemTruoc || mtr.trang_thai === 'DA_XAC_NHAN' || dangLuuHeThong} onClick={() => void xacNhan()}>
+                !tuXacNhan && <button type="button" className={nutChinh} disabled={!daXemTruoc || mtr.trang_thai === 'DA_XAC_NHAN' || dangLuuHeThong} onClick={() => void xacNhan()}>
                   <CheckCircle2 className="w-4 h-4" /> {mtr.trang_thai === 'DA_XAC_NHAN' ? 'Đã xác nhận' : 'Xác nhận ma trận'}
                 </button>
               )}

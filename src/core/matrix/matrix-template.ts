@@ -379,6 +379,19 @@ export function chuyenMaTranRiengSangBanMoi(mtc: MaTranChung, cu: MaTranRieng): 
   return { mtr, giu, bo };
 }
 
+/**
+ * Câu chỉ có một YCCĐ thì gắn sẵn, giáo viên không phải chọn.
+ * YCCĐ lấy từ Kho chương trình (nguon_yccd = CHUONG_TRINH) thì không gắn, trừ khi ma trận chung là khung dựng từ chương trình.
+ */
+export function ganSanYccdDuyNhat(mtc: MaTranChung, mtr: MaTranRieng, laKhungDung = false): MaTranRieng {
+  if (mtr.nguon_yccd === 'CHUONG_TRINH' && !laKhungDung) return mtr;
+  const daCo = new Set(mtr.cau_hoi.map((c) => c.khoa));
+  const them = danhSachCau(mtc, mtr.lua_chon_da_dung)
+    .filter((c) => c.cau.dang !== 'VIET' && c.phan.kieu !== 'VIET' && c.dong.yccd.length === 1 && !daCo.has(c.khoa))
+    .map((c) => ({ khoa: c.khoa, yccd: c.dong.yccd[0] }));
+  return them.length ? { ...mtr, cau_hoi: [...mtr.cau_hoi, ...them] } : mtr;
+}
+
 export function taoMaTranRiengRong(mtc: MaTranChung): MaTranRieng {
   return {
     loai: 'MA_TRAN_RIENG',

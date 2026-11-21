@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { layMaTranRieng, luuNhapMaTranRieng, xacNhanMaTranRieng, type DuLieuMaTranRieng } from '@/lib/repositories/ma-tran-dac-ta.repository';
+import { luuMaTranRiengTuDong } from '@/lib/repositories/lien-ket.repository';
 
 const loi = (e: unknown, ma = 400) => NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: ma });
 /** Lỗi do không có quyền hoặc chưa đăng nhập trả 403 để trang biết quay về lưu trên máy. */
@@ -15,11 +16,13 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** POST { hanhDong: 'LUU_NHAP' | 'XAC_NHAN', mon, ky, duLieu: { ma_tran_chung, ma_tran_rieng } } */
+/** POST { hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN', mon, ky, duLieu: { ma_tran_chung, ma_tran_rieng } } */
 export async function POST(req: NextRequest) {
   try {
     const b = (await req.json()) as { hanhDong?: string; mon?: string; ky?: string; duLieu?: DuLieuMaTranRieng };
     if (!b.mon || !b.ky || !b.duLieu) return loi('Thiếu môn, kì hoặc nội dung ma trận.');
+    // LUU: tổ trưởng thì tự kiểm tra, xác nhận và cập nhật đặc tả; người khác lưu nháp
+    if (b.hanhDong === 'LUU') return NextResponse.json({ success: true, ...(await luuMaTranRiengTuDong(b.mon, b.ky, b.duLieu)) });
     if (b.hanhDong === 'LUU_NHAP') return NextResponse.json({ success: true, ban: await luuNhapMaTranRieng(b.mon, b.ky, b.duLieu) });
     if (b.hanhDong === 'XAC_NHAN') return NextResponse.json({ success: true, ...(await xacNhanMaTranRieng(b.mon, b.ky, b.duLieu)) });
     return loi('Thao tác không hợp lệ.');

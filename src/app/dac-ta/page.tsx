@@ -36,6 +36,10 @@ import {
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
 import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
 import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
+import { useAuth } from '@/core/contexts/AuthContext';
+
+/** Tổ trưởng, quản trị: bấm Lưu là app tự kiểm tra và xác nhận. */
+const VAI_TRO_TU_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
 interface BanMaTranRieng { id: string; phienBan: number | null; xacNhanLuc: string | null; duLieu: { ma_tran_chung: MaTranChung; ma_tran_rieng: MaTranRieng } }
 interface BanDacTaApi { id: string; phienBan: number | null; trangThai: TrangThaiDacTa; maTranRiengId: string; phienBanMaTranRieng: number; duLieu: DacTa }
@@ -82,6 +86,8 @@ export default function DacTaPage() {
   const [daXemTruoc, setDaXemTruoc] = useState(false);
   const [thongBao, setThongBao] = useState<string | null>(null);
   const [dangGui, setDangGui] = useState(false);
+  const { activeRole } = useAuth();
+  const tuXacNhan = VAI_TRO_TU_XAC_NHAN.includes(activeRole as string);
   const [tiet, setTiet] = useState<Tiet[]>([]);
   const [mucLuc, setMucLuc] = useState<MucLucSgk[]>([]);
   const [yccdKho, setYccdKho] = useState<Yccd[]>([]);
@@ -195,10 +201,11 @@ export default function DacTaPage() {
     return kq;
   };
 
-  const gui = async (hanhDong: 'LUU_NHAP' | 'XAC_NHAN') => {
+  const gui = async (hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN') => {
     if (!mtrBan || !dacTa) return;
+    if (hanhDong === 'LUU') kiemTra();
     setDangGui(true);
-    const r = await goiJson<{ ban?: BanDacTaApi; taoPhienBanMoi?: boolean }>('/api/dac-ta', {
+    const r = await goiJson<{ ban?: BanDacTaApi; taoPhienBanMoi?: boolean; daXacNhan?: boolean; loiXacNhan?: string }>('/api/dac-ta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hanhDong, mon: maMon, ky, maTranRiengId: mtrBan.id, dacTa, trangThai }),
@@ -206,6 +213,11 @@ export default function DacTaPage() {
     setDangGui(false);
     if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa ${hanhDong === 'XAC_NHAN' ? 'xác nhận' : 'lưu'} được: ${r.j.error}`); return; }
     if (hanhDong === 'LUU_NHAP') { setThongBao('Đã lưu bản nháp đặc tả lên hệ thống. Cả tổ cùng thấy bản này.'); return; }
+    if (hanhDong === 'LUU' && !r.j.daXacNhan) {
+      if (r.j.ban?.trangThai) setTrangThai(r.j.ban.trangThai);
+      setThongBao(r.j.loiXacNhan ? `Đã lưu bản nháp. Chưa dùng được vì còn lỗi: ${r.j.loiXacNhan}. Sửa xong bấm Lưu lại.` : 'Đã lưu bản nháp đặc tả lên hệ thống.');
+      return;
+    }
     setTrangThai('DA_XAC_NHAN');
     setPhienBanXacNhan(r.j.ban?.phienBan ?? null);
     setThongBao(r.j.taoPhienBanMoi === false ? `Nội dung không đổi so với phiên bản ${r.j.ban?.phienBan}, giữ nguyên phiên bản đó.` : `Đã xác nhận đặc tả, phiên bản ${r.j.ban?.phienBan}. Bước tiếp theo: tạo đề.`);
@@ -402,11 +414,11 @@ export default function DacTaPage() {
               ? <button type="button" className={nutPhu} onClick={() => setCheDo('sua')}><ArrowLeft className="w-4 h-4" /> Chỉnh sửa đặc tả</button>
               : <Link href={`/matrices?mon=${maMon}&ky=${ky}`} className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về ma trận</Link>}
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} disabled={dangGui || daXacNhan} onClick={() => void gui('LUU_NHAP')}><Save className="w-4 h-4" /> Lưu bản nháp</button>
+              <button type="button" className={tuXacNhan ? nutChinh : nutPhu} disabled={dangGui || daXacNhan} onClick={() => void gui(tuXacNhan ? 'LUU' : 'LUU_NHAP')} title={tuXacNhan ? 'Lưu, app tự kiểm tra; không có lỗi thì dùng ngay cho bước tạo đề' : undefined}>{dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {tuXacNhan ? (daXacNhan ? 'Đã lưu' : 'Lưu') : 'Lưu bản nháp'}</button>
               <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>
               {cheDo === 'sua'
                 ? <button type="button" className={nutChinh} onClick={xemTruoc}><Eye className="w-4 h-4" /> Xem trước đặc tả</button>
-                : <button type="button" className={nutChinh} disabled={!daXemTruoc || daXacNhan || dangGui || !!chungMoiHon} onClick={() => void gui('XAC_NHAN')}>
+                : !tuXacNhan && <button type="button" className={nutChinh} disabled={!daXemTruoc || daXacNhan || dangGui || !!chungMoiHon} onClick={() => void gui('XAC_NHAN')}>
                     {dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {daXacNhan ? 'Đã xác nhận' : 'Xác nhận đặc tả'}
                   </button>}
             </div>

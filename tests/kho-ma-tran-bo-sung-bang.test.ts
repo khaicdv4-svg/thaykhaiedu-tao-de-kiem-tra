@@ -21,7 +21,10 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (bang: string) => {
       if (bang === 'profiles') return chuoi({ organization_id: 'o1', role: 'GROUP_LEADER' });
       const q = chuoi(banMoiNhat);
-      q.insert = async (row: unknown) => { ghi.insert(row); return { error: null }; };
+      q.insert = (row: unknown) => {
+        ghi.insert(row);
+        return { select: () => ({ single: async () => ({ data: { id: 'b2' }, error: null }) }) };
+      };
       return q;
     },
     rpc: async (ten: string, thamSo: unknown) => { ghi.rpc(ten, thamSo); return { data: true, error: null }; },
@@ -65,5 +68,12 @@ describe('Bổ sung dạng bảng cho ma trận đã tải', () => {
     const [kq] = await luuNhieuFile([{ ...file('MA TRẬN TOÁN ĐÃ SỬA'), chiBoSung: false }]);
     expect(kq).toMatchObject({ ok: true, phienBan: 2 });
     expect(ghi.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it('tổ trưởng lưu ma trận chung chưa đọc được: giữ chờ xác nhận và nêu lí do', async () => {
+    banMoiNhat = [{ id: 'b1', phien_ban: 1, noi_dung: 'MA TRẬN TOÁN', cau_truc: null }];
+    const [kq] = await luuNhieuFile([{ ...file('MA TRẬN TOÁN ĐÃ SỬA'), chiBoSung: false }]);
+    expect(kq.daXacNhan).toBeUndefined();
+    expect(kq.chuaXacNhan).toBeTruthy();
   });
 });

@@ -178,7 +178,8 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
         loiDoc.push(`${f.tenFile}: không đọc được file.`);
       }
     }
-    const ketQua: { tenFile: string; ok: boolean; loi?: string; boSung?: boolean }[] = [];
+    const ketQua: { tenFile: string; ok: boolean; loi?: string; boSung?: boolean; daXacNhan?: boolean; chuaXacNhan?: string }[] = [];
+    const lienKet: { ok: boolean; thongBao: string }[] = [];
     try {
       for (let i = 0; i < daDoc.length; i += MOI_LAN_GUI) {
         const r = await fetch('/api/kho-ma-tran', {
@@ -188,6 +189,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
         }).then((x) => x.json());
         if (r.error) throw new Error(r.error);
         ketQua.push(...r.ketQua);
+        for (const lk of (r.lienKet ?? []) as { buoc: { ok: boolean; thongBao: string }[] }[]) lienKet.push(...lk.buoc);
       }
     } catch (e) {
       loiDoc.push(e instanceof Error ? e.message : String(e));
@@ -210,16 +212,27 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     setThongBao(
       loi.length
         ? { loai: 'loi', text: `Đã lưu ${ok} file.${ghiChuBoSung} Chưa lưu được: ${loi.join(' · ')}` }
-        : { loai: 'ok', text: ok ? `Đã lưu ${ok} file.${ghiChuBoSung} Tổ trưởng bấm vào từng ô để xem và xác nhận.` : `Không có file mới.${ghiChuBoSung}` },
+        : { loai: lienKet.some((b) => !b.ok) ? 'loi' : 'ok', text: ok ? `Đã lưu ${ok} file.${ghiChuBoSung}${ghiChuTuXacNhan(ketQua)}${baoLienKet(lienKet)}` : `Không có file mới.${ghiChuBoSung}` },
     );
     if (ok || boSung) setCho([]);
     setDangLuu(false);
     napDanhSach();
   };
 
+  /** Ghép câu báo kết quả tự cập nhật ma trận riêng, đặc tả sau khi ma trận chung được xác nhận. */
+  const baoLienKet = (buoc: { ok: boolean; thongBao: string }[] | undefined) => (buoc?.length ? ` ${buoc.map((b) => b.thongBao).join(' ')}` : '');
+
+  const ghiChuTuXacNhan = (ds: { ok: boolean; boSung?: boolean; daXacNhan?: boolean; chuaXacNhan?: string; tenFile: string }[]) => {
+    const moi = ds.filter((k) => k.ok && !k.boSung);
+    const daDung = moi.filter((k) => k.daXacNhan).length;
+    const chua = moi.filter((k) => !k.daXacNhan && k.chuaXacNhan);
+    if (!duocXacNhan) return ' Các bản mới chờ tổ trưởng xem và xác nhận.';
+    return `${daDung ? ` ${daDung} file đã tự kiểm tra và dùng ngay.` : ''}${chua.length ? ` Chưa tự dùng được (còn chờ xác nhận): ${chua.map((k) => `${k.tenFile} – ${k.chuaXacNhan}`).join(' · ')}.` : ''}`;
+  };
+
   const xacNhan = async (id: string) => {
     const r = await fetch('/api/kho-ma-tran/xac-nhan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).then((x) => x.json());
-    setThongBao(r.error ? { loai: 'loi', text: r.error } : { loai: 'ok', text: 'Đã xác nhận.' });
+    setThongBao(r.error ? { loai: 'loi', text: r.error } : { loai: (r.lienKet ?? []).some((b: { ok: boolean }) => !b.ok) ? 'loi' : 'ok', text: `Đã xác nhận.${baoLienKet(r.lienKet)}` });
     napDanhSach();
   };
 
@@ -231,10 +244,12 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     if (!window.confirm(`Xác nhận cùng lúc ${ds.length} ô đang chờ? Mỗi ô lấy bản mới nhất. Nên mở xem trước những ô chưa kiểm tra.`)) return;
     setDangXacNhanHet(true);
     const loi: string[] = [];
+    const lienKet: { ok: boolean; thongBao: string }[] = [];
     for (const t of ds) {
       try {
         const r = await fetch('/api/kho-ma-tran/xac-nhan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: t.id }) }).then((x) => x.json());
         if (r.error) loi.push(`${tenMon(t.maMon)}${t.ky ? ' – ' + tenKy(t.ky) : ''}: ${r.error}`);
+        else lienKet.push(...((r.lienKet ?? []) as { ok: boolean; thongBao: string }[]).map((b) => ({ ...b, thongBao: `${tenMon(t.maMon)}${t.ky ? ' – ' + tenKy(t.ky) : ''}: ${b.thongBao}` })));
       } catch (e) {
         loi.push(`${tenMon(t.maMon)}${t.ky ? ' – ' + tenKy(t.ky) : ''}: ${e instanceof Error ? e.message : String(e)}`);
       }
@@ -243,7 +258,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     const ok = ds.length - loi.length;
     setThongBao(loi.length
       ? { loai: 'loi', text: `Đã xác nhận ${ok}/${ds.length} ô. Chưa được: ${loi.join('; ')}` }
-      : { loai: 'ok', text: `Đã xác nhận ${ok} ô.` });
+      : { loai: lienKet.some((b) => !b.ok) ? 'loi' : 'ok', text: `Đã xác nhận ${ok} ô.${baoLienKet(lienKet)}` });
     napDanhSach();
   };
 
@@ -274,7 +289,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     setSuaBan((sb) => (sb && !sb.daDoi ? { ...sb, daDoi: true } : sb));
   };
 
-  const luuSua = async (xacNhanLuon = false) => {
+  const luuSua = async () => {
     if (!suaBan) return;
     // Rời ô đang gõ để ghi chữ trước khi lưu
     (document.activeElement as HTMLElement | null)?.blur();
@@ -292,22 +307,14 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
       if (r.error) throw new Error(r.error);
       const kq = r.ketQua?.[0];
       if (!kq?.ok) throw new Error(kq?.loi ?? 'Không lưu được.');
-      let daXacNhan = false;
-      if (xacNhanLuon && !kq.boSung) {
-        // Tìm đúng bản vừa lưu rồi xác nhận, để ma trận riêng, đặc tả dùng được ngay
-        const ds = await fetch(`/api/kho-ma-tran?loai=${loai}`).then((x) => x.json());
-        const moi = (ds.taiLieu as TaiLieuMaTran[] | undefined)?.find((t) => t.maMon === tu.maMon && t.ky === tu.ky && t.phienBan === kq.phienBan);
-        if (moi) {
-          const xn = await fetch('/api/kho-ma-tran/xac-nhan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi.id }) }).then((x) => x.json());
-          if (xn.error) throw new Error(`Đã lưu bản ${kq.phienBan} nhưng chưa xác nhận được: ${xn.error}`);
-          daXacNhan = true;
-        }
-      }
+      const lienKet = ((r.lienKet ?? []) as { buoc: { ok: boolean; thongBao: string }[] }[]).flatMap((x) => x.buoc);
       setThongBao(kq.boSung
         ? { loai: 'ok', text: 'Nội dung không khác bản mới nhất nên không tạo bản mới.' }
-        : daXacNhan
-          ? { loai: 'ok', text: `Đã lưu và xác nhận bản ${kq.phienBan}. Ma trận riêng và đặc tả của môn, kì này sẽ được nhắc cập nhật theo bản mới.` }
-          : { loai: 'ok', text: `Đã lưu bản sửa thành bản ${kq.phienBan}. Bản này CHỜ XÁC NHẬN: chưa xác nhận thì ma trận riêng vẫn dùng bản cũ.` });
+        : kq.daXacNhan
+          ? { loai: lienKet.some((b) => !b.ok) ? 'loi' : 'ok', text: `Đã lưu bản ${kq.phienBan} và dùng ngay.${baoLienKet(lienKet)}` }
+          : duocXacNhan
+            ? { loai: 'loi', text: `Đã lưu bản ${kq.phienBan} nhưng chưa dùng được: ${kq.chuaXacNhan ?? 'chưa rõ lí do'}. Sửa lại rồi bấm Lưu, ma trận riêng vẫn dùng bản cũ.` }
+            : { loai: 'ok', text: `Đã lưu bản sửa thành bản ${kq.phienBan}. Bản này CHỜ TỔ TRƯỞNG XÁC NHẬN: chưa xác nhận thì ma trận riêng vẫn dùng bản cũ.` });
       setSuaBan(null);
       napDanhSach();
     } catch (e) {
@@ -691,18 +698,13 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
             <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b">
               <div>
                 <div className="font-semibold text-slate-900">Sửa: {suaBan.tu.tenFile} (bản {suaBan.tu.phienBan})</div>
-                <div className="text-xs text-slate-500">Bấm vào ô hoặc dòng chữ để sửa. Lưu xong thành bản mới, bản {suaBan.tu.phienBan} vẫn giữ. Bản mới chỉ được dùng ở ma trận riêng khi đã xác nhận.</div>
+                <div className="text-xs text-slate-500">Bấm vào ô hoặc dòng chữ để sửa. Lưu xong thành bản mới, bản {suaBan.tu.phienBan} vẫn giữ. {duocXacNhan ? 'Tổ trưởng bấm Lưu: app tự kiểm tra, không có lỗi thì dùng ngay và cập nhật luôn ma trận riêng, đặc tả.' : 'Bản mới chờ tổ trưởng xác nhận rồi mới được dùng.'}</div>
               </div>
               <div className="flex gap-2">
                 <button type="button" className={nutPhu} disabled={dangLuuSua} onClick={() => { if (!suaBan.daDoi || window.confirm('Bỏ những chỗ đã sửa?')) setSuaBan(null); }}>Hủy</button>
-                <button type="button" className={duocXacNhan ? nutPhu : nutChinh} disabled={dangLuuSua} onClick={() => void luuSua(false)}>
-                  {dangLuuSua ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Lưu thành bản mới
+                <button type="button" className={nutChinh} disabled={dangLuuSua} onClick={() => void luuSua()} title={duocXacNhan ? 'Lưu thành bản mới, app tự kiểm tra rồi dùng ngay cho ma trận riêng và đặc tả' : 'Lưu thành bản mới, chờ tổ trưởng xác nhận'}>
+                  {dangLuuSua ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Lưu
                 </button>
-                {duocXacNhan && (
-                  <button type="button" className={nutChinh} disabled={dangLuuSua} onClick={() => void luuSua(true)} title="Lưu bản sửa và xác nhận ngay để ma trận riêng, đặc tả dùng bản mới">
-                    {dangLuuSua ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Lưu và xác nhận luôn
-                  </button>
-                )}
               </div>
             </div>
             <div className="p-4 overflow-auto"><XemTaiLieuWord khoi={suaBan.khoi} onSua={ghiSua} /></div>

@@ -10,6 +10,7 @@ import { DANH_SACH_KY_MA_TRAN, DANH_SACH_MON, type KyMaTran, type LoaiMaTranTo }
 import { soSanhMaTran, tomTatThayDoi } from '@/core/kho-ma-tran/so-sanh';
 import { docMaTranChungTuBang } from '@/core/kho-ma-tran/doc-ma-tran-chung';
 import type { KyKiemTra, MaTranChung } from '@/types/matrix-template';
+import { kiemDinhMaTranChung } from '@/core/matrix/matrix-template';
 
 const KHOI = 4;
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -123,13 +124,39 @@ export async function noiDungTaiLieu(id: string): Promise<{ tenFile: string; noi
 }
 
 /** Lưu nhiều file. Mỗi file là phiên bản mới của ô (môn × kì). Trả về kết quả từng file. */
-export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string; ok: boolean; loi?: string; phienBan?: number; boSung?: boolean }[]> {
+export interface KetQuaLuuFile {
+  tenFile: string;
+  ok: boolean;
+  loi?: string;
+  phienBan?: number;
+  boSung?: boolean;
+  /** Tổ trưởng lưu: bản mới đã tự xác nhận (dùng được ngay) */
+  daXacNhan?: boolean;
+  /** Tổ trưởng lưu nhưng chưa tự xác nhận được, lí do */
+  chuaXacNhan?: string;
+  loai?: LoaiMaTranTo;
+  maMon?: string;
+  ky?: string | null;
+}
+
+/** Ma trận chung đọc được từ bảng và hợp lệ thì trả null, không thì trả lí do. */
+function loiMaTranChung(cauTruc: KhoiVanBan[] | null, maMon: string, ky: string, phienBan: number): string | null {
+  if (!cauTruc) return 'file chưa có dạng bảng';
+  const tenMon = DANH_SACH_MON.find((m) => m.ma === maMon)?.ten ?? maMon;
+  const kq = docMaTranChungTuBang(cauTruc, { maMon, tenMon, ky: ky as KyKiemTra, phienBan });
+  if (!kq.mtc) return kq.loi ?? 'chưa đọc được bảng ma trận';
+  const kd = kiemDinhMaTranChung(kq.mtc);
+  return kd.hopLe ? null : kd.loi[0];
+}
+
+export async function luuNhieuFile(ds: FileTaiLen[]): Promise<KetQuaLuuFile[]> {
   const { supabase, user, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải ma trận lên.');
   if (ds.length === 0) return [];
   if (ds.length > 60) throw new Error('Mỗi lần tải tối đa 60 file.');
 
-  const kq: { tenFile: string; ok: boolean; loi?: string; phienBan?: number; boSung?: boolean }[] = [];
+  const kq: KetQuaLuuFile[] = [];
+  const tuXacNhan = VAI_TRO_XAC_NHAN.includes(role);
   for (const f of ds) {
     const loi = kiemTraFileTaiLen(f);
     if (loi) { kq.push({ tenFile: f.tenFile, ok: false, loi }); continue; }
@@ -156,7 +183,7 @@ export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string;
 
     const phienBan = (cu?.[0]?.phien_ban ?? 0) + 1;
 
-    const { error } = await supabase.from('tai_lieu_ma_tran').insert({
+    const { data: moi, error } = await supabase.from('tai_lieu_ma_tran').insert({
       organization_id: orgId,
       khoi: KHOI,
       loai: f.loai,
@@ -170,13 +197,28 @@ export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string;
       cau_truc: cauTruc,
       ghi_chu: f.ghiChu?.slice(0, 500) || null,
       tai_len_boi: user.id,
-    });
-    kq.push(error ? { tenFile: f.tenFile, ok: false, loi: error.message } : { tenFile: f.tenFile, ok: true, phienBan });
+    }).select('id').single();
+    if (error || !moi) { kq.push({ tenFile: f.tenFile, ok: false, loi: error?.message ?? 'Không lưu được.' }); continue; }
+    const dong: KetQuaLuuFile = { tenFile: f.tenFile, ok: true, phienBan, loai: f.loai, maMon: f.maMon, ky };
+    // Tổ trưởng lưu: tự kiểm tra rồi xác nhận luôn, không phải bấm xác nhận riêng
+    if (tuXacNhan) {
+      const lyDo = f.loai === 'CHUNG' && ky ? loiMaTranChung(cauTruc, f.maMon, ky, phienBan) : null;
+      if (lyDo) dong.chuaXacNhan = lyDo;
+      else {
+        try {
+          await xacNhanTaiLieu(moi.id as string);
+          dong.daXacNhan = true;
+        } catch (e) {
+          dong.chuaXacNhan = e instanceof Error ? e.message : String(e);
+        }
+      }
+    }
+    kq.push(dong);
   }
   return kq;
 }
 
-export async function xacNhanTaiLieu(id: string): Promise<void> {
+export async function xacNhanTaiLieu(id: string): Promise<{ loai: LoaiMaTranTo; maMon: string; ky: string | null }> {
   const { supabase, user, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_XAC_NHAN.includes(role)) throw new Error('Chỉ tổ trưởng hoặc quản trị mới được xác nhận ma trận.');
   const { data, error } = await supabase
@@ -185,11 +227,12 @@ export async function xacNhanTaiLieu(id: string): Promise<void> {
     .eq('organization_id', orgId)
     .eq('id', id)
     .eq('trang_thai', 'CHO_XAC_NHAN')
-    .select('id');
+    .select('id, loai, ma_mon, ky_kiem_tra');
   if (error) throw new Error(`Không xác nhận được: ${error.message}`);
   if (!data?.length) throw new Error('File không còn ở trạng thái chờ xác nhận.');
   // Báo cho giáo viên trong trường. Báo lỗi cũng không làm hỏng việc xác nhận.
   await baoMaTranCapNhat(supabase, user.id, orgId, id).catch(() => undefined);
+  return { loai: data[0].loai as LoaiMaTranTo, maMon: data[0].ma_mon as string, ky: (data[0].ky_kiem_tra as string | null) ?? null };
 }
 
 /** Tạo thông báo "ma trận đã cập nhật" kèm tóm tắt những gì thay đổi so với bản đã xác nhận trước đó. */
