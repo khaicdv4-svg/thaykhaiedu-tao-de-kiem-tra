@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Eye, FilePen, FileUp, FolderUp, Loader2, Trash2, TriangleAlert, X } from 'lucide-react';
+import { CheckCircle2, Eye, FilePen, FileUp, FolderUp, Loader2, Table2, Trash2, TriangleAlert, X } from 'lucide-react';
 import { useAuth } from '@/core/contexts/AuthContext';
 import { docChuTuDocx } from '@/core/utils/docx-text';
 import { docKhoiTuDocx, khoiSangVanBan, type KhoiVanBan } from '@/core/utils/docx-bang';
@@ -130,6 +130,10 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
   /** Chữ đã sửa giữ ở đây, không đưa vào state, để React không vẽ lại ô đang gõ */
   const suaRef = useRef<KhoiVanBan[] | null>(null);
   const thayRef = useRef<HTMLInputElement>(null);
+  /** Chế độ "chỉ bổ sung dạng bảng" cho file tải lên trước ngày 06/11/2026: không tạo phiên bản mới */
+  const [cheDoBoSung, setCheDoBoSung] = useState(false);
+  const fileGocRef = useRef<HTMLInputElement>(null);
+  const [dangBoSung, setDangBoSung] = useState(false);
   const choRef = useRef<HTMLDivElement>(null);
   const [keoVao, setKeoVao] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -169,7 +173,8 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
           boQua = true;
         }
         if (epO) return { ...f, loai, maMon: epO.maMon, ky: epO.ky, canhBao: canhBao.filter((c) => !c.includes(TEN_LOAI_MA_TRAN[loaiKhac])), boQua: f.dinhDang !== 'DOCX' };
-        return { ...f, loai, ky: loai === 'CA_NAM' ? null : f.ky, canhBao, boQua };
+        const kq = { ...f, loai, ky: loai === 'CA_NAM' ? null : f.ky, canhBao, boQua };
+        return cheDoBoSung && !khoaO(kq) ? { ...kq, boQua: true } : kq;
       });
     setCho(moi);
     setThongBao(moi.length ? null : { loai: 'loi', text: 'Không tìm thấy file Word nào.' });
@@ -196,7 +201,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
   const trung = useMemo(() => oBiTrung(cho), [cho]);
   const canLuu = cho.filter((f) => !f.boQua);
   const thieu = canLuu.filter((f) => !khoaO(f));
-  const coTheLuu = canLuu.length > 0 && thieu.length === 0 && trung.size === 0;
+  const coTheLuu = canLuu.length > 0 && thieu.length === 0 && (cheDoBoSung || trung.size === 0);
 
   const luu = async () => {
     setDangLuu(true);
@@ -219,7 +224,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
         const r = await fetch('/api/kho-ma-tran', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files: daDoc.slice(i, i + MOI_LAN_GUI) }),
+          body: JSON.stringify({ files: daDoc.slice(i, i + MOI_LAN_GUI).map((f) => (cheDoBoSung ? { ...f, chiBoSung: true } : f)) }),
         }).then((x) => x.json());
         if (r.error) throw new Error(r.error);
         ketQua.push(...r.ketQua);
@@ -231,6 +236,17 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     const ok = ketQua.filter((k) => k.ok && !k.boSung).length;
     const ghiChuBoSung = boSung ? ` ${boSung} file trùng bản đã có nên không tạo bản mới, chỉ cập nhật để xem dạng bảng.` : '';
     const loi = [...loiDoc, ...ketQua.filter((k) => !k.ok).map((k) => `${k.tenFile}: ${k.loi}`)];
+    if (cheDoBoSung) {
+      setThongBao({
+        loai: loi.length && !boSung ? 'loi' : 'ok',
+        text: `Đã bổ sung dạng bảng cho ${boSung} file, không tạo phiên bản mới.${loi.length ? ` Bỏ qua ${loi.length} file: ${loi.join(' · ')}` : ''}`,
+      });
+      setCho([]);
+      setCheDoBoSung(false);
+      setDangLuu(false);
+      napDanhSach();
+      return;
+    }
     setThongBao(
       loi.length
         ? { loai: 'loi', text: `Đã lưu ${ok} file.${ghiChuBoSung} Chưa lưu được: ${loi.join(' · ')}` }
@@ -367,6 +383,46 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
     else setXemChu({ id, tenFile: r.tenFile, noiDung: r.noiDung, cauTruc: r.cauTruc ?? null });
   };
 
+  /** Chọn lại cả thư mục cũ, chỉ để bổ sung dạng bảng cho các bản tải lên trước đây */
+  const moBoSungThuMuc = () => {
+    setCheDoBoSung(true);
+    thuMucRef.current?.click();
+  };
+
+  /** Trong khung xem: chọn đúng file gốc của bản đang xem để hiện dạng bảng */
+  const chonFileGoc = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const ban = xemChu;
+    const t = ban ? taiLieu.find((x) => x.id === ban.id) : undefined;
+    if (!file || !ban || !t) return;
+    setDangBoSung(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const noiDung = await docChuTuDocx(buf);
+      if (noiDung !== ban.noiDung) {
+        throw new Error('File vừa chọn có nội dung khác bản đang xem nên app không ghép vào. Thầy cô chọn đúng file đã tải hôm trước, hoặc dùng nút "Tải bản thay thế cho ô này" nếu muốn dùng file mới.');
+      }
+      const cauTruc = await docKhoiTuDocx(buf);
+      const r = await fetch('/api/kho-ma-tran', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: [{ loai: t.loai, maMon: t.maMon, ky: t.ky, tenFile: t.tenFile, noiDung, cauTruc, chiBoSung: true }] }),
+      }).then((x) => x.json());
+      if (r.error) throw new Error(r.error);
+      const kq = r.ketQua?.[0];
+      if (!kq?.ok) throw new Error(kq?.loi ?? 'Không bổ sung được.');
+      await moChu(ban.id);
+      setThongBao({ loai: 'ok', text: `Đã bổ sung dạng bảng cho ${t.tenFile}. Bấm Sửa trực tiếp để chỉnh ngay trên bảng.` });
+      napDanhSach();
+    } catch (err) {
+      setThongBao({ loai: 'loi', text: err instanceof Error ? err.message : String(err) });
+      setXemChu(null);
+    } finally {
+      setDangBoSung(false);
+    }
+  };
+
   // Bảng ô: môn × (kì hoặc một cột cả năm)
   const cot: { ma: KyMaTran | null; ten: string }[] = loai === 'CHUNG' ? DANH_SACH_KY_MA_TRAN : [{ ma: null, ten: 'Cả năm' }];
   const theoO = useMemo(() => {
@@ -403,6 +459,22 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
         </p>
       </div>
 
+      {duocTai && !dangTai && (() => {
+        const thieuBang = taiLieu.filter((t) => !t.coBang);
+        if (!thieuBang.length) return null;
+        return (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-col md:flex-row md:items-center gap-3">
+            <Table2 className="w-6 h-6 text-amber-700 shrink-0 hidden md:block" />
+            <div className="flex-1 text-sm text-amber-900">
+              <b>{thieuBang.length} file</b> tải lên trước khi app biết đọc bảng nên đang hiện toàn chữ, chưa sửa trực tiếp được.
+              Bấm nút bên cạnh rồi chọn lại đúng thư mục ma trận đã tải hôm trước. App chỉ bổ sung phần bảng cho file có chữ y hệt,
+              không tạo phiên bản mới, không đổi trạng thái xác nhận. File khác nội dung thì tự bỏ qua.
+            </div>
+            <button type="button" className={`${nutChinh} shrink-0`} onClick={moBoSungThuMuc}><FolderUp className="w-4 h-4" /> Chọn lại thư mục để hiện dạng bảng</button>
+          </div>
+        );
+      })()}
+
       {thongBao && (
         <div className={`rounded-lg border p-3 text-sm ${thongBao.loai === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}>{thongBao.text}</div>
       )}
@@ -417,8 +489,8 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
         >
           <p className="text-sm text-slate-700">Kéo thả file hoặc cả thư mục vào đây, hoặc bấm nút bên dưới.</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <button type="button" className={nutPhu} onClick={() => fileRef.current?.click()}><FileUp className="w-4 h-4" /> Chọn nhiều file</button>
-            <button type="button" className={nutPhu} onClick={() => thuMucRef.current?.click()}><FolderUp className="w-4 h-4" /> Chọn cả thư mục</button>
+            <button type="button" className={nutPhu} onClick={() => { setCheDoBoSung(false); fileRef.current?.click(); }}><FileUp className="w-4 h-4" /> Chọn nhiều file</button>
+            <button type="button" className={nutPhu} onClick={() => { setCheDoBoSung(false); thuMucRef.current?.click(); }}><FolderUp className="w-4 h-4" /> Chọn cả thư mục</button>
           </div>
           <p className="text-xs text-slate-500">Chọn thư mục chỉ có ở Chrome, Edge trên máy tính. Điện thoại: chọn nhiều file. Chỉ nhận file .docx.</p>
           <input ref={fileRef} type="file" multiple accept=".docx,.doc" className="hidden" onChange={chonFile} />
@@ -430,7 +502,14 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
       {cho.length > 0 && (
         <div ref={choRef} className="the-tke p-6 space-y-4 scroll-mt-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Kiểm tra trước khi lưu ({canLuu.length}/{cho.length} file)</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {cheDoBoSung ? `Bổ sung dạng bảng (${canLuu.length}/${cho.length} file)` : `Kiểm tra trước khi lưu (${canLuu.length}/${cho.length} file)`}
+            </h2>
+            {cheDoBoSung && (
+              <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 mt-1">
+                Chế độ chỉ bổ sung bảng: file nào có chữ y hệt bản mới nhất của ô thì app thêm phần bảng vào chính bản đó. File khác nội dung tự bỏ qua, không tạo phiên bản mới.
+              </p>
+            )}
             <p className="text-sm text-slate-600">App đã đoán môn{loai === 'CHUNG' ? ', kì' : ''} từ tên thư mục và tên file. Ô nào sai thì chọn lại. Bỏ dấu tích để không lưu file đó.</p>
           </div>
           <div className="overflow-x-auto">
@@ -482,9 +561,9 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
           </div>
           {thieu.length > 0 && <p className="text-sm text-amber-800">Còn {thieu.length} file chưa chọn đủ môn{loai === 'CHUNG' ? ' hoặc kì' : ''}.</p>}
           <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" className={nutPhu} onClick={() => setCho([])} disabled={dangLuu}>Hủy</button>
+            <button type="button" className={nutPhu} onClick={() => { setCho([]); setCheDoBoSung(false); }} disabled={dangLuu}>Hủy</button>
             <button type="button" className={nutChinh} onClick={luu} disabled={!coTheLuu || dangLuu}>
-              {dangLuu ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />} Lưu {canLuu.length} file
+              {dangLuu ? <Loader2 className="w-4 h-4 animate-spin" /> : cheDoBoSung ? <Table2 className="w-4 h-4" /> : <FileUp className="w-4 h-4" />} {cheDoBoSung ? `Bổ sung bảng cho ${canLuu.length} file` : `Lưu ${canLuu.length} file`}
             </button>
           </div>
         </div>
@@ -558,12 +637,13 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
                   <div className="text-xs text-slate-500">
                     {t.ghiChu ? `${t.ghiChu} · ` : ''}Tải lên {ngay(t.taiLenLuc)} · {t.soKyTu.toLocaleString('vi-VN')} ký tự ·{' '}
                     {t.trangThai === 'DA_XAC_NHAN' ? `đã xác nhận ${ngay(t.xacNhanLuc)}` : 'chờ xác nhận'}
+                    {!t.coBang && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">chưa có dạng bảng</span>}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className={nutPhu} onClick={() => moChu(t.id)}><Eye className="w-4 h-4" /> Xem</button>
-                  {duocTai && (
-                    <button type="button" className={nutPhu} onClick={() => moSua(t)}><FilePen className="w-4 h-4" /> Sửa</button>
+                  {duocTai && t.coBang && (
+                    <button type="button" className={nutPhu} onClick={() => moSua(t)}><FilePen className="w-4 h-4" /> Sửa trực tiếp</button>
                   )}
                   {t.trangThai === 'CHO_XAC_NHAN' && duocXacNhan && (
                     <button type="button" className={nutChinh} onClick={() => xacNhan(t.id)}><CheckCircle2 className="w-4 h-4" /> Xác nhận</button>
@@ -600,7 +680,7 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
               <div className="flex items-center gap-2">
                 {duocTai && xemChu.cauTruc && (() => {
                   const t = taiLieu.find((x) => x.id === xemChu.id);
-                  return t ? <button type="button" className={nutPhu} onClick={() => moSua(t)}><FilePen className="w-4 h-4" /> Sửa</button> : null;
+                  return t ? <button type="button" className={nutChinh} onClick={() => moSua(t)}><FilePen className="w-4 h-4" /> Sửa trực tiếp</button> : null;
                 })()}
                 <button type="button" aria-label="Đóng" className="p-1 rounded hover:bg-slate-100" onClick={() => setXemChu(null)}><X className="w-5 h-5" /></button>
               </div>
@@ -609,7 +689,22 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
               <div className="p-4 overflow-auto"><XemTaiLieuWord khoi={xemChu.cauTruc} /></div>
             ) : (
               <>
-                <p className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">Bản này tải lên trước khi app biết đọc bảng nên chỉ còn chữ. Muốn xem dạng bảng, thầy cô tải lại đúng file này: app không tạo phiên bản mới, chỉ bổ sung phần bảng.</p>
+                <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <span className="flex-1">Bản này tải lên trước khi app biết đọc bảng nên chỉ còn chữ. Chọn lại đúng file Word gốc, app sẽ hiện như file tải lên và cho sửa trực tiếp. Không tạo phiên bản mới.</span>
+                  {duocTai && (() => {
+                    const t = taiLieu.find((x) => x.id === xemChu.id);
+                    const moiNhat = t ? theoO.get(khoaO({ loai: t.loai, maMon: t.maMon, ky: t.ky })!)?.[0] : undefined;
+                    if (!t || moiNhat?.id !== t.id) return <span className="text-xs">Chỉ bổ sung được cho bản mới nhất của ô.</span>;
+                    return (
+                      <>
+                        <button type="button" className={`${nutChinh} shrink-0`} disabled={dangBoSung} onClick={() => fileGocRef.current?.click()}>
+                          {dangBoSung ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table2 className="w-4 h-4" />} Chọn file gốc để hiện bảng
+                        </button>
+                        <input ref={fileGocRef} type="file" accept=".docx" className="hidden" onChange={chonFileGoc} />
+                      </>
+                    );
+                  })()}
+                </div>
                 <pre className="p-4 overflow-auto text-sm whitespace-pre-wrap font-sans text-slate-800">{xemChu.noiDung}</pre>
               </>
             )}

@@ -28,6 +28,8 @@ export interface TaiLieuMaTran {
   taiLenLuc: string;
   xacNhanLuc: string | null;
   ghiChu: string | null;
+  /** Đã lưu dạng bảng (đoạn văn, bảng có ô gộp) để xem và sửa như file Word gốc */
+  coBang: boolean;
 }
 
 export interface FileTaiLen {
@@ -42,6 +44,8 @@ export interface FileTaiLen {
   cauTruc?: KhoiVanBan[] | null;
   /** Ví dụ: "Sửa trực tiếp từ bản 2" */
   ghiChu?: string;
+  /** Chỉ bổ sung dạng bảng cho bản cũ có chữ y hệt; file khác thì bỏ qua, không tạo phiên bản mới */
+  chiBoSung?: boolean;
 }
 
 const CAU_TRUC_TOI_DA = 1_500_000; // ký tự JSON
@@ -61,7 +65,7 @@ async function layNguoiDung() {
   return { supabase, user, orgId: profile.organization_id as string, role: profile.role as string };
 }
 
-const COT = 'id, loai, ma_mon, ky_kiem_tra, phien_ban, ten_file, duong_dan, kich_thuoc, trang_thai, created_at, xac_nhan_luc, so_ky_tu, ghi_chu';
+const COT = 'id, loai, ma_mon, ky_kiem_tra, phien_ban, ten_file, duong_dan, kich_thuoc, trang_thai, created_at, xac_nhan_luc, so_ky_tu, ghi_chu, bang_dau:cau_truc->0->>loai';
 
 function sangDoiTuong(r: any): TaiLieuMaTran {
   return {
@@ -78,6 +82,7 @@ function sangDoiTuong(r: any): TaiLieuMaTran {
     taiLenLuc: r.created_at,
     xacNhanLuc: r.xac_nhan_luc,
     ghiChu: r.ghi_chu ?? null,
+    coBang: r.bang_dau != null,
   };
 }
 
@@ -140,6 +145,11 @@ export async function luuNhieuFile(ds: FileTaiLen[]): Promise<{ tenFile: string;
       if (giong.cau_truc || !cauTruc) { kq.push({ tenFile: f.tenFile, ok: true, phienBan: giong.phien_ban, boSung: true }); continue; }
       const { data: daGhi, error: loiGhi } = await supabase.rpc('bo_sung_cau_truc_ma_tran', { p_id: giong.id, p_noi_dung: f.noiDung, p_cau_truc: cauTruc });
       if (!loiGhi && daGhi) { kq.push({ tenFile: f.tenFile, ok: true, phienBan: giong.phien_ban, boSung: true }); continue; }
+    }
+
+    if (f.chiBoSung) {
+      kq.push({ tenFile: f.tenFile, ok: false, loi: giong ? 'Nội dung khác bản mới nhất của ô nên bỏ qua, không tạo bản mới.' : 'Ô này chưa có bản nào nên bỏ qua.' });
+      continue;
     }
 
     const phienBan = (cu?.[0]?.phien_ban ?? 0) + 1;
