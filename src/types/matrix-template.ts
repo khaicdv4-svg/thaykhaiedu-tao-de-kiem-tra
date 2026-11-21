@@ -124,8 +124,13 @@ export type TrangThaiMaTran = 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'DA_XAC_N
 export interface CauHoiMaTranRieng {
   /** Khóa câu: "<mã bài>/<mã phần>/<số câu>", ví dụ "doc/doc_hieu/6". */
   khoa: string;
-  /** Đúng một YCCĐ, chọn trong danh sách YCCĐ của dòng chứa câu. */
+  /** YCCĐ chính, chọn trong danh sách YCCĐ của dòng chứa câu. */
   yccd: string;
+  /**
+   * YCCĐ thêm, chỉ cho câu có nhiều ý nhỏ (Toán Câu 8 a–d: a, b cộng trừ; c, d nhân chia).
+   * Số YCCĐ cả thảy không quá số ý nhỏ. Không có thì câu chỉ gắn YCCĐ chính.
+   */
+  yccd_them?: string[];
 }
 
 export interface SuaCauMaTranRieng {

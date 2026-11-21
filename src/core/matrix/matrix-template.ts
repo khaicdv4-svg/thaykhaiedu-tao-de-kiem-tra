@@ -11,6 +11,7 @@
 import type {
   BaiKiemTraMaTran,
   CauHoiMaTran,
+  CauHoiMaTranRieng,
   DongMaTran,
   MaTranChung,
   MaTranRieng,
@@ -34,6 +35,14 @@ export interface CauTrongMaTran {
   dong: DongMaTran;
   cau: CauHoiMaTran;
 }
+
+/** Mọi YCCĐ đã gắn cho một câu của ma trận riêng: YCCĐ chính rồi YCCĐ thêm, bỏ trùng, bỏ trống. */
+export function yccdCuaCauRieng(c: Pick<CauHoiMaTranRieng, 'yccd' | 'yccd_them'>): string[] {
+  return [...new Set([c.yccd, ...(c.yccd_them ?? [])].map((y) => (y ?? '').trim()).filter(Boolean))];
+}
+
+/** Câu có nhiều ý nhỏ thì được gắn nhiều YCCĐ, tối đa bằng số ý nhỏ. */
+export const soYccdToiDa = (cau: CauHoiMaTran) => Math.max(1, cau.y_nho?.length ?? 1);
 
 export function khoaCau(bai: BaiKiemTraMaTran, phan: PhanMaTran, cau: CauHoiMaTran): string {
   return `${bai.ma}/${phan.ma}/${cau.khoa_goc ?? cau.cau}`;
@@ -383,21 +392,34 @@ export function kiemDinhMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng, yccdC
     if (khac.length) canhBao.push(`${c.phan.ten ?? c.bai.ten}, Câu ${g.cau} khác ma trận chung: ${khac.join(', ')}.`);
   }
 
-  // Mỗi câu đúng một YCCĐ, thuộc dòng gốc
+  // Mỗi câu một YCCĐ thuộc dòng gốc; câu nhiều ý nhỏ được gắn thêm, tối đa bằng số ý nhỏ
   const cauList = danhSachCau(mtc, mtr.lua_chon_da_dung);
   const daChon = new Map<string, string[]>();
-  for (const c of mtr.cau_hoi) daChon.set(c.khoa, [...(daChon.get(c.khoa) ?? []), c.yccd]);
+  const soBanGhi = new Map<string, number>();
+  for (const c of mtr.cau_hoi) {
+    daChon.set(c.khoa, [...(daChon.get(c.khoa) ?? []), ...yccdCuaCauRieng(c)]);
+    soBanGhi.set(c.khoa, (soBanGhi.get(c.khoa) ?? 0) + 1);
+  }
   const khoaHopLe = new Set(cauList.map((c) => c.khoa));
 
   for (const c of cauList) {
     if (laCauBaiViet(c)) continue;
     const ten = `${c.phan.ten ?? c.bai.ten}, Câu ${c.cau.cau}`;
     const chon = (daChon.get(c.khoa) ?? []).filter((y) => y.trim());
+    const toiDa = soYccdToiDa(c.cau);
     if (chon.length === 0) loi.push(`${ten}: chưa chọn YCCĐ.`);
-    else if (chon.length > 1) loi.push(`${ten}: chỉ được gắn một YCCĐ, đang có ${chon.length}.`);
-    else if (mtr.nguon_yccd === 'CHUONG_TRINH') {
-      if (yccdChuongTrinh && !yccdChuongTrinh.includes(chon[0])) loi.push(`${ten}: YCCĐ đã chọn không có trong Kho chương trình (đã duyệt).`);
-    } else if (!c.dong.yccd.includes(chon[0])) loi.push(`${ten}: YCCĐ đã chọn không thuộc dòng "${c.dong.noi_dung ?? c.dong.mach}" của ma trận chung.`);
+    else if ((soBanGhi.get(c.khoa) ?? 0) > 1) loi.push(`${ten}: bị gắn YCCĐ hai lần, cần chọn lại.`);
+    else if (chon.length > toiDa) {
+      loi.push(toiDa === 1
+        ? `${ten}: chỉ được gắn một YCCĐ, đang có ${chon.length}. Câu có nhiều ý nhỏ (a, b, c…) mới gắn được nhiều YCCĐ.`
+        : `${ten}: có ${toiDa} ý nhỏ nên gắn tối đa ${toiDa} YCCĐ, đang có ${chon.length}.`);
+    } else {
+      for (const y of chon) {
+        if (mtr.nguon_yccd === 'CHUONG_TRINH') {
+          if (yccdChuongTrinh && !yccdChuongTrinh.includes(y)) loi.push(`${ten}: YCCĐ "${y.slice(0, 60)}" không có trong Kho chương trình (đã duyệt).`);
+        } else if (!c.dong.yccd.includes(y)) loi.push(`${ten}: YCCĐ "${y.slice(0, 60)}" không thuộc dòng "${c.dong.noi_dung ?? c.dong.mach}" của ma trận chung.`);
+      }
+    }
   }
   for (const k of daChon.keys()) {
     if (!khoaHopLe.has(k)) loi.push(`Có YCCĐ gắn cho câu "${k}" không có trong ma trận theo phương án đã chọn.`);
@@ -431,7 +453,7 @@ export function trangThaiSauKhiSua(mtr: MaTranRieng): MaTranRieng['trang_thai'] 
  */
 export function dungMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng): MaTranChung {
   const mtc = apDungSuaCau(mtcGoc, mtr.sua_cau);
-  const chon = new Map(mtr.cau_hoi.map((c) => [c.khoa, c.yccd]));
+  const chon = new Map(mtr.cau_hoi.map((c) => [c.khoa, yccdCuaCauRieng(c)]));
   return {
     ...mtc,
     tieu_de: mtc.tieu_de.replace('MA TRẬN CHUNG', 'MA TRẬN'),
@@ -447,7 +469,7 @@ export function dungMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng): MaTranCh
               return laCauBaiViet(ct) ? null : chon.get(ct.khoa) ?? null;
             });
             const giuNguyen = yc.every((y) => y === null);
-            return { ...d, yccd: giuNguyen ? d.yccd : [...new Set(yc.filter((y): y is string => !!y))] };
+            return { ...d, yccd: giuNguyen ? d.yccd : [...new Set(yc.flatMap((y) => y ?? []))] };
           });
         if (dong.length === 0) return [];
         return [{ ...phan, lua_chon: undefined, dong }];

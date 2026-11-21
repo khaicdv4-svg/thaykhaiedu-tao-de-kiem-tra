@@ -12,7 +12,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, Loader2, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, Loader2, Plus, RotateCcw, Save, ShieldCheck, X } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import {
   apDungSuaCau,
@@ -25,6 +25,7 @@ import {
   taoMaTranRiengRong,
   trangThaiSauKhiSua,
   trangThaiSauKiemDinh,
+  soYccdToiDa,
   type KetQuaKiemDinh,
 } from '@/core/matrix/matrix-template';
 import type { YccdChuongTrinh } from '@/core/chuong-trinh/mon';
@@ -318,7 +319,24 @@ export default function MatricesPage() {
     });
 
   const chonYccd = (khoa: string, yccd: string) =>
-    capNhat((m) => ({ ...m, cau_hoi: [...m.cau_hoi.filter((c) => c.khoa !== khoa), ...(yccd ? [{ khoa, yccd }] : [])] }));
+    capNhat((m) => {
+      const cu = m.cau_hoi.find((c) => c.khoa === khoa);
+      const them = (cu?.yccd_them ?? []).filter((y) => y && y !== yccd);
+      return { ...m, cau_hoi: [...m.cau_hoi.filter((c) => c.khoa !== khoa), ...(yccd ? [{ khoa, yccd, ...(them.length ? { yccd_them: them } : {}) }] : [])] };
+    });
+
+  /** Câu nhiều ý nhỏ: YCCĐ thêm (ví dụ Câu 8 a, b cộng trừ; c, d nhân chia). */
+  const datYccdThem = (khoa: string, ds: string[]) =>
+    capNhat((m) => ({
+      ...m,
+      cau_hoi: m.cau_hoi.map((c) => {
+        if (c.khoa !== khoa) return c;
+        const them = [...new Set(ds.filter((y) => y && y !== c.yccd))];
+        const { yccd_them: _bo, ...goc } = c;
+        void _bo;
+        return them.length ? { ...goc, yccd_them: them } : goc;
+      }),
+    }));
 
   /** Sửa số câu, mức, TN/TL, điểm của một câu. Chỉ giữ chỗ khác ma trận chung. */
   const suaCau = (khoa: string, s: SuaCauMaTranRieng | null) =>
@@ -406,6 +424,7 @@ export default function MatricesPage() {
     return m;
   }, [cauList]);
   const daChon = useMemo(() => new Map((mtr?.cau_hoi ?? []).map((c) => [c.khoa, c.yccd])), [mtr]);
+  const daChonThem = useMemo(() => new Map((mtr?.cau_hoi ?? []).map((c) => [c.khoa, c.yccd_them ?? []])), [mtr]);
   const nhomLuaChon = mtc ? cacNhomLuaChon(mtc) : [];
   const chonDuPhuongAn = !!mtr && nhomLuaChon.every((n) => mtr.lua_chon_da_dung[n.ma]);
   const banTrinhBay = useMemo(() => (mtc && mtr && chonDuPhuongAn ? dungMaTranRieng(mtc, mtr) : null), [mtc, mtr, chonDuPhuongAn]);
@@ -628,7 +647,7 @@ export default function MatricesPage() {
           <div className="the-tke p-6">
             <h2 className="text-lg font-semibold text-slate-900">Chọn yêu cầu cần đạt, chỉnh câu cho từng câu</h2>
             <p className="text-sm text-slate-600 mb-4">
-              Mỗi câu gắn đúng một YCCĐ. Nguồn Ma trận chung: câu chỉ có một YCCĐ được chọn sẵn. Số câu, mức, TN/TL, điểm lấy theo ma trận chung; cần thì sửa ngay tại câu, ô đã sửa có viền vàng và nút khôi phục.
+              Mỗi câu gắn một YCCĐ; câu có nhiều ý nhỏ (a, b, c…) gắn thêm được, tối đa bằng số ý. Nguồn Ma trận chung: câu chỉ có một YCCĐ được chọn sẵn. Số câu, mức, TN/TL, điểm lấy theo ma trận chung; cần thì sửa ngay tại câu, ô đã sửa có viền vàng và nút khôi phục.
             </p>
             {!chonDuPhuongAn ? (
               <p className="text-sm text-slate-500">Chọn phương án ở trên trước.</p>
@@ -659,22 +678,60 @@ export default function MatricesPage() {
                       {baiViet ? (
                         <div className="text-sm text-slate-600">Bài viết chấm theo toàn bộ YCCĐ của thể loại, không cần chọn.</div>
                       ) : (
-                        <select
-                          aria-label={`YCCĐ của câu ${c.cau.cau}`}
-                          className={`w-full rounded-lg border px-3 py-2 text-sm ${gt ? 'border-slate-300' : 'border-amber-400 bg-amber-50'}`}
-                          value={gt}
-                          onChange={(e) => chonYccd(c.khoa, e.target.value)}
-                        >
-                          <option value="">– Chọn YCCĐ –</option>
-                          {nguonCT && !khungDungHienTai ? (
+                        (() => {
+                          const luaChonYccd = (giaTri: string) => (nguonCT && !khungDungHienTai ? (
                             <>
-                              {gt && !dsYccdCT?.includes(gt) && <option value={gt}>{gt} (không có trong Kho chương trình)</option>}
+                              {giaTri && !dsYccdCT?.includes(giaTri) && <option value={giaTri}>{giaTri} (không có trong Kho chương trình)</option>}
                               {nhomYccdCT.map(([mach, ds]) => (
                                 <optgroup key={mach} label={mach}>{ds.map((y) => <option key={y} value={y}>{y}</option>)}</optgroup>
                               ))}
                             </>
-                          ) : c.dong.yccd.map((y) => <option key={y} value={y}>{y}</option>)}
-                        </select>
+                          ) : c.dong.yccd.map((y) => <option key={y} value={y}>{y}</option>));
+                          const them = daChonThem.get(c.khoa) ?? [];
+                          const toiDa = soYccdToiDa(c.cau);
+                          const conYccdKhac = nguonCT && !khungDungHienTai ? true : c.dong.yccd.some((y) => y !== gt && !them.includes(y));
+                          return (
+                            <div className="space-y-1.5">
+                              <select
+                                aria-label={`YCCĐ của câu ${c.cau.cau}`}
+                                className={`w-full rounded-lg border px-3 py-2 text-sm ${gt ? 'border-slate-300' : 'border-amber-400 bg-amber-50'}`}
+                                value={gt}
+                                onChange={(e) => chonYccd(c.khoa, e.target.value)}
+                              >
+                                <option value="">– Chọn YCCĐ –</option>
+                                {luaChonYccd(gt)}
+                              </select>
+                              {them.map((y, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                  <select
+                                    aria-label={`YCCĐ thêm ${i + 1} của câu ${c.cau.cau}`}
+                                    className="w-full rounded-lg border border-indigo-200 bg-indigo-50/40 px-3 py-2 text-sm"
+                                    value={y}
+                                    onChange={(e) => datYccdThem(c.khoa, them.map((x, j) => (j === i ? e.target.value : x)))}
+                                  >
+                                    <option value="">– Chọn YCCĐ –</option>
+                                    {luaChonYccd(y)}
+                                  </select>
+                                  <button type="button" className="p-1.5 rounded hover:bg-red-50 text-red-700 shrink-0" title="Bỏ YCCĐ này" aria-label={`Bỏ YCCĐ thêm ${i + 1} của câu ${c.cau.cau}`} onClick={() => datYccdThem(c.khoa, them.filter((_, j) => j !== i))}>
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                              {toiDa > 1 && gt && 1 + them.length < toiDa && conYccdKhac && (
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 text-sm font-medium text-indigo-700 hover:underline"
+                                  onClick={() => {
+                                    const goiY = nguonCT && !khungDungHienTai ? '' : c.dong.yccd.find((x) => x !== gt && !them.includes(x)) ?? '';
+                                    datYccdThem(c.khoa, [...them, goiY]);
+                                  }}
+                                >
+                                  <Plus className="w-4 h-4" /> Thêm YCCĐ cho ý khác (câu có {toiDa} ý {c.cau.y_nho?.join(', ')})
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()
                       )}
                     </div>
                   );

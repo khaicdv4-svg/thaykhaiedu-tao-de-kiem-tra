@@ -11,7 +11,7 @@
  */
 
 import type { DangCau, HinhThucCau, KyKiemTra, MaTranChung, MaTranRieng, MucDo } from '@/types/matrix-template';
-import { apDungSuaCau, danhSachCau, laCauBaiViet } from '@/core/matrix/matrix-template';
+import { apDungSuaCau, danhSachCau, laCauBaiViet, yccdCuaCauRieng } from '@/core/matrix/matrix-template';
 
 export type TrangThaiDacTa = 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'DA_XAC_NHAN' | 'CAN_XAC_NHAN_LAI';
 
@@ -102,8 +102,10 @@ function cauHieuLuc(mtcGoc: MaTranChung, mtr: MaTranRieng) {
 }
 
 function yccdCuaCau(mtr: MaTranRieng, c: ReturnType<typeof cauHieuLuc>[number]): string {
-  const chon = mtr.cau_hoi.find((x) => x.khoa === c.khoa)?.yccd?.trim();
-  if (chon) return chon;
+  // Câu nhiều ý nhỏ có thể gắn nhiều YCCĐ: ghép lại thành một dòng cho đặc tả, đề và file Word
+  const banGhi = mtr.cau_hoi.find((x) => x.khoa === c.khoa);
+  const chon = banGhi ? yccdCuaCauRieng(banGhi) : [];
+  if (chon.length) return chon.join('; ');
   // Bài viết không chọn YCCĐ riêng: lấy các YCCĐ của dòng chứa câu
   return laCauBaiViet(c) ? c.dong.yccd.join('; ') : '';
 }
@@ -112,7 +114,8 @@ export function taoDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMaTranRi
   const dong: DongDacTa[] = cauHieuLuc(mtcGoc, mtr).map((c) => {
     const yccd = yccdCuaCau(mtr, c);
     const cu = tuyChon.minhChungCu?.[c.khoa];
-    const goiY = tuyChon.goiYTheoYccd?.get(chuanHoa(yccd)) ?? goiYTheoBaiPpct(c.dong.noi_dung ?? c.dong.mach, tuyChon.tiet);
+    const yccdChinh = mtr.cau_hoi.find((x) => x.khoa === c.khoa)?.yccd?.trim() || yccd;
+    const goiY = tuyChon.goiYTheoYccd?.get(chuanHoa(yccdChinh)) ?? goiYTheoBaiPpct(c.dong.noi_dung ?? c.dong.mach, tuyChon.tiet);
     return {
       khoa: c.khoa,
       baiKiemTra: c.bai.ten,
@@ -234,7 +237,13 @@ export function kiemDinhDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, d: DacTa, t
 
   // 4. Một câu – một YCCĐ: không để hai câu trùng một YCCĐ khi YCCĐ khác của cùng dòng bị bỏ trống
   const dung = new Map<string, number>();
-  for (const r of d.dong) if (r.yccd) dung.set(chuanHoa(r.yccd), (dung.get(chuanHoa(r.yccd)) ?? 0) + 1);
+  // Câu gắn nhiều YCCĐ (ghép bằng "; ") thì tính cho từng YCCĐ
+  const cacYccd = cauMa.flatMap((c) => c.dong.yccd);
+  for (const r of d.dong) {
+    if (!r.yccd) continue;
+    const thanhPhan = cacYccd.filter((y) => r.yccd.includes(y));
+    for (const y of thanhPhan.length ? thanhPhan : [r.yccd]) dung.set(chuanHoa(y), (dung.get(chuanHoa(y)) ?? 0) + 1);
+  }
   const dongMa = new Set<string>();
   for (const c of cauMa) {
     const k = `${c.bai.ma}|${c.phan.ma}|${c.dong.mach}|${c.dong.noi_dung ?? ''}`;
