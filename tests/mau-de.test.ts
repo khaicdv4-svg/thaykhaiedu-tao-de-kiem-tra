@@ -42,3 +42,13 @@ describe('Thông số trang', () => {
     expect(t.le.top).toBeGreaterThan(0);
   });
 });
+
+describe('File Word cũ (.doc)', () => {
+  it('đổi chữ thành đoạn văn để xem trước, gọn dòng trống và dấu Tab', async () => {
+    const { doanVanTuChuDoc, laFileDocCu } = await import('@/core/mau-de/mau-de');
+    const ds = doanVanTuChuDoc('TRƯỜNG TH TRẦN VĂN ƠN\n\n\n\nHỌ TÊN HS:\tKTĐK GIỮA HỌC KÌ I\r\n…/ 0.5 đ\tCâu 1: Người cha bảo gì?\n\n');
+    expect(ds.map((d) => d.chu)).toEqual(['TRƯỜNG TH TRẦN VĂN ƠN', '', 'HỌ TÊN HS:     KTĐK GIỮA HỌC KÌ I', '…/ 0.5 đ     Câu 1: Người cha bảo gì?']);
+    expect(laFileDocCu('1. ĐỀ KIỂM TRA TV LỚP 4 -GHKI - NH 26-27.doc')).toBe(true);
+    expect(laFileDocCu('mau.docx')).toBe(false);
+  });
+});

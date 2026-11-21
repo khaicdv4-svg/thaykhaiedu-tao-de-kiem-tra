@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Download, Eye, FileText, FileUp, History, Loader2, RotateCcw, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/core/contexts/AuthContext';
-import { O_MAU, doanOMau, laOMau, type MaOMau, type ThongSoTrang } from '@/core/mau-de/mau-de';
+import { O_MAU, doanOMau, laFileDocCu, laOMau, type MaOMau, type ThongSoTrang } from '@/core/mau-de/mau-de';
 import type { KhoiVanBan } from '@/core/utils/docx-bang';
 import type { MauDe } from '@/lib/repositories/mau-de.repository';
 import { XemTaiLieuWord } from '@/components/ui/XemTaiLieuWord';
@@ -40,7 +40,7 @@ async function taiMotMau(file: File, o: string): Promise<number> {
   const supabase = createClient();
   if (!supabase) throw new Error('Chưa kết nối kho dữ liệu.');
   const { error: loiTai } = await supabase.storage.from('exam-templates').uploadToSignedUrl(cho.duongDan, cho.token, file, {
-    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    contentType: laFileDocCu(file.name) ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   });
   if (loiTai) throw new Error(`Không tải được file lên kho: ${loiTai.message}`);
   const luu = await fetch('/api/mau-de', {
@@ -171,7 +171,7 @@ export function MauDeView() {
         <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-6 text-center space-y-3">
           <p className="text-sm text-slate-700">Chọn một lúc các file mẫu của mọi môn. App đoán môn theo tên file, thầy cô xem lại rồi bấm lưu.</p>
           <button type="button" className={nutChinh} onClick={() => nhieuRef.current?.click()} disabled={dangGui}><FileUp className="w-4 h-4" /> Chọn các file mẫu</button>
-          <p className="text-xs text-slate-500">Chỉ nhận file .docx. File .doc cũ: mở bằng Word, bấm File → Save As (Lưu thành), chọn kiểu Word Document (*.docx) rồi tải file mới lên.</p>
+          <p className="text-xs text-slate-500">Nhận file .docx và file Word cũ .doc. File .doc chỉ xem trước được phần chữ; muốn app đọc đủ lề, phông và khung bảng thì lưu lại thành .docx (File → Save As → Word Document).</p>
           <input ref={nhieuRef} type="file" multiple accept=".docx,.doc" className="hidden" onChange={chonNhieu} />
           <input ref={motRef} type="file" accept=".docx" className="hidden" onChange={chonMot} />
         </div>
@@ -185,7 +185,7 @@ export function MauDeView() {
               <li key={c.file.name + i} className={`py-2 flex flex-wrap items-center gap-3 ${!c.o || trungO.has(c.o) ? 'bg-amber-50' : ''}`}>
                 <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                 <span className="flex-1 min-w-48 text-sm font-medium text-slate-900">{c.file.name}</span>
-                {/\.doc$/i.test(c.file.name) && <span className="text-xs text-red-700">File .doc cũ, cần lưu lại thành .docx</span>}
+                {laFileDocCu(c.file.name) && <span className="text-xs text-amber-800">Word cũ (.doc): app đọc được chữ, chưa đọc được lề, phông, khung bảng</span>}
                 <select
                   aria-label={`Môn của ${c.file.name}`}
                   className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm bg-white"
@@ -201,7 +201,7 @@ export function MauDeView() {
           </ul>
           <div className="flex justify-end gap-2">
             <button type="button" className={nutPhu} onClick={() => setCho([])} disabled={dangGui}>Hủy</button>
-            <button type="button" className={nutChinh} onClick={() => gui(cho.filter((c) => !/\.doc$/i.test(c.file.name)))} disabled={dangGui || !cho.some((c) => c.o && !/\.doc$/i.test(c.file.name))}>
+            <button type="button" className={nutChinh} onClick={() => gui(cho)} disabled={dangGui || !cho.some((c) => c.o)}>
               {dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />} Lưu các mẫu
             </button>
           </div>
@@ -230,7 +230,9 @@ export function MauDeView() {
                   <div className="text-sm space-y-1">
                     <div className="font-medium text-slate-900 break-words">{dangDung.tenFile}</div>
                     <div className="text-xs text-slate-500">Tải lên {ngay(dangDung.taiLenLuc)}</div>
-                    {dangDung.thongSo && <div className="text-xs text-slate-600">{moTaThongSo(dangDung.thongSo)}</div>}
+                    {dangDung.thongSo
+                      ? <div className="text-xs text-slate-600">{moTaThongSo(dangDung.thongSo)}</div>
+                      : laFileDocCu(dangDung.tenFile) && <div className="text-xs text-amber-800">File Word cũ (.doc): xem trước được phần chữ, chưa đọc được lề, phông và khung bảng. Lưu lại thành .docx để app đọc đủ.</div>}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">Xuất đề môn này vẫn dùng định dạng chuẩn của tổ cho tới khi có mẫu.</p>

@@ -115,3 +115,23 @@ export async function docThongSoDocx(buf: ArrayBuffer): Promise<ThongSoTrang> {
   const styles = await docTepTrongZip(buf, 'word/styles.xml');
   return thongSoTuXml(new TextDecoder().decode(doc), styles ? new TextDecoder().decode(styles) : null);
 }
+
+/**
+ * File Word cũ (.doc): chỉ đọc được chữ (thư viện word-extractor), không có lề, phông, khung bảng.
+ * Đổi chữ thành các đoạn văn để xem trước: ô bảng (dấu Tab) cách nhau bằng khoảng trắng, bỏ dòng trống lặp.
+ */
+export function doanVanTuChuDoc(chu: string): { loai: 'doan'; chu: string }[] {
+  const out: { loai: 'doan'; chu: string }[] = [];
+  let trongTruoc = true;
+  for (const d of chu.replace(/\r\n?/g, '\n').split('\n')) {
+    const dong = d.replace(/\t+/g, '     ').replace(/[ \u00a0]+$/g, '').replace(/^\s+(?=\S)/, (m) => (m.length > 8 ? '        ' : m));
+    const trong = !dong.trim();
+    if (trong && trongTruoc) continue;
+    out.push({ loai: 'doan', chu: trong ? '' : dong });
+    trongTruoc = trong;
+  }
+  while (out.length && !out[out.length - 1].chu) out.pop();
+  return out;
+}
+
+export const laFileDocCu = (tenFile: string) => /\.doc$/i.test(tenFile);

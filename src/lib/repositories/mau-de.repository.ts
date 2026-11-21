@@ -6,7 +6,7 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { docKhoiTuDocx, type KhoiVanBan } from '@/core/utils/docx-bang';
-import { MA_SUBJECT_K4, O_MAU, docThongSoDocx, laOMau, type MaOMau, type ThongSoTrang } from '@/core/mau-de/mau-de';
+import { MA_SUBJECT_K4, O_MAU, docThongSoDocx, doanVanTuChuDoc, laFileDocCu, laOMau, type MaOMau, type ThongSoTrang } from '@/core/mau-de/mau-de';
 
 const KHOI = 4;
 const BUCKET = 'exam-templates';
@@ -93,14 +93,22 @@ export async function choTaiLenMauDe(o: string, tenFile: string): Promise<{ duon
   const { supabase, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải mẫu đề.');
   if (!laOMau(o)) throw new Error('Chưa chọn mẫu này dùng cho môn nào.');
-  if (!/\.docx$/i.test(tenFile)) throw new Error('Mẫu đề phải là file Word .docx (file .doc cũ: mở bằng Word rồi Lưu thành .docx).');
-  const duongDan = `${orgId}/khoi-${KHOI}/${o}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.docx`;
+  if (!/\.docx?$/i.test(tenFile)) throw new Error('Mẫu đề phải là file Word (.docx hoặc .doc).');
+  const duoi = laFileDocCu(tenFile) ? 'doc' : 'docx';
+  const duongDan = `${orgId}/khoi-${KHOI}/${o}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${duoi}`;
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(duongDan);
   if (error || !data) throw new Error(`Không mở được chỗ tải file: ${error?.message ?? 'không rõ lỗi'}`);
   return { duongDan, token: data.token };
 }
 
 /** Lưu một file mẫu đã tải vào kho cho một ô. Thành bản mới nhất, được dùng ngay; bản cũ vẫn giữ. */
+/** Đọc chữ của file Word cũ (.doc). Thư viện chỉ chạy trên máy chủ nên nạp khi cần. */
+async function chuTuFileDoc(noiDung: ArrayBuffer): Promise<string> {
+  const { default: WordExtractor } = await import('word-extractor');
+  const tl = await new WordExtractor().extract(Buffer.from(noiDung));
+  return tl.getBody();
+}
+
 export async function taiLenMauDe(o: string, tenFile: string, duongDan: string): Promise<MauDe> {
   const { supabase, user, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải mẫu đề.');
@@ -116,10 +124,18 @@ export async function taiLenMauDe(o: string, tenFile: string, duongDan: string):
   }
   const noiDung = await tep.arrayBuffer();
 
-  let thongSo: ThongSoTrang;
+  const laDoc = laFileDocCu(tenFile) || duongDan.endsWith('.doc');
+  let thongSo: ThongSoTrang | null;
   let cauTruc: KhoiVanBan[];
   try {
-    [thongSo, cauTruc] = await Promise.all([docThongSoDocx(noiDung), docKhoiTuDocx(noiDung)]);
+    if (laDoc) {
+      // Word cũ: chỉ có chữ, chưa có lề, phông, khung bảng
+      thongSo = null;
+      cauTruc = doanVanTuChuDoc(await chuTuFileDoc(noiDung));
+      if (!cauTruc.length) throw new Error('rỗng');
+    } else {
+      [thongSo, cauTruc] = await Promise.all([docThongSoDocx(noiDung), docKhoiTuDocx(noiDung)]);
+    }
   } catch {
     await boFile();
     throw new Error('Không đọc được file Word này. Thầy cô mở file bằng Word, lưu lại rồi tải lên lại.');
@@ -144,11 +160,11 @@ export async function taiLenMauDe(o: string, tenFile: string, duongDan: string):
       scope: 'GROUP',
       version: phienBan,
       validation_status: 'VALIDATED',
-      header_layout: { o, cau_truc: cauTruc, thong_so: thongSo },
-      paper_size: thongSo.khoGiay.slice(0, 20),
-      font_family: thongSo.phong?.slice(0, 100) ?? null,
-      font_size_points: thongSo.coChu ? Math.round(thongSo.coChu) : null,
-      page_margin_mm: thongSo.le,
+      header_layout: { o, cau_truc: cauTruc, thong_so: thongSo, dinh_dang: laDoc ? 'doc' : 'docx' },
+      paper_size: thongSo?.khoGiay.slice(0, 20) ?? 'A4',
+      font_family: thongSo?.phong?.slice(0, 100) ?? null,
+      font_size_points: thongSo?.coChu ? Math.round(thongSo.coChu) : null,
+      ...(thongSo ? { page_margin_mm: thongSo.le } : {}),
       storage_path: duongDan,
     })
     .select(COT)

@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const { tenFile, noiDung } = await fileMauDe(req.nextUrl.searchParams.get('id') ?? '');
     return new NextResponse(new Uint8Array(noiDung), {
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Type': /\.doc$/i.test(tenFile) ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(tenFile)}`,
       },
     });
