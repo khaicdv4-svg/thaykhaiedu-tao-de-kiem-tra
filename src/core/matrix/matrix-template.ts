@@ -408,16 +408,20 @@ export function kiemDinhMaTranRieng(mtcGoc: MaTranChung, mtr: MaTranRieng, yccdC
     const chon = (daChon.get(c.khoa) ?? []).filter((y) => y.trim());
     const toiDa = soYccdToiDa(c.cau);
     if (chon.length === 0) loi.push(`${ten}: chưa chọn YCCĐ.`);
-    else if ((soBanGhi.get(c.khoa) ?? 0) > 1) loi.push(`${ten}: bị gắn YCCĐ hai lần, cần chọn lại.`);
+    else if ((soBanGhi.get(c.khoa) ?? 0) > 1) {
+      loi.push(toiDa === 1 ? `${ten}: chỉ được gắn một YCCĐ, đang có ${chon.length}.` : `${ten}: bị gắn YCCĐ hai lần, cần chọn lại.`);
+    }
     else if (chon.length > toiDa) {
       loi.push(toiDa === 1
         ? `${ten}: chỉ được gắn một YCCĐ, đang có ${chon.length}. Câu có nhiều ý nhỏ (a, b, c…) mới gắn được nhiều YCCĐ.`
         : `${ten}: có ${toiDa} ý nhỏ nên gắn tối đa ${toiDa} YCCĐ, đang có ${chon.length}.`);
     } else {
       for (const y of chon) {
+        // Một YCCĐ: giữ câu báo quen thuộc; nhiều YCCĐ: ghi rõ YCCĐ nào sai
+        const tenYccd = chon.length > 1 ? `YCCĐ "${y.slice(0, 60)}"` : 'YCCĐ đã chọn';
         if (mtr.nguon_yccd === 'CHUONG_TRINH') {
-          if (yccdChuongTrinh && !yccdChuongTrinh.includes(y)) loi.push(`${ten}: YCCĐ "${y.slice(0, 60)}" không có trong Kho chương trình (đã duyệt).`);
-        } else if (!c.dong.yccd.includes(y)) loi.push(`${ten}: YCCĐ "${y.slice(0, 60)}" không thuộc dòng "${c.dong.noi_dung ?? c.dong.mach}" của ma trận chung.`);
+          if (yccdChuongTrinh && !yccdChuongTrinh.includes(y)) loi.push(`${ten}: ${tenYccd} không có trong Kho chương trình (đã duyệt).`);
+        } else if (!c.dong.yccd.includes(y)) loi.push(`${ten}: ${tenYccd} không thuộc dòng "${c.dong.noi_dung ?? c.dong.mach}" của ma trận chung.`);
       }
     }
   }
