@@ -1,7 +1,7 @@
 /**
  * ThayKhaiEdu - Mẫu đề của tổ (bảng exam_templates + kho file "exam-templates").
  * Mọi người trong trường xem được. Tổ trưởng, tổ phó, quản trị tải mẫu và bỏ mẫu.
- * Mỗi ô mẫu (môn; Tiếng Việt tách Đọc / Viết): bản còn dùng có phiên bản lớn nhất là bản đang dùng.
+ * Mỗi ô mẫu (một môn, Tiếng Việt chung một file): bản còn dùng có phiên bản lớn nhất là bản đang dùng.
  */
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';

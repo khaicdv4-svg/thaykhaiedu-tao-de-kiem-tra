@@ -6,10 +6,9 @@ import { doanOMau, docThongSoDocx, thongSoTuXml } from '@/core/mau-de/mau-de';
 describe('Đoán môn theo tên file mẫu', () => {
   it.each([
     ['DE KIEM TRA TOAN CUOI HKI.docx', 'TOAN'],
-    ['Mẫu đề Tiếng Việt - Đọc hiểu.docx', 'TIENG_VIET_DOC'],
-    ['DE TIENG VIET VIET CHKI.docx', 'TIENG_VIET_VIET'],
-    ['TV_ĐỌC_K4.docx', 'TIENG_VIET_DOC'],
-    ['De Tieng Viet - Tap lam van.docx', 'TIENG_VIET_VIET'],
+    ['Mẫu đề Tiếng Việt - Đọc hiểu.docx', 'TIENG_VIET'],
+    ['1. KIỂM TRA TV LỚP 4 -GHKI - NH 26-27.docx', 'TIENG_VIET'],
+    ['TV_ĐỌC_K4.docx', 'TIENG_VIET'],
     ['Đề Khoa học.docx', 'KHOA_HOC'],
     ['DE LS&DL CHKI.docx', 'LS_DL'],
     ['Lịch sử và Địa lí 4.docx', 'LS_DL'],
@@ -17,7 +16,6 @@ describe('Đoán môn theo tên file mẫu', () => {
   ])('%s → %s', (ten, o) => expect(doanOMau(ten)).toBe(o));
 
   it('không chắc thì để thầy cô chọn', () => {
-    expect(doanOMau('Đề Tiếng Việt lớp 4.docx')).toBeNull();
     expect(doanOMau('mau-de-moi.docx')).toBeNull();
   });
 });

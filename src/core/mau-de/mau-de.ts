@@ -1,5 +1,5 @@
 /**
- * ThayKhaiEdu - Mẫu đề của tổ: mỗi môn một file Word mẫu (Tiếng Việt tách bài Đọc và bài Viết),
+ * ThayKhaiEdu - Mẫu đề của tổ: mỗi môn một file Word mẫu (Tiếng Việt: Đọc, Viết, hướng dẫn chấm chung một file),
  * dùng chung cho cả 4 kì. Tải bản mới là bản mới được dùng; bản cũ vẫn giữ trong lịch sử.
  *
  * Lưu ở bảng exam_templates (đã có sẵn) và kho file "exam-templates":
@@ -12,12 +12,11 @@
 
 import { docTepTrongZip } from '@/core/utils/docx-text';
 
-export type MaOMau = 'TOAN' | 'TIENG_VIET_DOC' | 'TIENG_VIET_VIET' | 'KHOA_HOC' | 'LS_DL' | 'CONG_NGHE';
+export type MaOMau = 'TOAN' | 'TIENG_VIET' | 'KHOA_HOC' | 'LS_DL' | 'CONG_NGHE';
 
 export const O_MAU: { ma: MaOMau; ten: string; maMon: string; moTa: string }[] = [
   { ma: 'TOAN', ten: 'Toán', maMon: 'TOAN', moTa: 'Đề Toán' },
-  { ma: 'TIENG_VIET_DOC', ten: 'Tiếng Việt – bài Đọc', maMon: 'TIENG_VIET', moTa: 'Đọc thành tiếng, đọc hiểu' },
-  { ma: 'TIENG_VIET_VIET', ten: 'Tiếng Việt – bài Viết', maMon: 'TIENG_VIET', moTa: 'Bài viết' },
+  { ma: 'TIENG_VIET', ten: 'Tiếng Việt', maMon: 'TIENG_VIET', moTa: 'Đọc hiểu, Viết, đọc thành tiếng và hướng dẫn chấm trong một file' },
   { ma: 'KHOA_HOC', ten: 'Khoa học', maMon: 'KHOA_HOC', moTa: 'Đề Khoa học' },
   { ma: 'LS_DL', ten: 'Lịch sử và Địa lí', maMon: 'LS_DL', moTa: 'Đề Lịch sử và Địa lí' },
   { ma: 'CONG_NGHE', ten: 'Công nghệ', maMon: 'CONG_NGHE', moTa: 'Đề Công nghệ' },
@@ -40,12 +39,7 @@ const chuan = (s: string) =>
 /** Đoán ô mẫu từ tên file (và thư mục). Không chắc thì trả null để thầy cô chọn. */
 export function doanOMau(duongDan: string): MaOMau | null {
   const t = chuan(duongDan);
-  if (/tieng viet|\btv\b/.test(t)) {
-    const conLai = t.replace(/tieng viet/g, ' ');
-    if (/\bdoc\b|doc hieu|doc thanh tieng/.test(conLai)) return 'TIENG_VIET_DOC';
-    if (/\bviet\b|tap lam van|\btlv\b|chinh ta/.test(conLai)) return 'TIENG_VIET_VIET';
-    return null;
-  }
+  if (/tieng viet|\btv\b/.test(t)) return 'TIENG_VIET';
   if (/\btoan\b/.test(t)) return 'TOAN';
   if (/khoa hoc|\bkh\b/.test(t)) return 'KHOA_HOC';
   if (/lich su|dia li|dia ly|ls ?(&|va)? ?dl|\blsdl\b|su ?dia/.test(t)) return 'LS_DL';

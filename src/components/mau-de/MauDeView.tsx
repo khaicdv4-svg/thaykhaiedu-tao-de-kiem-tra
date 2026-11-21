@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ThayKhaiEdu - Trang Mẫu đề & Định dạng: mỗi môn một file Word mẫu (Tiếng Việt tách Đọc / Viết),
+ * ThayKhaiEdu - Trang Mẫu đề & Định dạng: mỗi môn một file Word mẫu (Tiếng Việt chung một file),
  * dùng chung cho cả 4 kì. Tải nhiều file một lần, app đoán môn theo tên file.
  * Tải bản mới là bản mới được dùng ngay; bản cũ vẫn giữ trong lịch sử, dùng lại được.
  */
@@ -158,7 +158,7 @@ export function MauDeView() {
       <div className="the-tke p-6">
         <h1 className="text-xl font-bold text-slate-900">Mẫu đề &amp; Định dạng</h1>
         <p className="text-sm text-slate-600 mt-1">
-          Mỗi môn một file Word mẫu của tổ (Tiếng Việt tách bài Đọc và bài Viết), dùng chung cho cả 4 kì. App giữ file gốc,
+          Mỗi môn một file Word mẫu của tổ, dùng chung cho cả 4 kì. Tiếng Việt để chung một file: đọc hiểu, viết, đọc thành tiếng và hướng dẫn chấm. App giữ file gốc,
           đọc khổ giấy, lề, phông chữ và khung tiêu đề để đối chiếu khi xuất đề. Tải bản mới thì bản mới được dùng, bản cũ vẫn giữ.
         </p>
       </div>
@@ -171,7 +171,7 @@ export function MauDeView() {
         <div className="rounded-xl border-2 border-dashed border-slate-300 bg-white p-6 text-center space-y-3">
           <p className="text-sm text-slate-700">Chọn một lúc các file mẫu của mọi môn. App đoán môn theo tên file, thầy cô xem lại rồi bấm lưu.</p>
           <button type="button" className={nutChinh} onClick={() => nhieuRef.current?.click()} disabled={dangGui}><FileUp className="w-4 h-4" /> Chọn các file mẫu</button>
-          <p className="text-xs text-slate-500">Chỉ nhận file .docx. File .doc cũ: mở bằng Word, chọn Lưu thành .docx rồi tải lên.</p>
+          <p className="text-xs text-slate-500">Chỉ nhận file .docx. File .doc cũ: mở bằng Word, bấm File → Save As (Lưu thành), chọn kiểu Word Document (*.docx) rồi tải file mới lên.</p>
           <input ref={nhieuRef} type="file" multiple accept=".docx,.doc" className="hidden" onChange={chonNhieu} />
           <input ref={motRef} type="file" accept=".docx" className="hidden" onChange={chonMot} />
         </div>
