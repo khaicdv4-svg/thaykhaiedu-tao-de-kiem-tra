@@ -13,6 +13,44 @@ import { O_MAU, doanOMau, laOMau, type MaOMau, type ThongSoTrang } from '@/core/
 import type { KhoiVanBan } from '@/core/utils/docx-bang';
 import type { MauDe } from '@/lib/repositories/mau-de.repository';
 import { XemTaiLieuWord } from '@/components/ui/XemTaiLieuWord';
+import { createClient } from '@/lib/supabase/client';
+
+const KICH_THUOC_TOI_DA = 15 * 1024 * 1024;
+
+/** Đọc JSON trả về; máy chủ trả trang lỗi (không phải JSON) thì đổi thành câu dễ hiểu. */
+async function docJson(r: Response): Promise<any> {
+  const chu = await r.text();
+  try {
+    return JSON.parse(chu);
+  } catch {
+    if (r.status === 413 || /entity too large/i.test(chu)) return { error: 'File quá lớn để gửi qua máy chủ.' };
+    return { error: `Máy chủ đang lỗi (mã ${r.status}). Thầy cô thử lại sau ít phút.` };
+  }
+}
+
+/** Tải một file mẫu: xin chỗ tải → trình duyệt tải thẳng vào kho file → báo máy chủ lưu. */
+async function taiMotMau(file: File, o: string): Promise<number> {
+  if (file.size > KICH_THUOC_TOI_DA) throw new Error('File quá lớn (tối đa 15 MB). Thầy cô nén bớt hình trong file rồi thử lại.');
+  const cho = await fetch('/api/mau-de/cho-tai-len', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ o, tenFile: file.name }),
+  }).then(docJson);
+  if (cho.error) throw new Error(cho.error);
+  const supabase = createClient();
+  if (!supabase) throw new Error('Chưa kết nối kho dữ liệu.');
+  const { error: loiTai } = await supabase.storage.from('exam-templates').uploadToSignedUrl(cho.duongDan, cho.token, file, {
+    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
+  if (loiTai) throw new Error(`Không tải được file lên kho: ${loiTai.message}`);
+  const luu = await fetch('/api/mau-de', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ o, tenFile: file.name, duongDan: cho.duongDan }),
+  }).then(docJson);
+  if (luu.error) throw new Error(luu.error);
+  return luu.phienBan as number;
+}
 
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const nutChinh = 'nut-tke text-sm';
@@ -50,7 +88,7 @@ export function MauDeView() {
   const nap = useCallback(async () => {
     setDangTai(true);
     try {
-      const r = await fetch('/api/mau-de').then((x) => x.json());
+      const r = await fetch('/api/mau-de').then(docJson);
       if (r.error) throw new Error(r.error);
       setDs(r.mau);
     } catch (e) {
@@ -66,21 +104,24 @@ export function MauDeView() {
     if (!hopLe.length) return;
     setDangGui(true);
     setThongBao(null);
-    try {
-      const form = new FormData();
-      for (const f of hopLe) { form.append('file', f.file); form.append('o', f.o); }
-      const r = await fetch('/api/mau-de', { method: 'POST', body: form }).then((x) => x.json());
-      if (r.error) throw new Error(r.error);
-      const ok = (r.ketQua as { ok: boolean }[]).filter((k) => k.ok).length;
-      const loi = (r.ketQua as { ok: boolean; tenFile: string; loi?: string }[]).filter((k) => !k.ok).map((k) => `${k.tenFile}: ${k.loi}`);
-      setThongBao(loi.length ? { loai: 'loi', text: `Đã lưu ${ok} mẫu. Chưa lưu được: ${loi.join(' · ')}` } : { loai: 'ok', text: `Đã lưu ${ok} mẫu, các mẫu mới được dùng ngay.` });
-      setCho([]);
-      nap();
-    } catch (e) {
-      setThongBao({ loai: 'loi', text: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setDangGui(false);
+    let ok = 0;
+    const loi: string[] = [];
+    // Từng file một, để file lớn không làm hỏng cả lượt
+    for (const f of hopLe) {
+      setThongBao({ loai: 'ok', text: `Đang tải ${ok + loi.length + 1}/${hopLe.length}: ${f.file.name}…` });
+      try {
+        await taiMotMau(f.file, f.o);
+        ok++;
+      } catch (e) {
+        loi.push(`${f.file.name}: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
+    setThongBao(loi.length
+      ? { loai: 'loi', text: `Đã lưu ${ok} mẫu. Chưa lưu được: ${loi.join(' · ')}` }
+      : { loai: 'ok', text: `Đã lưu ${ok} mẫu, các mẫu mới được dùng ngay.` });
+    if (ok) setCho((d) => d.filter((c) => loi.some((l) => l.startsWith(`${c.file.name}:`))));
+    setDangGui(false);
+    nap();
   };
 
   const chonNhieu = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,14 +139,14 @@ export function MauDeView() {
   const thayMau = (o: MaOMau) => { oDangThay.current = o; motRef.current?.click(); };
 
   const moXem = async (id: string) => {
-    const r = await fetch(`/api/mau-de/noi-dung?id=${id}`).then((x) => x.json());
+    const r = await fetch(`/api/mau-de/noi-dung?id=${id}`).then(docJson);
     if (r.error) setThongBao({ loai: 'loi', text: r.error });
     else setXem({ tenFile: r.tenFile, cauTruc: r.cauTruc });
   };
 
   const doiTrangThai = async (m: MauDe, conDung: boolean) => {
     if (!conDung && !window.confirm(`Bỏ bản ${m.phienBan} (${m.tenFile})? Bản vẫn giữ trong lịch sử, dùng lại được.`)) return;
-    const r = await fetch('/api/mau-de', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, conDung }) }).then((x) => x.json());
+    const r = await fetch('/api/mau-de', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, conDung }) }).then(docJson);
     setThongBao(r.error ? { loai: 'loi', text: r.error } : { loai: 'ok', text: conDung ? `Đã dùng lại bản ${m.phienBan}.` : `Đã bỏ bản ${m.phienBan}.` });
     nap();
   };

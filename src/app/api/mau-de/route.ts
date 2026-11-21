@@ -17,24 +17,13 @@ export async function GET() {
   }
 }
 
-/** POST multipart: các cặp file + o (ô mẫu). Lưu lần lượt, trả kết quả từng file. */
+/** POST { o, tenFile, duongDan } → lưu file mẫu trình duyệt vừa tải vào kho file. */
 export async function POST(req: NextRequest) {
   try {
-    const form = await req.formData();
-    const files = form.getAll('file').filter((f): f is File => f instanceof File);
-    const o = form.getAll('o').map(String);
-    if (!files.length) return loi('Chưa chọn file.');
-    if (files.length > 12) return loi('Mỗi lần tải tối đa 12 file.');
-    const ketQua: { tenFile: string; ok: boolean; loi?: string; phienBan?: number }[] = [];
-    for (let i = 0; i < files.length; i++) {
-      try {
-        const m = await taiLenMauDe(o[i] ?? '', files[i].name, await files[i].arrayBuffer());
-        ketQua.push({ tenFile: files[i].name, ok: true, phienBan: m.phienBan });
-      } catch (e) {
-        ketQua.push({ tenFile: files[i].name, ok: false, loi: e instanceof Error ? e.message : String(e) });
-      }
-    }
-    return NextResponse.json({ success: true, ketQua });
+    const { o, tenFile, duongDan } = (await req.json()) as { o?: string; tenFile?: string; duongDan?: string };
+    if (!o || !tenFile || !duongDan) return loi('Thiếu môn, tên file hoặc đường dẫn file.');
+    const m = await taiLenMauDe(o, tenFile, duongDan);
+    return NextResponse.json({ success: true, phienBan: m.phienBan });
   } catch (e) {
     return loi(e);
   }

@@ -85,31 +85,49 @@ export async function fileMauDe(id: string): Promise<{ tenFile: string; noiDung:
   return { tenFile: data.name as string, noiDung: await tep.arrayBuffer() };
 }
 
-/** Tải một file mẫu lên cho một ô. Thành bản mới nhất, được dùng ngay; bản cũ vẫn giữ. */
-export async function taiLenMauDe(o: string, tenFile: string, noiDung: ArrayBuffer): Promise<MauDe> {
-  const { supabase, user, orgId, role } = await layNguoiDung();
+/**
+ * Chỗ tải lên cho một file mẫu: trình duyệt tải thẳng vào kho file (không qua máy chủ app,
+ * vì máy chủ giới hạn dung lượng mỗi lần gửi), rồi báo lại đường dẫn để lưu.
+ */
+export async function choTaiLenMauDe(o: string, tenFile: string): Promise<{ duongDan: string; token: string }> {
+  const { supabase, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải mẫu đề.');
   if (!laOMau(o)) throw new Error('Chưa chọn mẫu này dùng cho môn nào.');
   if (!/\.docx$/i.test(tenFile)) throw new Error('Mẫu đề phải là file Word .docx (file .doc cũ: mở bằng Word rồi Lưu thành .docx).');
-  if (noiDung.byteLength > KICH_THUOC_TOI_DA) throw new Error('File mẫu quá lớn (tối đa 15 MB).');
+  const duongDan = `${orgId}/khoi-${KHOI}/${o}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.docx`;
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUploadUrl(duongDan);
+  if (error || !data) throw new Error(`Không mở được chỗ tải file: ${error?.message ?? 'không rõ lỗi'}`);
+  return { duongDan, token: data.token };
+}
+
+/** Lưu một file mẫu đã tải vào kho cho một ô. Thành bản mới nhất, được dùng ngay; bản cũ vẫn giữ. */
+export async function taiLenMauDe(o: string, tenFile: string, duongDan: string): Promise<MauDe> {
+  const { supabase, user, orgId, role } = await layNguoiDung();
+  if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải mẫu đề.');
+  if (!laOMau(o)) throw new Error('Chưa chọn mẫu này dùng cho môn nào.');
+  if (!duongDan.startsWith(`${orgId}/khoi-${KHOI}/${o}/`) || duongDan.includes('..')) throw new Error('Đường dẫn file không hợp lệ.');
+
+  const boFile = () => supabase.storage.from(BUCKET).remove([duongDan]);
+  const { data: tep, error: loiDoc } = await supabase.storage.from(BUCKET).download(duongDan);
+  if (loiDoc || !tep) throw new Error(`Không đọc được file vừa tải: ${loiDoc?.message ?? 'không rõ lỗi'}`);
+  if (tep.size > KICH_THUOC_TOI_DA) {
+    await boFile();
+    throw new Error('File mẫu quá lớn (tối đa 15 MB).');
+  }
+  const noiDung = await tep.arrayBuffer();
 
   let thongSo: ThongSoTrang;
   let cauTruc: KhoiVanBan[];
   try {
     [thongSo, cauTruc] = await Promise.all([docThongSoDocx(noiDung), docKhoiTuDocx(noiDung)]);
   } catch {
+    await boFile();
     throw new Error('Không đọc được file Word này. Thầy cô mở file bằng Word, lưu lại rồi tải lên lại.');
   }
   if (JSON.stringify(cauTruc).length > 1_500_000) cauTruc = cauTruc.slice(0, 400);
 
   const { data: cu } = await coBan(supabase, orgId).eq('header_layout->>o', o).order('version', { ascending: false }).limit(1);
   const phienBan = ((cu?.[0] as any)?.version ?? 0) + 1;
-  const duongDan = `${orgId}/khoi-${KHOI}/${o}/${Date.now()}.docx`;
-  const { error: loiTai } = await supabase.storage.from(BUCKET).upload(duongDan, new Blob([noiDung]), {
-    contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    upsert: false,
-  });
-  if (loiTai) throw new Error(`Không lưu được file: ${loiTai.message}`);
 
   const ten = O_MAU.find((x) => x.ma === o)!;
   const { data, error } = await supabase
@@ -136,7 +154,7 @@ export async function taiLenMauDe(o: string, tenFile: string, noiDung: ArrayBuff
     .select(COT)
     .single();
   if (error || !data) {
-    await supabase.storage.from(BUCKET).remove([duongDan]);
+    await boFile();
     throw new Error(`Không lưu được mẫu đề: ${error?.message ?? 'không rõ lỗi'}`);
   }
   return sangMau(data)!;
