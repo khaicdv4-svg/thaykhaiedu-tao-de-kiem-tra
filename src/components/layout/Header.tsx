@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Bell, Database, LogOut, Menu, Search, X } from 'lucide-react';
 import { getAppDataMode } from '@/lib/supabase/config';
@@ -32,6 +32,8 @@ const ROLE_TITLE_MAP: Record<UserRole, string> = {
 
 export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
   const router = useRouter();
+  // Trang chủ đã có banner lớn mang tên xưởng nên thanh trên không nhắc lại
+  const laTrangChu = usePathname() === '/dashboard';
   const dataMode = getAppDataMode();
   const { profile, activeRole, signOut } = useAuth();
   const [tuKhoa, setTuKhoa] = useState('');
@@ -139,6 +141,7 @@ export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
         </div>
 
         {/* Giữa: tên xưởng, chữ to, canh giữa */}
+        {laTrangChu ? <div aria-hidden /> : (
         <Link href="/dashboard" className="min-w-0 text-center leading-tight justify-self-center" title="Về trang tổng quan">
           <div className="chu-tke font-extrabold tracking-tight text-lg sm:text-2xl xl:text-[28px] truncate">
             Xưởng sản xuất đề kiểm tra AI
@@ -147,6 +150,7 @@ export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
             ThayKhaiEdu <span className="hidden sm:inline">– {profile.organizationName}</span>
           </p>
         </Link>
+        )}
 
         {/* Phải: trạng thái, thông báo, tài khoản */}
         <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">

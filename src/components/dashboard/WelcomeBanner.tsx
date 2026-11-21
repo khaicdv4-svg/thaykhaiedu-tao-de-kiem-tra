@@ -10,6 +10,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpenCheck, FileText, FolderOpen, History, Layers, Plus, Table2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 interface SoLieu {
   deDaTao: number | null;
@@ -43,6 +44,7 @@ async function dem(bang: string, loc?: (q: any) => any): Promise<number | null> 
 }
 
 export function WelcomeBanner() {
+  const { profile } = useAuth();
   const [so, setSo] = useState<SoLieu>({ deDaTao: null, baiDocDaDuyet: null, maTranDaXacNhan: null, monDaNhapPpct: null });
 
   useEffect(() => {
@@ -62,20 +64,39 @@ export function WelcomeBanner() {
     <div className="space-y-5">
       {/* Lối vào chính: tiêu đề, nút tạo đề và đường 5 bước */}
       <section className="the-tke overflow-hidden" aria-labelledby="tieu-de-tao-de">
-        <div className="p-6 sm:p-8 flex flex-col lg:flex-row lg:items-end gap-6">
-          <div className="flex-1 space-y-2">
-            <h1 id="tieu-de-tao-de" className="text-[28px] sm:text-[34px] font-extrabold text-slate-900 tracking-tight leading-tight">
-              Tạo đề kiểm tra lớp 1–5
+        {/* Banner: nền tím họa tiết, chữ in hoa đổ bóng 3D bên trái, hình học sinh bên phải (ẩn trên điện thoại) */}
+        <div className="relative flex items-stretch justify-between overflow-hidden bg-[#3b1fa8] bg-[url('/banner-tieu-de-nen.webp')] bg-cover bg-left">
+          <div className="relative z-10 flex-1 min-w-0 self-center px-6 py-8 sm:px-10 sm:py-10 xl:px-14 space-y-4">
+            <span className="inline-block rounded-full bg-[#ffd23f] px-4 py-1.5 text-sm sm:text-base font-extrabold text-[#3b1fa8] shadow-[0_4px_0_#d4a20f]">
+              ★ TIỂU HỌC LỚP 1–5
+            </span>
+            <h1 id="tieu-de-tao-de" className="chu-3d font-black uppercase tracking-wide leading-[1.12] text-[28px] sm:text-[36px] md:text-[30px] xl:text-[44px] 2xl:text-[56px]">
+              <span className="whitespace-nowrap">Xưởng sản xuất</span>
+              <br />
+              <span className="whitespace-nowrap">đề kiểm tra <span className="chu-3d-vang">AI</span></span>
             </h1>
-            <p className="text-[15px] text-slate-600 max-w-2xl">
-              Đề đi qua 5 bước, bước sau kế thừa bước trước đã xác nhận. AI làm phần nặng, thầy cô xem và quyết định.
+            <p className="inline-block rounded-xl border border-white/35 bg-white/15 px-4 py-2 text-sm sm:text-base xl:text-lg font-semibold text-white">
+              ThayKhaiEdu{profile.organizationName ? ` – ${profile.organizationName}` : ''}
             </p>
           </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/banner-hoc-sinh.webp"
+            alt="Hai học sinh tiểu học mặc đồng phục, cầm sách và bài kiểm tra điểm 10"
+            className="hidden md:block self-end shrink-0 h-[250px] lg:h-[230px] xl:h-[300px] 2xl:h-[340px] w-auto"
+          />
+        </div>
+
+        {/* Lời dẫn và các nút chính, ngay dưới banner */}
+        <div className="p-5 sm:px-8 sm:py-6 flex flex-col xl:flex-row xl:items-center gap-4 xl:gap-6">
+          <p className="flex-1 text-[15px] text-slate-600">
+            Đề đi qua 5 bước, bước sau kế thừa bước trước đã xác nhận. AI làm phần nặng, thầy cô xem và quyết định.
+          </p>
           <div className="flex flex-col sm:flex-row gap-3 shrink-0">
             <Link href="/test-builder" className="nut-tke text-base px-7 py-3.5">
               <Plus className="w-5 h-5" /> Tạo đề kiểm tra mới
             </Link>
-            <div className="flex gap-3">
+            <div className="flex flex-col min-[430px]:flex-row gap-3">
               <Link href="/tests" className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
                 <FolderOpen className="w-4 h-4 shrink-0" /> <span className="whitespace-nowrap">Kho đề của tôi</span>
               </Link>

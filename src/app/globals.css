@@ -128,3 +128,17 @@ body {
   background: #94a3b8;
 }
 .thanh-ben ::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.2); }
+
+/* Banner trang chủ: chữ in hoa trắng, đổ bóng nhiều lớp tạo khối 3D */
+@utility chu-3d {
+  color: #ffffff;
+  text-shadow: 0 1px 0 #e4dcff, 0 2px 0 #cbbcff, 0 3px 0 #b29bff, 0 4px 0 #987aff, 0 5px 0 #7e5af2,
+    0 6px 0 #6643d9, 0 7px 0 #5131bd, 0 8px 0 #40269c, 0 14px 22px rgb(10 0 60 / 0.45);
+}
+
+/* Biến thể vàng cho chữ "AI" */
+@utility chu-3d-vang {
+  color: #ffd23f;
+  text-shadow: 0 1px 0 #ffc21a, 0 2px 0 #f5b000, 0 3px 0 #e89e00, 0 4px 0 #d98a00, 0 5px 0 #c77600,
+    0 6px 0 #b06300, 0 7px 0 #964f00, 0 8px 0 #7c3f00, 0 14px 22px rgb(10 0 60 / 0.45);
+}
