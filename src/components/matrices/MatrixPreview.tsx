@@ -11,6 +11,8 @@ const cell = 'border border-black px-1.5 py-1 align-middle text-center';
 const cellL = 'border border-black px-1.5 py-1 align-middle text-left';
 const th = `${cell} font-bold`;
 
+const TEN_KY: Record<string, string> = { GIUA_HK1: 'Giữa Học kì I', CUOI_HK1: 'Cuối Học kì I', GIUA_HK2: 'Giữa Học kì II', CUOI_NAM: 'Cuối năm' };
+
 function rowSpans<T>(rows: T[], key: (r: T) => string | null | undefined): number[] {
   const out: number[] = new Array(rows.length).fill(0);
   let i = 0;
@@ -105,7 +107,7 @@ function BangToan({ m }: { m: MaTranChung }) {
             <th rowSpan={2} className={th}>ĐIỂM</th>
           </tr>
           <tr>
-            <th className={th}>Cuối Học kì I</th>
+            <th className={th}>{TEN_KY[m.ky_kiem_tra] ?? ''}</th>
             <th className={th}>TN</th>
             <th className={th}>TL</th>
             <th className={th}>1</th>

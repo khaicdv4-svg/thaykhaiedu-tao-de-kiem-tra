@@ -12,7 +12,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, Loader2, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import {
   apDungSuaCau,
@@ -182,6 +182,11 @@ export default function MatricesPage() {
   const [cachLap, setCachLap] = useState<'MA_TRAN_CHUNG' | 'CHUONG_TRINH'>('MA_TRAN_CHUNG');
   const [dangDung, setDangDung] = useState(false);
   const [kyDung, setKyDung] = useState<KyDung>('CUOI_HK1');
+  /** Ma trận chung đọc từ file tổ đã tải lên và xác nhận (Kho ma trận chung) */
+  const [khoMtc, setKhoMtc] = useState<{ coFile: boolean; mtc: MaTranChung | null; canhBao: string[]; loi?: string; tenFile?: string; phienBan?: number } | null>(null);
+  const [dangTaiKho, setDangTaiKho] = useState(false);
+  /** Tổ chưa tải ma trận chung Cuối HKI: cho dùng mẫu có sẵn trong app như trước */
+  const [dungMauCo, setDungMauCo] = useState(false);
   const [khungDung, setKhungDung] = useState<MaTranChung | null>(null);
   /** Số phiên bản ma trận riêng đã xác nhận trên hệ thống (null: chưa có). */
   const [phienBanXacNhan, setPhienBanXacNhan] = useState<number | null>(null);
@@ -189,9 +194,35 @@ export default function MatricesPage() {
   const [dangLuuHeThong, setDangLuuHeThong] = useState(false);
 
   const mtc = useMemo(
-    () => (cachLap === 'CHUONG_TRINH' ? khungDung : MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? null),
-    [maMon, cachLap, khungDung],
+    () => (cachLap === 'CHUONG_TRINH'
+      ? khungDung
+      : khoMtc?.mtc ?? (dungMauCo && kyDung === 'CUOI_HK1' ? MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? null : null)),
+    [maMon, cachLap, khungDung, khoMtc, dungMauCo, kyDung],
   );
+
+  // Nhận môn, kì từ bước 1 (?mon=&ky=)
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const m = p.get('mon');
+    const k = p.get('ky');
+    if (m && MAU_MA_TRAN_CHUNG.some((x) => x.ma_mon === m)) setMaMon(m);
+    if (k && DANH_SACH_KY.some((x) => x.ma === k)) setKyDung(k as KyDung);
+  }, []);
+
+  // Lấy ma trận chung của tổ (bản đã xác nhận mới nhất) theo môn × kì
+  useEffect(() => {
+    setKhoMtc(null);
+    setDungMauCo(false);
+    if (cachLap !== 'MA_TRAN_CHUNG' || !maMon) return;
+    let huy = false;
+    setDangTaiKho(true);
+    fetch(`/api/kho-ma-tran/ma-tran-chung?mon=${maMon}&ky=${kyDung}`)
+      .then((r) => r.json())
+      .then((j) => { if (!huy) setKhoMtc(j.error ? { coFile: false, mtc: null, canhBao: [], loi: j.error } : j); })
+      .catch(() => { if (!huy) setKhoMtc({ coFile: false, mtc: null, canhBao: [], loi: 'Không tải được kho ma trận chung.' }); })
+      .finally(() => { if (!huy) setDangTaiKho(false); });
+    return () => { huy = true; };
+  }, [cachLap, maMon, kyDung]);
   const khungDaLuu = useMemo(() => (cachLap === 'CHUONG_TRINH' && maMon && typeof window !== 'undefined' ? docKhungDung(maMon, kyDung) : null), [cachLap, maMon, kyDung, khungDung]);
   const khungDungHienTai = laKhungDung(mtc);
   const tenMonDangChon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? '';
@@ -421,7 +452,7 @@ export default function MatricesPage() {
         <div className="the-tke p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Chọn môn kiểm tra</h2>
-            <p className="text-sm text-slate-600">{cachLap === 'CHUONG_TRINH' ? 'Năm học 2026 – 2027, Lớp 4. Chọn kì kiểm tra ở dưới.' : 'Kì kiểm tra: Cuối học kì I, năm học 2026 – 2027, Lớp 4.'}</p>
+            <p className="text-sm text-slate-600">Năm học 2026 – 2027, Lớp 4. Chọn môn và kì kiểm tra.</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {([
@@ -450,7 +481,7 @@ export default function MatricesPage() {
               </button>
             ))}
           </div>
-          {cachLap === 'CHUONG_TRINH' && (
+          {(
             <fieldset>
               <legend className="text-sm font-semibold text-slate-900 mb-1">Kì kiểm tra</legend>
               <div className="flex flex-wrap gap-2">
@@ -461,8 +492,30 @@ export default function MatricesPage() {
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-slate-500 mt-1">Ứng dụng tự lọc các bài đúng giai đoạn của kì đã chọn, thầy tick bài cần dùng ở bước sau.</p>
+              {cachLap === 'CHUONG_TRINH' && <p className="text-xs text-slate-500 mt-1">Ứng dụng tự lọc các bài đúng giai đoạn của kì đã chọn, thầy tick bài cần dùng ở bước sau.</p>}
             </fieldset>
+          )}
+          {cachLap === 'MA_TRAN_CHUNG' && maMon && (
+            dangTaiKho ? (
+              <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Đang đọc ma trận chung trong kho…</div>
+            ) : khoMtc?.mtc ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                Dùng ma trận chung tổ đã xác nhận: <b>{khoMtc.tenFile}</b> (bản {khoMtc.phienBan}).
+                {khoMtc.canhBao.length > 0 && <> App đọc bảng có <b>{khoMtc.canhBao.length} chỗ cần xem lại</b>, hiện ở bước sau.</>}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
+                <div>
+                  {khoMtc?.loi
+                    ? <>Chưa dùng được ma trận chung{khoMtc.tenFile ? <> <b>{khoMtc.tenFile}</b></> : null}: {khoMtc.loi}</>
+                    : <>Tổ chưa có ma trận chung đã xác nhận cho môn và kì này. Tổ trưởng tải file ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>, hoặc chọn &quot;Dựng từ chương trình&quot;.</>}
+                </div>
+                {kyDung === 'CUOI_HK1' && !dungMauCo && (
+                  <button type="button" className={nutPhu} onClick={() => setDungMauCo(true)}>Tạm dùng mẫu Cuối HKI có sẵn trong app</button>
+                )}
+                {dungMauCo && <div className="text-xs">Đang dùng mẫu có sẵn trong app (Cuối HKI). Mẫu này không tự cập nhật theo file của tổ.</div>}
+              </div>
+            )
           )}
           {cachLap === 'CHUONG_TRINH' ? (
             <div className="flex flex-wrap justify-end gap-2">

@@ -63,7 +63,7 @@ export default function TestBuilderPage() {
     const dtXong = !!tt?.dt?.moiNhat;
     const de = tt?.de ?? null;
     return [
-      { so: 2, ten: 'Ma trận riêng', xong: mtrXong, nhan: mtrXong ? `đã xác nhận (phiên bản ${tt?.mtr?.moiNhat?.phienBan ?? 1})` : tt?.mtr?.banNhap ? 'có bản nháp, chưa xác nhận' : 'chưa làm', href: '/matrices', viec: mtrXong ? 'Xem ma trận' : tt?.mtr?.banNhap ? 'Tiếp tục ma trận' : 'Làm ma trận' },
+      { so: 2, ten: 'Ma trận riêng', xong: mtrXong, nhan: mtrXong ? `đã xác nhận (phiên bản ${tt?.mtr?.moiNhat?.phienBan ?? 1})` : tt?.mtr?.banNhap ? 'có bản nháp, chưa xác nhận' : 'chưa làm', href: `/matrices?${q}`, viec: mtrXong ? 'Xem ma trận' : tt?.mtr?.banNhap ? 'Tiếp tục ma trận' : 'Làm ma trận' },
       { so: 3, ten: 'Bản đặc tả', xong: dtXong, nhan: dtXong ? `đã xác nhận (phiên bản ${tt?.dt?.moiNhat?.phienBan ?? 1})` : tt?.dt?.banNhap ? 'có bản nháp, chưa xác nhận' : mtrXong ? 'chưa làm' : 'cần ma trận trước', href: `/dac-ta?${q}`, viec: dtXong ? 'Xem đặc tả' : 'Làm đặc tả', khoa: !mtrXong },
       { so: 4, ten: 'Tạo đề', xong: de?.trangThai === 'DA_DUYET', nhan: de ? TEN_TT_DE[de.trangThai] ?? de.trangThai : dtXong ? 'chưa làm' : 'cần đặc tả trước', href: `/tao-de?${q}`, viec: de ? 'Tiếp tục soạn đề' : 'Soạn đề', khoa: !dtXong },
     ];

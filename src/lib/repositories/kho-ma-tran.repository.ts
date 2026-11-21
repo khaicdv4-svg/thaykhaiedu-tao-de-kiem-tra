@@ -8,6 +8,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { KhoiVanBan } from '@/core/utils/docx-bang';
 import { DANH_SACH_KY_MA_TRAN, DANH_SACH_MON, type KyMaTran, type LoaiMaTranTo } from '@/core/kho-ma-tran/phan-loai';
 import { soSanhMaTran, tomTatThayDoi } from '@/core/kho-ma-tran/so-sanh';
+import { docMaTranChungTuBang } from '@/core/kho-ma-tran/doc-ma-tran-chung';
+import type { KyKiemTra, MaTranChung } from '@/types/matrix-template';
 
 const KHOI = 4;
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -238,4 +240,47 @@ export async function xoaTaiLieu(id: string): Promise<void> {
   const { data, error } = await supabase.from('tai_lieu_ma_tran').delete().eq('organization_id', orgId).eq('id', id).select('id');
   if (error) throw new Error(`Không xóa được: ${error.message}`);
   if (!data?.length) throw new Error('Không xóa được file này.');
+}
+
+
+export interface MaTranChungTuKho {
+  /** Có file ma trận chung đã xác nhận cho môn × kì này chưa */
+  coFile: boolean;
+  mtc: MaTranChung | null;
+  canhBao: string[];
+  loi?: string;
+  tenFile?: string;
+  phienBan?: number;
+  xacNhanLuc?: string | null;
+}
+
+/**
+ * Ma trận chung tổ đã xác nhận (bản mới nhất) của một môn × kì, đọc từ bảng trong file Word đã tải lên.
+ * Bước 2 lập ma trận riêng dùng kết quả này thay cho mẫu viết sẵn trong mã.
+ */
+export async function maTranChungTuKho(maMon: string, ky: string): Promise<MaTranChungTuKho> {
+  const { supabase, orgId } = await layNguoiDung();
+  if (!DANH_SACH_KY_MA_TRAN.some((k) => k.ma === ky)) throw new Error('Kì kiểm tra không hợp lệ.');
+  const tenMon = DANH_SACH_MON.find((m) => m.ma === maMon)?.ten;
+  if (!tenMon) throw new Error('Môn không hợp lệ.');
+  const { data, error } = await supabase
+    .from('tai_lieu_ma_tran')
+    .select('ten_file, phien_ban, cau_truc, xac_nhan_luc')
+    .eq('organization_id', orgId)
+    .eq('khoi', KHOI)
+    .eq('loai', 'CHUNG')
+    .eq('ma_mon', maMon)
+    .eq('ky_kiem_tra', ky)
+    .eq('trang_thai', 'DA_XAC_NHAN')
+    .order('phien_ban', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(`Không đọc được kho ma trận: ${error.message}`);
+  const ban = data?.[0];
+  if (!ban) return { coFile: false, mtc: null, canhBao: [] };
+  const goc = { coFile: true, tenFile: ban.ten_file as string, phienBan: ban.phien_ban as number, xacNhanLuc: ban.xac_nhan_luc as string | null };
+  if (!Array.isArray(ban.cau_truc) || ban.cau_truc.length === 0) {
+    return { ...goc, mtc: null, canhBao: [], loi: 'File này chưa có dạng bảng. Vào Ma trận chung, bấm "Chọn lại thư mục để hiện dạng bảng" rồi thử lại.' };
+  }
+  const kq = docMaTranChungTuBang(ban.cau_truc as KhoiVanBan[], { maMon, tenMon, ky: ky as KyKiemTra, phienBan: ban.phien_ban as number });
+  return { ...goc, ...kq };
 }
