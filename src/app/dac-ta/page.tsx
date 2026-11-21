@@ -34,6 +34,8 @@ import {
   type TrangThaiDacTa,
 } from '@/core/dac-ta/dac-ta';
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
+import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
 
 interface BanMaTranRieng { id: string; phienBan: number | null; xacNhanLuc: string | null; duLieu: { ma_tran_chung: MaTranChung; ma_tran_rieng: MaTranRieng } }
 interface BanDacTaApi { id: string; phienBan: number | null; trangThai: TrangThaiDacTa; maTranRiengId: string; phienBanMaTranRieng: number; duLieu: DacTa }
@@ -86,13 +88,10 @@ export default function DacTaPage() {
   const [chungMoiHon, setChungMoiHon] = useState<{ phienBan: number } | null>(null); // ma trận chung của tổ mới hơn ma trận riêng
   const [baiCu, setBaiCu] = useState<DacTa | null>(null); // đặc tả cũ khi ma trận đã có phiên bản mới hơn
 
-  // Đọc ?mon=&ky= từ địa chỉ (trang ma trận dẫn sang)
+  // Hồ sơ đề (môn, kì) chọn ở bước 1: địa chỉ ?mon=&ky= hoặc hồ sơ lưu trên máy
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    const m = p.get('mon');
-    const k = p.get('ky');
-    if (m && MAU_MA_TRAN_CHUNG.some((x) => x.ma_mon === m)) setMaMon(m);
-    if (k && DANH_SACH_KY.some((x) => x.ma === k)) setKy(k as KyDung);
+    const h = docHoSoDe();
+    if (h) { setMaMon(h.mon); setKy(h.ky); luuHoSoDe(h); }
   }, []);
 
   const tuanKiemTra = useMemo(() => (tiet.length ? khoangTuanTheoKy(tiet, ky).tuanDen : null), [tiet, ky]);
@@ -239,22 +238,7 @@ export default function DacTaPage() {
         {dacTa && <span className={`self-start md:self-auto rounded-full border px-3 py-1 text-sm font-medium ${nhan.mau}`}>{nhan.ten}</span>}
       </div>
 
-      <div className="the-tke p-4 flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="block text-slate-600 mb-1">Môn</span>
-          <select aria-label="Môn" className={`${o} min-w-40`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
-            {MAU_MA_TRAN_CHUNG.map((m) => <option key={m.ma_mon} value={m.ma_mon}>{m.mon}</option>)}
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-slate-600 mb-1">Kì kiểm tra</span>
-          <select aria-label="Kì kiểm tra" className={`${o} min-w-40`} value={ky} onChange={(e) => setKy(e.target.value as KyDung)}>
-            {DANH_SACH_KY.map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
-          </select>
-        </label>
-        <span className="text-sm text-slate-500 pb-2">Lớp 4{mtrBan?.phienBan ? ` · ma trận riêng phiên bản ${mtrBan.phienBan}` : ''}</span>
-        {dangTai && <Loader2 className="w-4 h-4 animate-spin text-blue-700 mb-2.5" />}
-      </div>
+      <ThanhHoSoDe mon={maMon} ky={ky} ghiChu={mtrBan?.phienBan ? `Ma trận riêng phiên bản ${mtrBan.phienBan}` : undefined} dangTai={dangTai} />
 
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
       {loiTai && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{loiTai}</div>}
@@ -263,7 +247,7 @@ export default function DacTaPage() {
         <div className="the-tke p-6 space-y-3">
           <h2 className="text-lg font-semibold text-slate-900">Chưa có ma trận riêng đã xác nhận</h2>
           <p className="text-sm text-slate-600">Đặc tả chỉ lập từ ma trận riêng đã xác nhận của {tenMon}, {DANH_SACH_KY.find((k) => k.ma === ky)?.ten}. Thầy lập và xác nhận ma trận ở bước 2.</p>
-          <Link href="/matrices" className={nutChinh}><ArrowLeft className="w-4 h-4" /> Về bước 2: Ma trận</Link>
+          <Link href={`/matrices?mon=${maMon}&ky=${ky}`} className={nutChinh}><ArrowLeft className="w-4 h-4" /> Về bước 2: Ma trận</Link>
         </div>
       )}
 
@@ -278,7 +262,7 @@ export default function DacTaPage() {
       {chungMoiHon && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3">
           <span>Ma trận chung của tổ vừa có bản {chungMoiHon.phienBan} mới hơn ma trận riêng này. Cần kiểm tra và xác nhận lại ma trận riêng trước khi xác nhận đặc tả.</span>
-          <a href="/matrices" className={nutChinh}>Mở Ma trận riêng</a>
+          <a href={`/matrices?mon=${maMon}&ky=${ky}`} className={nutChinh}>Mở Ma trận riêng</a>
         </div>
       )}
 
@@ -410,7 +394,7 @@ export default function DacTaPage() {
           <div className="flex flex-wrap justify-between gap-2">
             {cheDo === 'xem'
               ? <button type="button" className={nutPhu} onClick={() => setCheDo('sua')}><ArrowLeft className="w-4 h-4" /> Chỉnh sửa đặc tả</button>
-              : <Link href="/matrices" className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về ma trận</Link>}
+              : <Link href={`/matrices?mon=${maMon}&ky=${ky}`} className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về ma trận</Link>}
             <div className="flex flex-wrap gap-2">
               <button type="button" className={nutPhu} disabled={dangGui || daXacNhan} onClick={() => void gui('LUU_NHAP')}><Save className="w-4 h-4" /> Lưu bản nháp</button>
               <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>

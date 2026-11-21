@@ -10,6 +10,7 @@ import { ArrowRight, BookOpenText, CheckCircle2, CircleDashed, Loader2, Triangle
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
+import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-base px-6 py-3';
@@ -31,13 +32,16 @@ export default function TestBuilderPage() {
   const [ky, setKy] = useState<KyDung>('CUOI_HK1');
   const [tt, setTt] = useState<TrangThaiBuoc | null>(null);
   const [dangTai, setDangTai] = useState(false);
+  const [daDocHoSo, setDaDocHoSo] = useState(false);
 
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    const m = p.get('mon'); const k = p.get('ky');
-    if (m && MAU_MA_TRAN_CHUNG.some((x) => x.ma_mon === m)) setMaMon(m);
-    if (k && DANH_SACH_KY.some((x) => x.ma === k)) setKy(k as KyDung);
+    const h = docHoSoDe();
+    if (h) { setMaMon(h.mon); setKy(h.ky); }
+    setDaDocHoSo(true);
   }, []);
+
+  // Chọn môn, kì ở đây là chọn hồ sơ đề cho cả 5 bước
+  useEffect(() => { if (daDocHoSo) luuHoSoDe({ mon: maMon, ky }); }, [daDocHoSo, maMon, ky]);
 
   useEffect(() => {
     let huy = false;

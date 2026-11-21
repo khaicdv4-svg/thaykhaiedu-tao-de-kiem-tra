@@ -9,6 +9,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { Check, ChevronRight, ClipboardCheck, Grid3x3, ListChecks, Settings2, Sparkles } from 'lucide-react';
+import { ganHoSo } from '@/core/ho-so-de/ho-so-de';
+import { useHoSoDe } from '@/components/ui/ThanhHoSoDe';
 
 export const NAM_BUOC = [
   { so: 1, ten: 'Thiết lập', href: '/test-builder', icon: Settings2 },
@@ -28,6 +30,8 @@ interface Props {
 }
 
 export function TienTrinh5Buoc({ buocHienTai, daXong = [], choBam = false }: Props) {
+  // Bấm sang bước khác vẫn giữ hồ sơ đề (môn, kì) đang làm
+  const hoSo = useHoSoDe();
   return (
     <nav aria-label="Tiến trình tạo đề" className="the-tke p-2 sm:p-3">
       <ol className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
@@ -55,7 +59,7 @@ export function TienTrinh5Buoc({ buocHienTai, daXong = [], choBam = false }: Pro
           );
           return (
             <li key={b.so} className="flex items-center gap-1 sm:gap-2">
-              {choBam ? <Link href={b.href} className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">{noiDung}</Link> : noiDung}
+              {choBam ? <Link href={ganHoSo(b.href, hoSo)} className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">{noiDung}</Link> : noiDung}
               {i < NAM_BUOC.length - 1 && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
             </li>
           );

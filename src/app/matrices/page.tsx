@@ -35,6 +35,7 @@ import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
 import { DungTiengViet } from '@/components/matrices/DungTiengViet';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
+import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
 
 const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
 
@@ -200,14 +201,15 @@ export default function MatricesPage() {
     [maMon, cachLap, khungDung, khoMtc, dungMauCo, kyDung],
   );
 
-  // Nhận môn, kì từ bước 1 (?mon=&ky=)
+  // Nhận hồ sơ đề (môn, kì) từ bước 1: địa chỉ ?mon=&ky= hoặc hồ sơ lưu trên máy
+  const [daDocHoSo, setDaDocHoSo] = useState(false);
   useEffect(() => {
-    const p = new URLSearchParams(window.location.search);
-    const m = p.get('mon');
-    const k = p.get('ky');
-    if (m && MAU_MA_TRAN_CHUNG.some((x) => x.ma_mon === m)) setMaMon(m);
-    if (k && DANH_SACH_KY.some((x) => x.ma === k)) setKyDung(k as KyDung);
+    const h = docHoSoDe();
+    if (h) { setMaMon(h.mon); setKyDung(h.ky); }
+    setDaDocHoSo(true);
   }, []);
+  // Đổi môn, kì ở đây thì hồ sơ đề cho các bước sau cũng đổi theo
+  useEffect(() => { if (daDocHoSo && maMon) luuHoSoDe({ mon: maMon, ky: kyDung }); }, [daDocHoSo, maMon, kyDung]);
 
   // Lấy ma trận chung của tổ (bản đã xác nhận mới nhất) theo môn × kì
   useEffect(() => {

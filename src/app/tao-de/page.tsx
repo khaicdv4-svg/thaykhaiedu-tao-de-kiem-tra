@@ -24,6 +24,8 @@ import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { ChuPhanSo } from '@/components/de/ChuPhanSo';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
+import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
 import {
   NHAN_LUA_CHON,
   TOI_DA_HINH_MOT_CAU,
@@ -123,11 +125,9 @@ export default function TaoDePage() {
       setNamHoc(localStorage.getItem('tke.namHoc') || '2026 - 2027');
       setPhut(Number(localStorage.getItem('tke.phut')) || 35);
     } catch { /* không có localStorage */ }
-    const p = new URLSearchParams(window.location.search);
-    const m = p.get('mon');
-    const k = p.get('ky');
-    if (m && MAU_MA_TRAN_CHUNG.some((x) => x.ma_mon === m)) setMaMon(m);
-    if (k && DANH_SACH_KY.some((x) => x.ma === k)) setKy(k as KyDung);
+    // Hồ sơ đề (môn, kì) chọn ở bước 1: địa chỉ ?mon=&ky= hoặc hồ sơ lưu trên máy
+    const h = docHoSoDe();
+    if (h) { setMaMon(h.mon); setKy(h.ky); luuHoSoDe(h); }
   }, []);
 
   const nap = useCallback(async () => {
@@ -430,22 +430,7 @@ export default function TaoDePage() {
         {de && <span className={`self-start md:self-auto rounded-full border px-3 py-1 text-sm font-medium ${nhan.mau}`}>{nhan.ten}</span>}
       </div>
 
-      <div className="the-tke p-4 flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="block text-slate-600 mb-1">Môn</span>
-          <select aria-label="Môn" className={`${o} min-w-40`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
-            {MAU_MA_TRAN_CHUNG.map((m) => <option key={m.ma_mon} value={m.ma_mon}>{m.mon}</option>)}
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-slate-600 mb-1">Kì kiểm tra</span>
-          <select aria-label="Kì kiểm tra" className={`${o} min-w-40`} value={ky} onChange={(e) => setKy(e.target.value as KyDung)}>
-            {DANH_SACH_KY.map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
-          </select>
-        </label>
-        <span className="text-sm text-slate-500 pb-2">Lớp 4{dacTaBan?.phienBan ? ` · đặc tả phiên bản ${dacTaBan.phienBan}` : ''}</span>
-        {dangTai && <Loader2 className="w-4 h-4 animate-spin text-blue-700 mb-2.5" />}
-      </div>
+      <ThanhHoSoDe mon={maMon} ky={ky} ghiChu={dacTaBan?.phienBan ? `Đặc tả phiên bản ${dacTaBan.phienBan}` : undefined} dangTai={dangTai} />
 
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
       {loiTai && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{loiTai}</div>}

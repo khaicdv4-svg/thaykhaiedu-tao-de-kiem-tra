@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { BookOpenCheck, FileText, FolderOpen, History, Layers, Plus, Table2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/core/contexts/AuthContext';
+import { HoSoDangLam } from '@/components/dashboard/HoSoDangLam';
 
 interface SoLieu {
   deDaTao: number | null;
@@ -100,7 +101,7 @@ export function WelcomeBanner() {
               <Link href="/tests" className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
                 <FolderOpen className="w-4 h-4 shrink-0" /> <span className="whitespace-nowrap">Kho đề của tôi</span>
               </Link>
-              <Link href="/tests" className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
+              <Link href="#ho-so-dang-lam" className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700">
                 <History className="w-4 h-4 shrink-0" /> <span className="whitespace-nowrap">Tiếp tục bản nháp</span>
               </Link>
             </div>
@@ -131,6 +132,9 @@ export function WelcomeBanner() {
           ))}
         </ol>
       </section>
+
+      {/* Hồ sơ đề đang làm dở: vào đúng bước làm tiếp */}
+      <HoSoDangLam />
 
       {/* Số liệu của trường */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">

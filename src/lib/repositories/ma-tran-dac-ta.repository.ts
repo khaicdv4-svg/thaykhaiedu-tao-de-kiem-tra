@@ -12,6 +12,7 @@ import { kiemDinhMaTranChung, kiemDinhMaTranRieng } from '@/core/matrix/matrix-t
 import { kiemDinhDacTa, type DacTa, type TrangThaiDacTa } from '@/core/dac-ta/dac-ta';
 import { TRANG_THAI_NHAP, kiemDinhDe, saoChepDeSangKyMoi, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
 import type { KyKiemTra, MaTranChung, MaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
+import { tinhDanhSachHoSo, type DongHoSoDe, type HangBuoc } from '@/core/ho-so-de/danh-sach';
 
 const KHOI = 4;
 const VAI_TRO_GHI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -622,4 +623,19 @@ export async function xoaDe(id: string): Promise<void> {
   const { data, error } = await supabase.from('de_kiem_tra').delete().eq('id', id).select('id');
   if (error) throw loiDe('Không xóa được đề', error.message);
   if (!data?.length) throw new Error('Không xóa được đề. Giáo viên chỉ xóa được đề mình tạo khi còn là bản nháp hoặc đã bị trả lại; đề đang xét duyệt hoặc đã duyệt cần Ban giám hiệu xử lý.');
+}
+
+
+/** Hồ sơ đề (môn × kì) đã có ma trận riêng, đặc tả hoặc đề của chính mình, kèm bước làm tiếp. */
+export async function danhSachHoSoDe(): Promise<DongHoSoDe[]> {
+  const { supabase, user, orgId } = await layNguoiDung();
+  const loc = (bang: string, cot: string) => supabase.from(bang).select(cot).eq('organization_id', orgId).eq('khoi', KHOI);
+  const [mtr, dt, de] = await Promise.all([
+    loc('ma_tran_rieng', 'ma_mon, ky_kiem_tra, la_ban_nhap, updated_at'),
+    loc('dac_ta', 'ma_mon, ky_kiem_tra, la_ban_nhap, updated_at'),
+    loc('de_kiem_tra', 'ma_mon, ky_kiem_tra, trang_thai, updated_at').eq('created_by', user.id),
+  ]);
+  const loi = mtr.error ?? dt.error ?? de.error;
+  if (loi) throw new Error(`Không đọc được hồ sơ đề: ${loi.message}`);
+  return tinhDanhSachHoSo((mtr.data ?? []) as unknown as HangBuoc[], (dt.data ?? []) as unknown as HangBuoc[], (de.data ?? []) as unknown as HangBuoc[]);
 }

@@ -13,6 +13,8 @@ import { usePathname } from 'next/navigation';
 import { MAIN_NAVIGATION, getNavGroupsForRole, NavItem } from '@/core/constants/navigation';
 import { useAuth } from '@/core/contexts/AuthContext';
 import { ChevronDown, ChevronLeft, ChevronRight, GraduationCap, Lock } from 'lucide-react';
+import { ganHoSo } from '@/core/ho-so-de/ho-so-de';
+import { useHoSoDe } from '@/components/ui/ThanhHoSoDe';
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -30,6 +32,7 @@ function dangMo(pathname: string, href: string) {
 export function Sidebar({ isMobileOpen, onCloseMobile, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const { activeRole } = useAuth();
+  const hoSo = useHoSoDe();
   const nhom = useMemo(() => getNavGroupsForRole(activeRole), [activeRole]);
 
   // Vùng 5 bước: luôn đủ 5 bước theo thứ tự; bước chưa có quyền thì khóa, không ẩn
@@ -145,7 +148,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile, isCollapsed = false, onTo
                       )}
                       {duocVao ? (
                         <Link
-                          href={b.href}
+                          href={ganHoSo(b.href, hoSo)}
                           onClick={onCloseMobile}
                           title={`Bước ${i + 1}: ${b.title.replace(/^\d\.\s*/, '')}`}
                           aria-current={dangLam ? 'step' : undefined}
