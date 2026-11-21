@@ -1,0 +1,46 @@
+/** Mẫu đề của tổ: đoán môn theo tên file, đọc khổ giấy, lề, phông chữ từ file Word. */
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'fs';
+import { doanOMau, docThongSoDocx, thongSoTuXml } from '@/core/mau-de/mau-de';
+
+describe('Đoán môn theo tên file mẫu', () => {
+  it.each([
+    ['DE KIEM TRA TOAN CUOI HKI.docx', 'TOAN'],
+    ['Mẫu đề Tiếng Việt - Đọc hiểu.docx', 'TIENG_VIET_DOC'],
+    ['DE TIENG VIET VIET CHKI.docx', 'TIENG_VIET_VIET'],
+    ['TV_ĐỌC_K4.docx', 'TIENG_VIET_DOC'],
+    ['De Tieng Viet - Tap lam van.docx', 'TIENG_VIET_VIET'],
+    ['Đề Khoa học.docx', 'KHOA_HOC'],
+    ['DE LS&DL CHKI.docx', 'LS_DL'],
+    ['Lịch sử và Địa lí 4.docx', 'LS_DL'],
+    ['Mau de Cong nghe.docx', 'CONG_NGHE'],
+  ])('%s → %s', (ten, o) => expect(doanOMau(ten)).toBe(o));
+
+  it('không chắc thì để thầy cô chọn', () => {
+    expect(doanOMau('Đề Tiếng Việt lớp 4.docx')).toBeNull();
+    expect(doanOMau('mau-de-moi.docx')).toBeNull();
+  });
+});
+
+describe('Thông số trang', () => {
+  it('đọc khổ A4, lề (mm), phông và cỡ chữ dùng nhiều nhất', () => {
+    const doc = '<w:body><w:p><w:r><w:rPr><w:rFonts w:ascii="Times New Roman"/><w:sz w:val="26"/></w:rPr></w:r></w:p>'
+      + '<w:p><w:r><w:rPr><w:rFonts w:ascii="Times New Roman"/><w:sz w:val="26"/></w:rPr></w:r><w:r><w:rPr><w:sz w:val="28"/></w:rPr></w:r></w:p>'
+      + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="851" w:right="851" w:bottom="851" w:left="1134"/></w:sectPr></w:body>';
+    const t = thongSoTuXml(doc, null);
+    expect(t).toMatchObject({ khoGiay: 'A4', ngang: false, phong: 'Times New Roman', coChu: 13 });
+    expect(t.le).toEqual({ top: 15, bottom: 15, left: 20, right: 15 });
+  });
+
+  it('nhận trang ngang và lấy mặc định từ styles khi đoạn văn không ghi', () => {
+    const t = thongSoTuXml('<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/></w:sectPr>', '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial"/><w:sz w:val="24"/></w:rPr></w:rPrDefault></w:docDefaults>');
+    expect(t).toMatchObject({ khoGiay: 'A4', ngang: true, phong: 'Arial', coChu: 12 });
+  });
+
+  it('đọc được file Word thật', async () => {
+    const b = readFileSync('tests/fixtures/ma-tran-bang-mau.docx');
+    const t = await docThongSoDocx(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+    expect(t.khoGiay).toBeTruthy();
+    expect(t.le.top).toBeGreaterThan(0);
+  });
+});

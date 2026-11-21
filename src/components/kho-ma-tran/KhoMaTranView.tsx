@@ -27,6 +27,7 @@ import {
   type LoaiMaTranTo,
 } from '@/core/kho-ma-tran/phan-loai';
 import type { TaiLieuMaTran } from '@/lib/repositories/kho-ma-tran.repository';
+import { XemTaiLieuWord, type ViTriSua } from '@/components/ui/XemTaiLieuWord';
 
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const VAI_TRO_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -44,47 +45,6 @@ interface FileCho extends KetQuaPhanLoai {
 const tenMon = (ma: string) => DANH_SACH_MON.find((m) => m.ma === ma)?.ten ?? ma;
 const tenKy = (ma: string | null) => DANH_SACH_KY_MA_TRAN.find((k) => k.ma === ma)?.ten ?? '';
 const ngay = (s: string | null) => (s ? new Date(s).toLocaleDateString('vi-VN') : '');
-
-/** Hiện lại file Word: đoạn văn và bảng có ô gộp, giống bản gốc nhất có thể. */
-type ViTriSua = { khoi: number; hang?: number; o?: number };
-
-function XemTaiLieuWord({ khoi, onSua }: { khoi: KhoiVanBan[]; onSua?: (vt: ViTriSua, chu: string) => void }) {
-  // Khi sửa: ô và đoạn văn gõ trực tiếp được; rời ô thì ghi lại chữ
-  const suaDuoc = (vt: ViTriSua) =>
-    onSua
-      ? {
-          contentEditable: true,
-          suppressContentEditableWarning: true,
-          onBlur: (e: React.FocusEvent<HTMLElement>) => onSua(vt, e.currentTarget.innerText.replace(/\n$/, '')),
-        }
-      : {};
-  const nenSua = onSua ? 'outline-none focus:bg-yellow-50 hover:bg-slate-50 cursor-text' : '';
-  return (
-    <div className="space-y-1 text-sm text-slate-800" style={{ fontFamily: '"Times New Roman", serif' }}>
-      {khoi.map((k, i) =>
-        k.loai === 'doan' ? (
-          <p key={i} {...suaDuoc({ khoi: i })} className={`whitespace-pre-wrap min-h-[1em] ${k.giua ? 'text-center' : ''} ${k.dam ? 'font-bold' : ''} ${nenSua}`}>{k.chu}</p>
-        ) : (
-          <table key={i} className="w-full border-collapse my-2">
-            <tbody>
-              {k.hang.map((h, j) => (
-                <tr key={j}>
-                  {h.map((o, n) => (
-                    <td key={n} colSpan={o.cot > 1 ? o.cot : undefined} rowSpan={o.hang > 1 ? o.hang : undefined}
-                      {...suaDuoc({ khoi: i, hang: j, o: n })}
-                      className={`border border-slate-400 px-1.5 py-1 align-middle whitespace-pre-wrap ${o.giua ? 'text-center' : ''} ${o.dam ? 'font-bold' : ''} ${nenSua}`}>
-                      {o.chu}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ),
-      )}
-    </div>
-  );
-}
 
 /** Đọc mọi file trong thư mục được kéo thả (Chrome, Edge, Firefox). */
 async function docMucKeoTha(items: DataTransferItemList): Promise<{ file: File; duongDan: string }[]> {
