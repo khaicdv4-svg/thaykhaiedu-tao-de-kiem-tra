@@ -253,7 +253,7 @@ export default function TaoDePage() {
 
   const dongDacTaCua = (c: CauDe) => {
     const d = dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa);
-    return { baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa };
+    return { yNho: c.yNho, baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa };
   };
   const moTaTrang = (kh: { tap: number | null; tu: number; den: number } | null | undefined, co: number[] | undefined) =>
     kh ? `SGK${kh.tap ? ` tập ${kh.tap}` : ''} tr. ${kh.tu}${kh.den > kh.tu ? `–${kh.den}` : ''}${co ? `, có chữ ${co.length} trang` : ''}` : undefined;

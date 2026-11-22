@@ -59,3 +59,14 @@ describe('Tự ghép câu đặc tả với bài trong PPCT', () => {
     expect(kq.dacTa.dong[1].baiHoc).toBe('Bài thầy chọn');
   });
 });
+
+import { soYTrongCau } from '@/core/chuong-trinh/sach';
+describe('Đếm số ý của câu AI soạn', () => {
+  it('đếm a), b), c), d) trong đề bài', () => {
+    expect(soYTrongCau('Đặt tính rồi tính:\na) 25 346 + 4 129\nb) 182 637 + 251 745', [], null)).toBe(2);
+    expect(soYTrongCau('Đặt tính rồi tính:\na) 1 + 2\nb) 5 – 3\nc) 2 × 3\nd) 8 : 2', [], null)).toBe(4);
+  });
+  it('câu Đúng sai đếm số nhận định', () => {
+    expect(soYTrongCau('Đúng ghi Đ, sai ghi S', ['x', 'y', 'z', ''], 'DS')).toBe(3);
+  });
+});

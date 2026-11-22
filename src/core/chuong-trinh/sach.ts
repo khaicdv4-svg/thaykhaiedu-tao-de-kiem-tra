@@ -102,10 +102,12 @@ Quy tắc bắt buộc:
 - Đúng yêu cầu cần đạt, mức độ, dạng câu và điểm trong yêu cầu. Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam, không đánh đố.
 - Trắc nghiệm nhiều lựa chọn: đúng 4 phương án, chỉ MỘT đáp án đúng, các phương án gây nhiễu hợp lí, độ dài tương đương. Đúng sai: mỗi ý một nhận định, đáp án là chuỗi Đ/S theo thứ tự ý.
 - Sách giáo viên ("SGV") nếu có chỉ để tham khảo cách hiểu bài và gợi ý đáp án; không chép lời giải của sách.
-- Toán: tính lại đáp án thật cẩn thận, ghi phép tính. Không dùng định dạng Markdown. ${DAN_AI_PHAN_SO}
+- Toán: tính lại đáp án thật cẩn thận; "dapAn" ghi kết quả từng ý (ví dụ: a) 29 475; b) 434 382). Không dùng định dạng Markdown.
+- Câu có nhiều ý a), b), c)…: soạn đủ số ý được yêu cầu, không bớt ý.
+- "huongDanCham" (câu tự luận) viết ngắn gọn theo cách tính điểm: điểm từng ý, phần nào được bao nhiêu điểm, trường hợp đúng một phần. KHÔNG diễn giải từng bước tính (không viết kiểu "6 cộng 9 bằng 15, viết 5 nhớ 1"). ${DAN_AI_PHAN_SO}
 - Phương án viết thẳng nội dung, KHÔNG ghi sẵn chữ cái "A.", "B." ở đầu.
 - Chỉ trả về MỘT khối JSON, không lời dẫn: {"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string, "khongDuCanCu": boolean, "ghiChu": string}.
-  luaChon: 4 phương án (NLC) hoặc các ý (Đúng sai) hoặc [] cho dạng khác. huongDanCham: từng bước và điểm từng ý cho câu tự luận, "" cho trắc nghiệm.`;
+  luaChon: 4 phương án (NLC) hoặc các ý (Đúng sai) hoặc [] cho dạng khác. huongDanCham: cách cho điểm từng ý (không diễn giải từng bước tính) cho câu tự luận, "" cho trắc nghiệm.`;
 
 export const HE_THONG_DOI_CHIEU_SACH = `Bạn là giáo viên tiểu học Việt Nam kiểm tra MỘT câu của đề kiểm tra lớp 4 so với sách giáo khoa.
 Quy tắc bắt buộc:
@@ -118,13 +120,33 @@ Quy tắc bắt buộc:
 export interface CauChoAI {
   tenMon: string; dang: string | null; hinhThuc: string; muc: number; diem: number; yccd: string; baiHoc: string; trangSgk: string;
   deBai?: string; luaChon?: string[]; dapAn?: string; huongDanCham?: string; yeuCauHinh?: string; ghiChuThay?: string;
+  /** Các ý nhỏ của câu theo ma trận, ví dụ ['a', 'b', 'c', 'd']. */
+  yNho?: string[] | null;
+}
+
+/** Câu có từ hai ý trở lên: nhắc AI soạn đủ ý, chia điểm, ý ứng với YCCĐ nào. */
+function moTaYNho(c: CauChoAI): string {
+  const y = c.yNho ?? [];
+  if (y.length < 2) return '';
+  const nhan = y.map((x) => `${x})`).join(', ');
+  const moiY = Math.round((c.diem / y.length) * 100) / 100;
+  const nhieuYccd = c.yccd.includes(';');
+  return `\nCâu gồm ĐÚNG ${y.length} ý: ${nhan}. BẮT BUỘC soạn đủ ${y.length} ý, mỗi ý một dòng, mở đầu bằng ${nhan.replace(/, /g, ' / ')}.`
+    + `${c.dang === 'DS' ? ' Mỗi ý là một nhận định trong "luaChon".' : ''} Điểm mỗi ý khoảng ${String(moiY).replace('.', ',')} điểm (tổng ${String(c.diem).replace('.', ',')} điểm).`
+    + `${nhieuYccd ? ' Câu có nhiều YCCĐ (ngăn bởi dấu ;): chia các ý cho đủ các YCCĐ đó, theo thứ tự.' : ''}`;
+}
+
+/** Đếm số ý a), b)… trong đề bài (hoặc số nhận định với câu Đúng sai). */
+export function soYTrongCau(deBai: string, luaChon: string[], dang: string | null): number {
+  if (dang === 'DS') return luaChon.filter((x) => x.trim()).length;
+  return new Set([...deBai.matchAll(/(?:^|[\s\n(])([a-h])\)/g)].map((m) => m[1])).size;
 }
 
 function mota(c: CauChoAI): string {
   const lc = c.luaChon?.some((x) => x.trim()) ? `\nPhương án/ý: ${c.luaChon.map((x, i) => `${'ABCD'[i] ?? i + 1}. ${x}`).join(' | ')}` : '';
   return `Môn ${c.tenMon} lớp 4. Câu ${c.hinhThuc === 'TL' ? 'tự luận' : 'trắc nghiệm'}${c.dang ? ` (dạng ${c.dang})` : ''}, mức ${c.muc}, ${String(c.diem).replace('.', ',')} điểm.
 Yêu cầu cần đạt: ${c.yccd || '(chưa ghi)'}
-Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYêu cầu riêng của giáo viên: ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}`;
+Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaYNho(c)}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYêu cầu riêng của giáo viên: ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}`;
 }
 
 export function loiNhacSoanCau(c: CauChoAI, ngu: Pick<NguCanhSach, 'sgk' | 'sgv'>): string {
@@ -175,9 +197,10 @@ Quy tắc bắt buộc:
 - Đúng yêu cầu cần đạt, mức độ, dạng câu. Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam, không đánh đố.
 - Trắc nghiệm nhiều lựa chọn: đúng 4 phương án, chỉ MỘT đáp án đúng, phương án gây nhiễu hợp lí, độ dài tương đương. Đúng sai: mỗi ý một nhận định, đáp án là chuỗi Đ/S theo thứ tự ý.
 - Toán: tính lại đáp án thật cẩn thận. Không dùng định dạng Markdown. ${DAN_AI_PHAN_SO}
+- "huongDanCham" viết ngắn gọn theo cách tính điểm từng ý, KHÔNG diễn giải từng bước tính.
 - Phương án viết thẳng nội dung, KHÔNG ghi sẵn chữ cái "A.", "B." ở đầu.
 - Chỉ trả về MỘT khối JSON, không lời dẫn: {"cau": [{"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string}], "khongDuCanCu": boolean, "ghiChu": string}.
-  luaChon: 4 phương án (NLC) hoặc các ý (Đúng sai) hoặc [] cho dạng khác. huongDanCham: từng bước và điểm từng ý cho câu tự luận, "" cho trắc nghiệm.`;
+  luaChon: 4 phương án (NLC) hoặc các ý (Đúng sai) hoặc [] cho dạng khác. huongDanCham: cách cho điểm từng ý (không diễn giải từng bước tính) cho câu tự luận, "" cho trắc nghiệm.`;
 
 export function loiNhacSoanNhieuCau(c: CauChoAI, soCau: number, ngu: Pick<NguCanhSach, 'sgk' | 'sgv'>): string {
   return `${mota(c)}\n\nCác trang sách tra được:\n${ngu.sgk || '(không có trang SGK)'}\n${ngu.sgv ? `\n${ngu.sgv}` : ''}\n\nSoạn đúng ${soCau} câu khác nhau theo yêu cầu trên.`;

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 import { nguCanhChoCau } from '@/lib/repositories/sach.repository';
-import { HE_THONG_SOAN_CAU_TU_SACH, docCauAISoan, loiNhacSoanCau } from '@/core/chuong-trinh/sach';
+import { HE_THONG_SOAN_CAU_TU_SACH, docCauAISoan, loiNhacSoanCau, soYTrongCau } from '@/core/chuong-trinh/sach';
 import { TEN_MON } from '@/core/chuong-trinh/mon';
 
 export const maxDuration = 120;
 
-interface Dong { baiHoc?: string; trangSgk?: string; tuan?: number | null; yccd?: string; dang?: string | null; hinhThuc?: string; muc?: number; diem?: number; yeuCauHinh?: string }
+interface Dong { yNho?: string[] | null; baiHoc?: string; trangSgk?: string; tuan?: number | null; yccd?: string; dang?: string | null; hinhThuc?: string; muc?: number; diem?: number; yeuCauHinh?: string }
 
 /**
  * AI soạn một câu theo đúng bài, trang trong đặc tả, dựa trên chữ của các trang SGK (và SGV nếu có) trong Kho sách.
@@ -23,14 +23,23 @@ export async function POST(req: NextRequest) {
     const ngu = await nguCanhChoCau(b.mon, 4, { baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', tuan: typeof d.tuan === 'number' ? d.tuan : null });
     const baiDoc = b.baiDoc?.noiDung?.trim() ? b.baiDoc : null;
     if (!ngu.sgk.trim() && !baiDoc) return NextResponse.json({ error: `Chưa có trang SGK làm căn cứ để soạn. ${ngu.thieu.filter((x) => !/không bắt buộc/.test(x)).join(' ')}`, thieu: ngu.thieu }, { status: 422 });
-    const noiDungGoc = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, ngu);
+    const noiDungGoc = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, yNho: Array.isArray(d.yNho) ? d.yNho.slice(0, 8) : null, ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, ngu);
     const noiDung = baiDoc
       ? `${noiDungGoc}\n\nBÀI ĐỌC HIỂU CỦA ĐỀ (câu hỏi phải dựa vào bài đọc này, không dùng bài đọc trong SGK; được trích ý trong bài đọc này):\nTên bài: ${baiDoc.tieuDe ?? ''}${baiDoc.tacGia ? ` (${baiDoc.tacGia})` : ''}\n${(baiDoc.noiDung ?? '').slice(0, 6000)}`
       : noiDungGoc;
+    // Câu nhiều ý: thiếu ý thì nhắc AI soạn lại cho đủ
+    const soY = Array.isArray(d.yNho) && d.yNho.length >= 2 ? d.yNho.length : 0;
     let cau = null;
-    for (let lan = 0; lan < 2 && !cau; lan++) {
-      const kq = await goiAITheoViec('SOAN_DE', { heThong: HE_THONG_SOAN_CAU_TU_SACH, noiDung: lan ? `${noiDung}\n\nLần trước chưa trả đúng khối JSON. Trả lại đúng định dạng.` : noiDung, toiDaToken: 2500, timWeb: false });
-      cau = docCauAISoan(kq.traLoi);
+    let nhac = '';
+    for (let lan = 0; lan < 3; lan++) {
+      const kq = await goiAITheoViec('SOAN_DE', { heThong: HE_THONG_SOAN_CAU_TU_SACH, noiDung: nhac ? `${noiDung}\n\n${nhac}` : noiDung, toiDaToken: 2500 + 400 * soY, timWeb: false });
+      const x = docCauAISoan(kq.traLoi);
+      if (!x) { nhac = 'Lần trước chưa trả đúng khối JSON. Trả lại đúng định dạng.'; continue; }
+      cau = x;
+      if (x.khongDuCanCu || !soY) break;
+      const co = soYTrongCau(x.deBai, x.luaChon, d.dang ?? null);
+      if (co >= soY) break;
+      nhac = `Lần trước chỉ có ${co} ý, thiếu ý. Câu này phải có đủ ${soY} ý: ${d.yNho!.map((y) => `${y})`).join(', ')}. Soạn lại đủ ${soY} ý.`;
     }
     if (!cau) return NextResponse.json({ error: 'AI chưa trả về câu hợp lệ. Thầy bấm soạn lại.' }, { status: 422 });
     return NextResponse.json({ success: true, cau, khoang: ngu.khoang, trangDaDung: ngu.trangSgkCoChu, thieu: ngu.thieu, coSgv: !!ngu.sgv, model: tt.model });
