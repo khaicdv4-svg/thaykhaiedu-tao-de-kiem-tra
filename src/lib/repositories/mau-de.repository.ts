@@ -86,6 +86,34 @@ export async function fileMauDe(id: string): Promise<{ tenFile: string; noiDung:
 }
 
 /**
+ * File Word của mẫu đang dùng cho một môn (bản còn dùng, phiên bản lớn nhất), để xuất đề theo mẫu.
+ * Môn chưa có mẫu thì trả null. Mẫu là file .doc cũ thì kèm lí do (chỉ ghép được với .docx).
+ */
+export async function fileMauDangDung(maMon: string): Promise<{ tenFile: string; noiDung: ArrayBuffer | null; lyDo?: string } | null> {
+  const o = O_MAU.find((x) => x.maMon === maMon)?.ma;
+  if (!o) return null;
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase
+    .from('exam_templates')
+    .select('name, storage_path, version')
+    .eq('organization_id', orgId)
+    .eq('grade', KHOI)
+    .eq('template_type', 'ORGANIZATION_TEMPLATE')
+    .eq('assessment_period', KY_CHUNG)
+    .eq('validation_status', 'VALIDATED')
+    .eq('header_layout->>o', o)
+    .order('version', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(`Không đọc được mẫu đề: ${error.message}`);
+  const m = data?.[0];
+  if (!m?.storage_path) return null;
+  if (laFileDocCu(m.name as string) || String(m.storage_path).endsWith('.doc')) return { tenFile: m.name as string, noiDung: null, lyDo: 'mẫu là file .doc cũ, cần lưu lại thành .docx' };
+  const { data: tep, error: loiTai } = await supabase.storage.from(BUCKET).download(m.storage_path as string);
+  if (loiTai || !tep) throw new Error(`Không tải được file mẫu: ${loiTai?.message ?? 'không rõ lỗi'}`);
+  return { tenFile: m.name as string, noiDung: await tep.arrayBuffer() };
+}
+
+/**
  * Chỗ tải lên cho một file mẫu: trình duyệt tải thẳng vào kho file (không qua máy chủ app,
  * vì máy chủ giới hạn dung lượng mỗi lần gửi), rồi báo lại đường dẫn để lưu.
  */

@@ -457,7 +457,11 @@ export default function TaoDePage() {
         a.download = `${hoSo ? 'HoSo' : 'De'}-${maMon}-${ky}.docx`;
         a.click();
         URL.revokeObjectURL(url);
-        setThongBao(hoSo ? 'Đã xuất bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm) từ bản đề đã lưu.' : 'Đã xuất tệp Word (đề và hướng dẫn chấm) từ bản đề đã lưu. Nếu vừa sửa, thầy bấm Lưu bản nháp trước khi xuất.');
+        const mau = decodeURIComponent(r.headers.get('X-Mau-De') ?? '');
+        const ghiMau = mau.startsWith('da-dung:') ? ` Đầu bài theo mẫu đề của tổ (${mau.slice(8)}).`
+          : mau.startsWith('loi:') ? ` Chưa dùng được mẫu đề của tổ (${mau.slice(4)}), đầu bài theo khung mặc định.`
+          : mau === 'chua-co' ? ' Môn này chưa có mẫu đề của tổ, đầu bài theo khung mặc định.' : '';
+        setThongBao((hoSo ? 'Đã xuất bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm) từ bản đề đã lưu.' : 'Đã xuất tệp Word (đề và hướng dẫn chấm) từ bản đề đã lưu. Nếu vừa sửa, thầy bấm Lưu bản nháp trước khi xuất.') + ghiMau);
       }
     } catch {
       setThongBao('Chưa xuất được: không kết nối được hệ thống.');

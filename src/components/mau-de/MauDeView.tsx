@@ -159,7 +159,7 @@ export function MauDeView() {
         <h1 className="text-xl font-bold text-slate-900">Mẫu đề &amp; Định dạng</h1>
         <p className="text-sm text-slate-600 mt-1">
           Mỗi môn một file Word mẫu của tổ, dùng chung cho cả 4 kì. Tiếng Việt để chung một file: đọc hiểu, viết, đọc thành tiếng và hướng dẫn chấm. App giữ file gốc,
-          đọc khổ giấy, lề, phông chữ và khung tiêu đề để đối chiếu khi xuất đề. Tải bản mới thì bản mới được dùng, bản cũ vẫn giữ.
+          khi xuất Word ở bước 4, đầu bài của đề (tên trường, họ tên, GV coi, bảng Điểm – GV chấm) lấy đúng theo file mẫu; app chỉ đổi tên kì, tên môn và thời gian. Mẫu phải là file .docx. Tải bản mới thì bản mới được dùng, bản cũ vẫn giữ.
         </p>
       </div>
 
