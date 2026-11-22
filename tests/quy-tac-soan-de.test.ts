@@ -18,4 +18,8 @@ describe('Quy tắc của tổ đưa vào lời nhắc AI', () => {
     expect(t).toMatch(/1,5 điểm/);
     expect(t).toMatch(/QUY TẮC CỦA TỔ KHỐI 4/);
   });
+  it('ghi chú ở đặc tả (dạng đổi đơn vị) được đưa vào lời nhắc như yêu cầu bắt buộc', () => {
+    const t = loiNhacVietLai({ maMon: 'TOAN', ky: 'GIUA_HK1', tenMon: 'Toán', dang: null, hinhThuc: 'TL', muc: 2, diem: 1, yccd: 'chuyển đổi và tính toán với số đo', baiHoc: '', trangSgk: '', deBai: 'x', ghiChuThay: 'dạng đổi đơn vị đo' }, 'viết lại');
+    expect(t).toMatch(/YÊU CẦU RIÊNG CỦA GIÁO VIÊN CHO CÂU NÀY[^\n]*dạng đổi đơn vị đo/);
+  });
 });

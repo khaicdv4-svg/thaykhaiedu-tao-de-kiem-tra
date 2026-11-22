@@ -410,8 +410,8 @@ export default function DacTaPage() {
                               <input aria-label={`Mô tả hình câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="Ví dụ: 4 góc nhọn, vuông, tù, bẹt; nhãn A, B, C, D" disabled={daXacNhan} value={r.moTaHinh ?? ''} onChange={(e) => suaDong(r.khoa, { moTaHinh: e.target.value })} />
                             </label>
                           )}
-                          <label className="text-xs text-slate-500 sm:col-span-3">Ghi chú (nếu thầy có yêu cầu riêng cho câu này)
-                            <input aria-label={`Ghi chú câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} value={r.ghiChu} onChange={(e) => suaDong(r.khoa, { ghiChu: e.target.value })} />
+                          <label className="text-xs text-slate-500 sm:col-span-3">Ghi chú – yêu cầu riêng cho câu (AI luôn soạn theo)
+                            <input aria-label={`Ghi chú câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} placeholder="VD: dạng đổi đơn vị đo, không ra bài toán có lời văn" value={r.ghiChu} onChange={(e) => suaDong(r.khoa, { ghiChu: e.target.value })} />
                           </label>
                         </div>
                       </div>

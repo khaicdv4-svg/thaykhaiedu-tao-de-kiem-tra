@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { Loader2, Sparkles } from 'lucide-react';
 import type { NoiDungCau } from '@/core/de/de';
 
-interface Meta { muc: number; hinhThuc: string; dang: string | null; yccd: string; diem?: number; ky?: string; yNho?: string[] | null }
+interface Meta { muc: number; hinhThuc: string; dang: string | null; yccd: string; diem?: number; ky?: string; yNho?: string[] | null; ghiChuDacTa?: string }
 interface BanMoi { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; ghiChu: string }
 
 const GOI_Y = ['Câu hỏi dễ hiểu hơn', 'Đáp án ngắn gọn hơn', 'Đổi số liệu khác', 'Dùng từ quen thuộc với học sinh miền Nam'];
@@ -29,7 +29,7 @@ export function VietLaiCauAI({ mon, meta, noiDung, nhanDung, onDung }: {
     try {
       const r = await fetch('/api/ngan-hang/viet-lai', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mon, yeuCau, muc: meta.muc, hinhThuc: meta.hinhThuc, dang: meta.dang, yccd: meta.yccd, diem: meta.diem, ky: meta.ky, yNho: meta.yNho, cau: { deBai: noiDung.deBai, luaChon: noiDung.luaChon, dapAn: noiDung.dapAn, huongDanCham: noiDung.huongDanCham } }),
+        body: JSON.stringify({ mon, yeuCau, muc: meta.muc, hinhThuc: meta.hinhThuc, dang: meta.dang, yccd: meta.yccd, diem: meta.diem, ky: meta.ky, yNho: meta.yNho, ghiChuDacTa: meta.ghiChuDacTa, cau: { deBai: noiDung.deBai, luaChon: noiDung.luaChon, dapAn: noiDung.dapAn, huongDanCham: noiDung.huongDanCham } }),
       });
       const j = await r.json();
       if (!r.ok) setLoi(j.error ?? 'AI chưa viết lại được.'); else setBan(j.cau);
