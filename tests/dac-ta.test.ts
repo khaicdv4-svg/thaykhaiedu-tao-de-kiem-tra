@@ -299,3 +299,35 @@ describe('Chọn bài thì tự điền tuần và trang SGK', () => {
     expect(kq.dong[1]).toMatchObject({ tuan: 5, trangSgk: 'tr. 99' });
   });
 });
+
+describe('PPCT HUB ghi tên bài không có số, kèm "(tr.…)" (dữ liệu thật Toán 4 từ 15/11)', () => {
+  const tiet = [
+    { tuan: 5, baiTen: 'Hàng và lớp (tr.37)' },
+    { tuan: 5, baiTen: 'Hàng và lớp (tt) (tr.38)' },
+    { tuan: 6, baiTen: 'Các số trong phạm vi lớp triệu (tr.41)' },
+    { tuan: 2, baiTen: 'Số chẵn , số lẻ (tr.12)' },
+    { tuan: 7, baiTen: 'Luyện tập chung (tr.50)' },
+  ];
+  const mucLuc = [
+    { baiSo: 3, tuan: 2, hoatDong: 'Bài học', noiDung: 'Số chẵn, số lẻ', trang: 12 },
+    { baiSo: 11, tuan: 5, hoatDong: 'Bài học', noiDung: 'Hàng và lớp', trang: 37 },
+    { baiSo: 12, tuan: 6, hoatDong: 'Bài học', noiDung: 'Các số trong phạm vi lớp triệu', trang: 41 },
+  ];
+
+  it('đặc tả cũ ghi "Bài 12: …" vẫn khớp, lấy trang từ mục lục', () => {
+    expect(minhChungTuBai('Bài 12: Các số trong phạm vi lớp triệu', tiet, mucLuc)).toEqual({ baiHoc: 'Bài 12: Các số trong phạm vi lớp triệu', tuan: 6, trangSgk: 'tr. 41' });
+    expect(minhChungTuBai('Bài 3: Số chẵn, số lẻ', tiet, mucLuc)?.trangSgk).toBe('tr. 12');
+  });
+
+  it('chọn tên bài PPCT mới: gộp tiết (tt), ghi lại số bài, lấy trang đầu', () => {
+    expect(minhChungTuBai('Hàng và lớp (tr.37)', tiet, mucLuc)).toEqual({ baiHoc: 'Bài 11: Hàng và lớp', tuan: 5, trangSgk: 'tr. 37' });
+  });
+
+  it('mục lục chưa có bài thì lấy trang ghi trong tên PPCT', () => {
+    expect(minhChungTuBai('Luyện tập chung (tr.50)', tiet, [])?.trangSgk).toBe('tr. 50');
+  });
+
+  it('gợi ý theo số bài trong ma trận khi PPCT không ghi số bài', () => {
+    expect(goiYTheoBaiPpct('Bài 12. Các số trong phạm vi lớp triệu', tiet, mucLuc)).toEqual({ baiHoc: 'Bài 12: Các số trong phạm vi lớp triệu', tuan: 6 });
+  });
+});

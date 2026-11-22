@@ -301,45 +301,72 @@ export interface MucLucSgk { baiSo: number; tuan: number | null; hoatDong: strin
 const boKhoangTrang = (s: string) => chuanHoa(s).replace(/\s+/g, '');
 
 /**
- * Thầy chọn một bài trong danh sách PPCT thì lấy luôn tuần (tuần đầu của bài) và trang SGK (trang đầu của bài, theo mục lục).
- * Chỉ trả về khi khớp đúng một bài trong PPCT; trang chỉ có khi mục lục SGK của môn đã được nhập.
- * Ô nhập một dòng làm mất dấu xuống dòng trong tên bài, nên so sánh bỏ hết khoảng trắng.
+ * Khóa so tên bài: bỏ "Bài 12:", bỏ mọi phần trong ngoặc ("(tr.41)", "(tt)", "(3 tiết)"), bỏ dấu câu và khoảng trắng.
+ * PPCT HUB ghi "Các số trong phạm vi lớp triệu (tr.41)", đặc tả cũ ghi "Bài 12: Các số trong phạm vi lớp triệu":
+ * hai cách ghi này cho cùng một khóa.
+ */
+export const khoaTenBai = (s: string | null | undefined) =>
+  boKhoangTrang((s ?? '').replace(/\([^)]*\)/g, ' ').replace(/^\s*bài\s*\d+\s*[:.\-–]?/iu, ' ')).replace(/[,.;:!?\-–"“”]/g, '');
+
+/** Trang ghi sẵn trong tên bài của PPCT, ví dụ "(tr.41)". */
+const trangTrongTen = (s: string | null | undefined) => /\(\s*tr\.?\s*(\d+)/iu.exec(s ?? '')?.[1];
+
+/** Tên bài gọn để hiện: "Bài 12: Các số trong phạm vi lớp triệu". */
+const tenBaiGon = (ten: string, so?: string) => {
+  const sach = ten.replace(/\(\s*tr\.?[^)]*\)/giu, ' ').replace(/\s+/g, ' ').trim();
+  return so && !soBai(sach) ? `Bài ${so}: ${sach}` : sach;
+};
+
+/**
+ * Thầy chọn một bài trong danh sách PPCT thì lấy luôn tuần (tuần đầu của bài) và trang SGK (trang đầu của bài).
+ * Khớp bài theo tên (không phân biệt cách ghi số bài, ngoặc, dấu câu) hoặc theo số bài trong mục lục SGK.
+ * Trang lấy từ mục lục SGK; mục lục chưa có thì lấy "(tr.…)" ghi trong tên bài của PPCT.
+ * Không khớp bài nào thì không điền (không đoán). Môn chưa có PPCT thì không điền.
  */
 export function minhChungTuBai(baiHoc: string, tiet: TietGoiY[] | undefined, mucLuc: MucLucSgk[] | undefined): { baiHoc: string; tuan?: number; trangSgk?: string } | undefined {
-  const khoa = boKhoangTrang(baiHoc ?? '');
+  const khoa = khoaTenBai(baiHoc);
   if (!khoa || !tiet?.length) return undefined;
-  const khop = tiet.filter((t) => t.baiTen && boKhoangTrang(t.baiTen) === khoa);
-  if (!khop.length) return undefined;
-  const tuan = khop.map((t) => t.tuan).filter((x): x is number => x !== null);
-  const n = soBai(khop[0].baiTen);
-  const trang = n && mucLuc?.length ? mucLuc.filter((m) => String(m.baiSo) === n).map((m) => m.trang) : [];
-  return {
-    baiHoc: khop[0].baiTen!.replace(/\s+/g, ' ').trim(),
-    tuan: tuan.length ? Math.min(...tuan) : undefined,
-    trangSgk: trang.length ? `tr. ${Math.min(...trang)}` : undefined,
-  };
+  const khop = tiet.filter((t) => t.baiTen && khoaTenBai(t.baiTen) === khoa);
+  // Số bài: lấy trong chữ thầy ghi, trong tên PPCT, hoặc tra mục lục theo tên bài
+  const ml = mucLuc ?? [];
+  const so = soBai(baiHoc) ?? soBai(khop[0]?.baiTen)
+    ?? (khop.length ? ml.find((m) => khoaTenBai(m.noiDung) === khoa)?.baiSo.toString() : undefined);
+  const mlBai = so ? ml.filter((m) => String(m.baiSo) === so) : [];
+  if (!khop.length && !mlBai.length) return undefined;
+  const tuanPpct = khop.map((t) => t.tuan).filter((x): x is number => x !== null);
+  const tuanMl = mlBai.map((m) => m.tuan).filter((x): x is number => x !== null);
+  const tuan = tuanPpct.length ? Math.min(...tuanPpct) : tuanMl.length ? Math.min(...tuanMl) : undefined;
+  const trangPpct = khop.map((t) => Number(trangTrongTen(t.baiTen))).filter((x) => x > 0);
+  const trang = mlBai.length ? Math.min(...mlBai.map((m) => m.trang)) : trangPpct.length ? Math.min(...trangPpct) : undefined;
+  const ten = khop.length ? tenBaiGon(khop[0].baiTen!, so) : baiHoc.replace(/\s+/g, ' ').trim();
+  return { baiHoc: ten, tuan, trangSgk: trang ? `tr. ${trang}` : undefined };
 }
 
 const soBai = (s: string | null | undefined) => /(?:^|[^\p{L}\d])bài\s*(\d+)\b/iu.exec(s ?? '')?.[1];
 
 /**
  * Tìm bài trong PPCT theo số bài ghi ở đầu nội dung câu, ví dụ "Bài 4. Thiên nhiên vùng Trung du…".
- * Chỉ gợi ý khi PPCT có đúng bài mang số đó; không có thì để trống (không đoán).
+ * PPCT không ghi số bài thì tra tên bài theo số trong mục lục SGK rồi tìm trong PPCT.
+ * Không có bài mang số đó thì để trống (không đoán).
  */
-export function goiYTheoBaiPpct(noiDung: string | null | undefined, tiet: TietGoiY[] | undefined): GoiYMinhChung | undefined {
+export function goiYTheoBaiPpct(noiDung: string | null | undefined, tiet: TietGoiY[] | undefined, mucLuc: MucLucSgk[] = []): GoiYMinhChung | undefined {
   const n = soBai(noiDung);
   if (!n || !tiet?.length) return undefined;
-  const khop = tiet.filter((t) => t.baiTen && soBai(t.baiTen) === n);
-  if (!khop.length) return undefined;
+  let khop = tiet.filter((t) => t.baiTen && soBai(t.baiTen) === n);
+  if (!khop.length) {
+    const tenMl = new Set(mucLuc.filter((m) => String(m.baiSo) === n).map((m) => khoaTenBai(m.noiDung)));
+    khop = tiet.filter((t) => t.baiTen && tenMl.has(khoaTenBai(t.baiTen)));
+    if (!khop.length) return undefined;
+  }
   const tuan = khop.map((t) => t.tuan).filter((x): x is number => x !== null);
-  return { baiHoc: khop[0].baiTen!.trim(), tuan: tuan.length ? Math.min(...tuan) : undefined };
+  return { baiHoc: tenBaiGon(khop[0].baiTen!.trim(), n), tuan: tuan.length ? Math.min(...tuan) : undefined };
 }
 
 /** Điền lại bài, tuần từ PPCT vào các ô còn trống. Ô thầy đã điền thì giữ nguyên. */
 export function dienLaiTuPpct(d: DacTa, goiYTheoYccd: Map<string, GoiYMinhChung>, tiet: TietGoiY[], mucLuc: MucLucSgk[] = []): { dacTa: DacTa; soDong: number } {
   let soDong = 0;
   const dong = d.dong.map((r) => {
-    const g = goiYTheoYccd.get(chuanHoa(r.yccd)) ?? goiYTheoBaiPpct(r.noiDung ?? r.mach, tiet);
+    const g = goiYTheoYccd.get(chuanHoa(r.yccd)) ?? goiYTheoBaiPpct(r.noiDung ?? r.mach, tiet, mucLuc);
     const baiHoc = r.baiHoc || g?.baiHoc || '';
     const tuan = r.tuan ?? g?.tuan ?? null;
     // Có bài rồi (thầy chọn hoặc gợi ý) mà còn thiếu tuần, trang thì tra thêm trong PPCT và mục lục SGK

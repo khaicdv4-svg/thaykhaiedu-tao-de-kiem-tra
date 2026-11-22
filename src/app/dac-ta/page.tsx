@@ -147,7 +147,16 @@ export default function DacTaPage() {
         const them = kq.moi.length ? ` Câu mới cần điền: ${kq.moi.join('; ')}.` : '';
         const bo = kq.bo.length ? ` Câu không còn trong ma trận: ${kq.bo.join('; ')}.` : '';
         setThongBao(`Ma trận riêng đã lên phiên bản ${moiNhat.phienBan} (đặc tả đang theo phiên bản ${nhap.phienBanMaTranRieng}). App đã tự cập nhật bản nháp đặc tả theo ma trận mới, giữ bài, tuần, trang thầy đã điền.${them}${bo} Thầy cô xem lại, bấm Lưu nháp rồi xác nhận lại.`);
-      } else setDacTa(nhap.duLieu);
+      } else {
+        // Ô bài đã có mà tuần, trang còn trống (đặc tả làm trước khi có mục lục SGK): điền thêm, không ghi đè ô đã điền
+        const tietDs = pp.ok ? pp.j.tiet ?? [] : [];
+        const dien = dienLaiTuPpct(nhap.duLieu, taoGoiYTheoYccd(yc.ok ? yc.j.yccd ?? [] : [], tietDs), tietDs, ml.ok ? ml.j.mucLuc ?? [] : []);
+        setDacTa(dien.dacTa);
+        if (dien.soDong) {
+          setTrangThai((t) => trangThaiDacTaSauKhiSua(t));
+          setThongBao(`App đã điền thêm bài, tuần, trang SGK còn trống cho ${dien.soDong} câu theo PPCT và mục lục sách. Thầy cô xem lại rồi bấm Lưu.`);
+        }
+      }
     } else {
       setDaLuuId(null);
       setTrangThai('BAN_NHAP');
