@@ -260,7 +260,7 @@ export default function TaoDePage() {
   const soanTuSach = async (c: CauDe) => {
     setSach((g) => ({ ...g, [c.khoa]: { dang: 'soan' } }));
     const r = await goiJson<{ cau?: NonNullable<KetQuaSach['soan']>; khoang?: { tap: number | null; tu: number; den: number }; trangDaDung?: number[]; thieu?: string[] }>('/api/de-kiem-tra/soan-cau', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, dong: dongDacTaCua(c) }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, ky, dong: dongDacTaCua(c) }),
     });
     if (!r.ok || !r.j.cau) { setSach((g) => ({ ...g, [c.khoa]: { loi: r.j.error ?? 'AI chưa soạn được.', thieu: r.j.thieu } })); return; }
     setSach((g) => ({ ...g, [c.khoa]: { soan: r.j.cau, thieu: r.j.thieu, trang: moTaTrang(r.j.khoang, r.j.trangDaDung) } }));
@@ -268,7 +268,7 @@ export default function TaoDePage() {
   const doiChieuSach = async (c: CauDe) => {
     setSach((g) => ({ ...g, [c.khoa]: { dang: 'doi' } }));
     const r = await goiJson<{ ketQua?: NonNullable<KetQuaSach['doi']>; khoang?: { tap: number | null; tu: number; den: number }; trangDaDung?: number[]; thieu?: string[] }>('/api/de-kiem-tra/doi-chieu-sach', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, dong: dongDacTaCua(c), cau: { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham } }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, ky, dong: dongDacTaCua(c), cau: { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham } }),
     });
     if (!r.ok || !r.j.ketQua) { setSach((g) => ({ ...g, [c.khoa]: { loi: r.j.error ?? 'AI chưa đối chiếu được.', thieu: r.j.thieu } })); return; }
     setSach((g) => ({ ...g, [c.khoa]: { doi: r.j.ketQua, thieu: r.j.thieu, trang: moTaTrang(r.j.khoang, r.j.trangDaDung) } }));
@@ -300,7 +300,7 @@ export default function TaoDePage() {
       if (docHieu && !baiDoc?.noiDung?.trim()) { loi.push(`${nhanCau(c)}: chưa có bài đọc hiểu, chọn bài đọc trước.`); return; }
       const r = await goiJson<{ cau?: NonNullable<KetQuaSach['soan']> }>('/api/de-kiem-tra/soan-cau', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mon: maMon, dong: dongDacTaCua(c), ...(docHieu ? { baiDoc } : {}) }),
+        body: JSON.stringify({ mon: maMon, ky, dong: dongDacTaCua(c), ...(docHieu ? { baiDoc } : {}) }),
       });
       const x = r.j.cau;
       if (!r.ok || !x) { loi.push(`${nhanCau(c)}: ${r.j.error ?? 'AI chưa soạn được'}`); return; }
@@ -604,7 +604,7 @@ export default function TaoDePage() {
                         <button type="button" className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50 disabled:opacity-40" disabled={!c.deBai.trim()} onClick={() => void luuNganHang(c)}>Lưu vào ngân hàng</button>
                         {tinNganHang[c.khoa] && <span className="text-slate-600">{tinNganHang[c.khoa]}</span>}
                         {c.deBai.trim() && (
-                          <VietLaiCauAI mon={maMon} meta={{ muc: c.muc, hinhThuc: c.hinhThuc, dang: c.dang, yccd: c.yccd }} noiDung={c} nhanDung="Dùng bản này cho câu" onDung={(nd) => suaCau(c.khoa, { deBai: nd.deBai, luaChon: nd.luaChon, dapAn: nd.dapAn, huongDanCham: nd.huongDanCham })} />
+                          <VietLaiCauAI mon={maMon} meta={{ muc: c.muc, hinhThuc: c.hinhThuc, dang: c.dang, yccd: c.yccd, diem: c.diem, ky, yNho: c.yNho }} noiDung={c} nhanDung="Dùng bản này cho câu" onDung={(nd) => suaCau(c.khoa, { deBai: nd.deBai, luaChon: nd.luaChon, dapAn: nd.dapAn, huongDanCham: nd.huongDanCham })} />
                         )}
                       </div>
                       {moNganHang === c.khoa && (

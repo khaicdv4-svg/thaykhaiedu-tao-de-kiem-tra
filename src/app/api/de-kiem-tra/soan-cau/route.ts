@@ -14,7 +14,7 @@ interface Dong { yNho?: string[] | null; baiHoc?: string; trangSgk?: string; tua
  */
 export async function POST(req: NextRequest) {
   try {
-    const b = (await req.json()) as { mon?: string; dong?: Dong; ghiChu?: string; baiDoc?: { tieuDe?: string; noiDung?: string; tacGia?: string } };
+    const b = (await req.json()) as { mon?: string; ky?: string; dong?: Dong; ghiChu?: string; baiDoc?: { tieuDe?: string; noiDung?: string; tacGia?: string } };
     const d = b.dong;
     if (!b.mon || !TEN_MON[b.mon] || !d) return NextResponse.json({ error: 'Thiếu môn hoặc dòng đặc tả.' }, { status: 400 });
     if (!d.yccd?.trim()) return NextResponse.json({ error: 'Dòng đặc tả chưa có yêu cầu cần đạt, chưa soạn được.' }, { status: 400 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const ngu = await nguCanhChoCau(b.mon, 4, { baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', tuan: typeof d.tuan === 'number' ? d.tuan : null });
     const baiDoc = b.baiDoc?.noiDung?.trim() ? b.baiDoc : null;
     if (!ngu.sgk.trim() && !baiDoc) return NextResponse.json({ error: `Chưa có trang SGK làm căn cứ để soạn. ${ngu.thieu.filter((x) => !/không bắt buộc/.test(x)).join(' ')}`, thieu: ngu.thieu }, { status: 422 });
-    const noiDungGoc = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, yNho: Array.isArray(d.yNho) ? d.yNho.slice(0, 8) : null, ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, ngu);
+    const noiDungGoc = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, yNho: Array.isArray(d.yNho) ? d.yNho.slice(0, 8) : null, maMon: b.mon, ky: b.ky ?? null, tuan: typeof d.tuan === 'number' ? d.tuan : null, ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, ngu);
     const noiDung = baiDoc
       ? `${noiDungGoc}\n\nBÀI ĐỌC HIỂU CỦA ĐỀ (câu hỏi phải dựa vào bài đọc này, không dùng bài đọc trong SGK; được trích ý trong bài đọc này):\nTên bài: ${baiDoc.tieuDe ?? ''}${baiDoc.tacGia ? ` (${baiDoc.tacGia})` : ''}\n${(baiDoc.noiDung ?? '').slice(0, 6000)}`
       : noiDungGoc;

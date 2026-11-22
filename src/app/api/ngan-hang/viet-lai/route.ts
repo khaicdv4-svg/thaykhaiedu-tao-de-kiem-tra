@@ -11,14 +11,14 @@ export const maxDuration = 120;
  */
 export async function POST(req: NextRequest) {
   try {
-    const b = (await req.json()) as { mon?: string; yeuCau?: string; muc?: number; hinhThuc?: string; dang?: string | null; yccd?: string; cau?: { deBai?: string; luaChon?: string[]; dapAn?: string; huongDanCham?: string } };
+    const b = (await req.json()) as { mon?: string; ky?: string; diem?: number; yNho?: string[] | null; yeuCau?: string; muc?: number; hinhThuc?: string; dang?: string | null; yccd?: string; cau?: { deBai?: string; luaChon?: string[]; dapAn?: string; huongDanCham?: string } };
     if (!b.mon || !TEN_MON[b.mon]) return NextResponse.json({ error: 'Thiếu môn.' }, { status: 400 });
     if (!b.yeuCau?.trim()) return NextResponse.json({ error: 'Thầy ghi rõ muốn sửa thế nào (ví dụ: câu dễ hiểu hơn, đáp án ngắn hơn).' }, { status: 400 });
     if (!b.cau?.deBai?.trim()) return NextResponse.json({ error: 'Câu chưa có đề bài.' }, { status: 400 });
     const tt = await trangThaiViecAI('SOAN_DE');
     if (!tt.daCauHinh) return NextResponse.json({ error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}` }, { status: 503 });
     const noiDung = loiNhacVietLai({
-      tenMon: TEN_MON[b.mon], dang: b.dang ?? null, hinhThuc: b.hinhThuc === 'TL' ? 'TL' : 'TN', muc: b.muc ?? 1, diem: 0.5, yccd: b.yccd ?? '', baiHoc: '', trangSgk: '',
+      maMon: b.mon, ky: b.ky ?? null, tenMon: TEN_MON[b.mon], dang: b.dang ?? null, hinhThuc: b.hinhThuc === 'TL' ? 'TL' : 'TN', muc: b.muc ?? 1, diem: typeof b.diem === 'number' && b.diem > 0 && b.diem <= 10 ? b.diem : 0.5, yNho: Array.isArray(b.yNho) ? b.yNho.slice(0, 8) : null, yccd: b.yccd ?? '', baiHoc: '', trangSgk: '',
       deBai: b.cau.deBai, luaChon: b.cau.luaChon ?? [], dapAn: b.cau.dapAn ?? '', huongDanCham: b.cau.huongDanCham ?? '',
     }, b.yeuCau.trim().slice(0, 500));
     let cau = null;

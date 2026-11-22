@@ -3,6 +3,7 @@
  * Hàm thuần, không đọc ghi cơ sở dữ liệu. AI chỉ được dùng chữ của những trang tra được; không có thì nói thẳng là thiếu căn cứ.
  */
 import { boNhanPhuongAn, chuanHoaPhanSo, DAN_AI_PHAN_SO } from '@/core/de/phan-so';
+import { quyTacTheoMon } from '@/core/de/quy-tac-soan-de';
 
 const chuanHoaTen = (s: string) => s.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
 
@@ -97,6 +98,7 @@ export interface NguCanhSach {
 
 export const HE_THONG_SOAN_CAU_TU_SACH = `Bạn là giáo viên tiểu học Việt Nam soạn MỘT câu cho đề kiểm tra định kì lớp 4, bám sát sách giáo khoa.
 Quy tắc bắt buộc:
+- Tuân thủ "QUY TẮC CỦA TỔ KHỐI 4" ghi cuối yêu cầu: mức độ, số liệu đúng tầm lớp 4, giới hạn kĩ thuật của kì. Đây là quy định bắt buộc của tổ chuyên môn.
 - Chỉ dùng kiến thức, số liệu, ngữ liệu có trong các trang sách được cung cấp ("SGK") hoặc kiến thức cơ bản của đúng bài đó. TUYỆT ĐỐI không bịa nội dung sách. Nếu các trang không đủ để soạn đúng yêu cầu, trả JSON có "khongDuCanCu": true và giải thích ngắn ở "ghiChu".
 - KHÔNG chép nguyên bài tập, câu hỏi, đoạn văn có trong sách. Đổi số liệu, tình huống, tên gọi nhưng giữ đúng yêu cầu cần đạt, mức độ và dạng bài.
 - Đúng yêu cầu cần đạt, mức độ, dạng câu và điểm trong yêu cầu. Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam, không đánh đố.
@@ -122,6 +124,10 @@ export interface CauChoAI {
   deBai?: string; luaChon?: string[]; dapAn?: string; huongDanCham?: string; yeuCauHinh?: string; ghiChuThay?: string;
   /** Các ý nhỏ của câu theo ma trận, ví dụ ['a', 'b', 'c', 'd']. */
   yNho?: string[] | null;
+  /** Mã môn, kì, tuần: để đưa quy tắc số liệu, giới hạn kĩ thuật đúng giai đoạn. */
+  maMon?: string | null;
+  ky?: string | null;
+  tuan?: number | null;
 }
 
 /** Câu có từ hai ý trở lên: nhắc AI soạn đủ ý, chia điểm, ý ứng với YCCĐ nào. */
@@ -146,7 +152,10 @@ function mota(c: CauChoAI): string {
   const lc = c.luaChon?.some((x) => x.trim()) ? `\nPhương án/ý: ${c.luaChon.map((x, i) => `${'ABCD'[i] ?? i + 1}. ${x}`).join(' | ')}` : '';
   return `Môn ${c.tenMon} lớp 4. Câu ${c.hinhThuc === 'TL' ? 'tự luận' : 'trắc nghiệm'}${c.dang ? ` (dạng ${c.dang})` : ''}, mức ${c.muc}, ${String(c.diem).replace('.', ',')} điểm.
 Yêu cầu cần đạt: ${c.yccd || '(chưa ghi)'}
-Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaYNho(c)}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYêu cầu riêng của giáo viên: ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}`;
+Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaYNho(c)}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYêu cầu riêng của giáo viên: ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}
+
+QUY TẮC CỦA TỔ KHỐI 4 (bắt buộc tuân theo):
+${quyTacTheoMon({ maMon: c.maMon, tenMon: c.tenMon, ky: c.ky, muc: c.muc, tuan: c.tuan })}`;
 }
 
 export function loiNhacSoanCau(c: CauChoAI, ngu: Pick<NguCanhSach, 'sgk' | 'sgv'>): string {
@@ -192,6 +201,7 @@ export function docKetQuaDoiChieu(traLoi: string): KetQuaDoiChieu | null {
 /** Soạn NHIỀU câu cùng yêu cầu cần đạt để bổ sung ngân hàng câu hỏi. */
 export const HE_THONG_SOAN_NHIEU_CAU = `Bạn là giáo viên tiểu học Việt Nam soạn NHIỀU câu cho ngân hàng câu hỏi lớp 4, bám sát sách giáo khoa.
 Quy tắc bắt buộc:
+- Tuân thủ "QUY TẮC CỦA TỔ KHỐI 4" ghi cuối yêu cầu: mức độ, số liệu đúng tầm lớp 4, giới hạn kĩ thuật của kì. Đây là quy định bắt buộc của tổ chuyên môn.
 - Chỉ dùng kiến thức, số liệu, ngữ liệu có trong các trang sách được cung cấp ("SGK") hoặc kiến thức cơ bản của đúng bài đó. TUYỆT ĐỐI không bịa nội dung sách. Nếu các trang không đủ để soạn, trả {"khongDuCanCu": true, "ghiChu": "..."}.
 - KHÔNG chép nguyên bài tập, câu hỏi, đoạn văn trong sách. Các câu phải KHÁC NHAU rõ rệt về tình huống, số liệu hoặc cách hỏi, không lặp ý nhau.
 - Đúng yêu cầu cần đạt, mức độ, dạng câu. Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam, không đánh đố.
@@ -227,6 +237,8 @@ Quy tắc bắt buộc:
 - Chỉ sửa theo yêu cầu của giáo viên. Giữ nguyên yêu cầu cần đạt, mức độ, dạng câu và số phương án, trừ khi giáo viên yêu cầu đổi.
 - Không bịa kiến thức. Nếu yêu cầu làm câu sai kiến thức hoặc không còn đúng yêu cầu cần đạt, vẫn viết lại nhưng ghi cảnh báo ngắn ở "ghiChu".
 - Đổi đề bài hay số liệu thì TÍNH LẠI đáp án và hướng dẫn chấm cho khớp (Toán: ghi phép tính). Trắc nghiệm: đúng 4 phương án, chỉ MỘT đáp án đúng.
+- Giữ nguyên số điểm của câu; tổng điểm trong hướng dẫn chấm phải bằng đúng số điểm của câu. Hướng dẫn chấm viết theo cách cho điểm (điểm từng phép tính, từng ý), không diễn giải từng bước tính.
+- Tuân thủ "QUY TẮC CỦA TỔ KHỐI 4" trong yêu cầu, nhất là số liệu đúng tầm lớp 4 và giới hạn kĩ thuật của kì.
 - Câu ngắn, từ ngữ quen thuộc với học sinh miền Nam. Không dùng định dạng Markdown. Giữ nguyên các dòng "[Hình n]" nếu có. ${DAN_AI_PHAN_SO} Phương án viết thẳng nội dung, không ghi sẵn chữ cái "A.", "B." ở đầu.
 - Chỉ trả về MỘT khối JSON, không lời dẫn: {"deBai": string, "luaChon": string[], "dapAn": string, "huongDanCham": string, "khongDuCanCu": false, "ghiChu": string}.`;
 

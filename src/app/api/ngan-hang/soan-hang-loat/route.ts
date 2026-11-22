@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     if (!tt.daCauHinh) return NextResponse.json({ error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}` }, { status: 503 });
     const ngu = await nguCanhChoCau(b.mon, 4, { baiHoc: b.baiHoc ?? '', trangSgk: b.trangSgk ?? '', tuan: null });
     if (!ngu.sgk.trim()) return NextResponse.json({ error: `Chưa có trang SGK làm căn cứ để soạn. ${ngu.thieu.filter((x) => !/không bắt buộc/.test(x)).join(' ')}`, thieu: ngu.thieu }, { status: 422 });
-    const noiDung = loiNhacSoanNhieuCau({ tenMon: TEN_MON[b.mon], dang: b.dang ?? null, hinhThuc, muc, diem: 0.5, yccd: b.yccd, baiHoc: b.baiHoc ?? '', trangSgk: b.trangSgk ?? '', ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, soCau, ngu);
+    const noiDung = loiNhacSoanNhieuCau({ maMon: b.mon, tenMon: TEN_MON[b.mon], dang: b.dang ?? null, hinhThuc, muc, diem: 0.5, yccd: b.yccd, baiHoc: b.baiHoc ?? '', trangSgk: b.trangSgk ?? '', ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, soCau, ngu);
     let kq = null;
     for (let lan = 0; lan < 2 && !kq; lan++) {
       const tl = await goiAITheoViec('SOAN_DE', { heThong: HE_THONG_SOAN_NHIEU_CAU, noiDung: lan ? `${noiDung}\n\nLần trước chưa trả đúng khối JSON. Trả lại đúng định dạng.` : noiDung, toiDaToken: 1500 * soCau + 500, timWeb: false });
