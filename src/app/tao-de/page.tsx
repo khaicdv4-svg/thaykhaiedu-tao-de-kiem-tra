@@ -181,6 +181,18 @@ export default function TaoDePage() {
     setThongBao('Đã tạo khung đề từ đặc tả. Nhập đề bài, phương án và đáp án cho từng câu rồi lưu bản nháp.');
   };
 
+  // Chưa có đề: tự dựng khung đề từ đặc tả để thầy cô bấm "Tạo đề" ngay
+  const daTuDung = useRef('');
+  useEffect(() => {
+    if (!dacTaBan || de || dangTai || loiTai) return;
+    const khoa = `${maMon}|${ky}|${dacTaBan.id}`;
+    if (daTuDung.current === khoa) return;
+    daTuDung.current = khoa;
+    setDe(taoDeTuDacTa(dacTaBan.duLieu, dacTaBan.phienBan ?? 1));
+    setTrangThai('BAN_NHAP');
+    setThongBao(`Đã dựng khung ${dacTaBan.duLieu.dong.length} câu theo đặc tả phiên bản ${dacTaBan.phienBan}. Bấm "Tạo đề" để AI soạn tất cả các câu và đáp án.`);
+  }, [dacTaBan, de, dangTai, loiTai, maMon, ky]);
+
   const [goiYNH, setGoiYNH] = useState<{ ds: GoiYMotCau[]; chon: Record<string, boolean>; tin?: string } | null>(null);
   const [dangGoiYNH, setDangGoiY] = useState(false);
   const layGoiYNH = async () => {
@@ -265,6 +277,56 @@ export default function TaoDePage() {
     const lc = [...x.luaChon]; while (lc.length < c.luaChon.length) lc.push('');
     suaCau(c.khoa, { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}) });
     setSach((g) => ({ ...g, [c.khoa]: {} }));
+  };
+
+  /** Tạo đề: AI soạn mọi câu còn trống theo đặc tả (bài, trang SGK, YCCĐ, mức, dạng, điểm), điền thẳng vào đề rồi lưu bản nháp. */
+  const [taoDeAI, setTaoDeAI] = useState<{ dang: boolean; xong: number; tong: number; loi: string[] } | null>(null);
+  const laCauDocHieu = (c: CauDe) => {
+    const d = dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa);
+    return maMon === 'TIENG_VIET' && /đọc hiểu/i.test(`${d?.baiKiemTra ?? ''} ${d?.phan ?? ''}`);
+  };
+  const taoDeBangAI = async (vietLaiTatCa = false) => {
+    if (!de || !dacTaBan) return;
+    const ds = de.cau.filter((c) => vietLaiTatCa || !c.deBai.trim());
+    if (!ds.length) return;
+    if (vietLaiTatCa && !window.confirm(`AI viết lại cả ${ds.length} câu? Nội dung đang có sẽ được thay.`)) return;
+    const baiDoc = de.tiengViet?.baiDocHieu;
+    let deTam: DeKiemTra = de;
+    const loi: string[] = [];
+    let xong = 0;
+    setTaoDeAI({ dang: true, xong: 0, tong: ds.length, loi: [] });
+    const soanMot = async (c: CauDe) => {
+      const docHieu = laCauDocHieu(c);
+      if (docHieu && !baiDoc?.noiDung?.trim()) { loi.push(`${nhanCau(c)}: chưa có bài đọc hiểu, chọn bài đọc trước.`); return; }
+      const r = await goiJson<{ cau?: NonNullable<KetQuaSach['soan']> }>('/api/de-kiem-tra/soan-cau', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mon: maMon, dong: dongDacTaCua(c), ...(docHieu ? { baiDoc } : {}) }),
+      });
+      const x = r.j.cau;
+      if (!r.ok || !x) { loi.push(`${nhanCau(c)}: ${r.j.error ?? 'AI chưa soạn được'}`); return; }
+      if (x.khongDuCanCu || !x.deBai) { loi.push(`${nhanCau(c)}: ${x.ghiChu || 'sách chưa đủ căn cứ'}`); return; }
+      const lc = [...x.luaChon];
+      while (lc.length < c.luaChon.length) lc.push('');
+      const p: Partial<NoiDungCau> = { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}) };
+      deTam = { ...deTam, cau: deTam.cau.map((y) => (y.khoa === c.khoa ? { ...y, ...p } : y)) };
+      suaCau(c.khoa, p);
+    };
+    // Soạn ba câu cùng lúc cho nhanh
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(3, ds.length) }, async () => {
+      while (i < ds.length) {
+        const c = ds[i++];
+        try { await soanMot(c); } catch (e) { loi.push(`${nhanCau(c)}: ${e instanceof Error ? e.message : String(e)}`); }
+        xong++;
+        setTaoDeAI({ dang: true, xong, tong: ds.length, loi: [...loi] });
+      }
+    }));
+    setTaoDeAI({ dang: false, xong, tong: ds.length, loi });
+    const daSoan = ds.length - loi.length;
+    if (daSoan > 0) await gui('BAN_NHAP', deTam);
+    setThongBao(daSoan
+      ? `AI đã soạn ${daSoan}/${ds.length} câu cùng đáp án và đã lưu bản nháp.${loi.length ? ` Còn ${loi.length} câu chưa soạn được (xem danh sách bên dưới).` : ''} Thầy cô đọc lại từng câu, sửa nếu cần, rồi bấm Kiểm tra và gửi duyệt.`
+      : 'AI chưa soạn được câu nào. Xem lí do bên dưới.');
   };
 
   const KHUNG_TRONG: HinhCau = { ten: '', chuThich: '', anh: '', rong: 0, cao: 0 };
@@ -362,13 +424,13 @@ export default function TaoDePage() {
     return kq;
   };
 
-  const gui = async (tt: TrangThaiDe) => {
-    if (!dacTaBan || !de) return;
+  const gui = async (tt: TrangThaiDe, deGui: DeKiemTra | null = de) => {
+    if (!dacTaBan || !deGui) return;
     setDangGui(true);
     const r = await goiJson<{ ban?: BanDeApi; kiemDinh?: KetQuaKiemDinhDe }>('/api/de-kiem-tra', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mon: maMon, ky, dacTaId: dacTaBan.id, de, trangThai: tt }),
+      body: JSON.stringify({ mon: maMon, ky, dacTaId: dacTaBan.id, de: deGui, trangThai: tt }),
     });
     setDangGui(false);
     if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa lưu được: ${r.j.error}`); return; }
@@ -464,6 +526,26 @@ export default function TaoDePage() {
             <button type="button" className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50" onClick={taoMoi} title="Bỏ nội dung đang soạn, làm khung đề trống theo đặc tả mới nhất">
               <RefreshCw className="w-4 h-4" /> Làm lại đề trống
             </button>
+          </div>
+
+          <div className="the-tke p-4 flex flex-wrap items-center gap-3 border-2 border-indigo-200">
+            <button type="button" className={nutChinh} disabled={!!taoDeAI?.dang || !de.cau.some((c) => !c.deBai.trim())} onClick={() => void taoDeBangAI()}>
+              {taoDeAI?.dang ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              {taoDeAI?.dang ? `AI đang soạn… ${taoDeAI.xong}/${taoDeAI.tong} câu` : 'Tạo đề'}
+            </button>
+            <span className="text-sm text-slate-600 flex-1 min-w-60">
+              {de.cau.some((c) => !c.deBai.trim())
+                ? `AI viết đề bài, phương án, đáp án và hướng dẫn chấm cho ${de.cau.filter((c) => !c.deBai.trim()).length} câu còn trống, theo đúng bài, trang SGK, YCCĐ, mức và điểm trong đặc tả. Thầy cô chỉ cần xem, sửa và gửi duyệt.`
+                : 'Các câu đã có nội dung. Muốn AI viết lại toàn bộ thì bấm "Viết lại tất cả".'}
+            </span>
+            {!de.cau.some((c) => !c.deBai.trim()) && !taoDeAI?.dang && (
+              <button type="button" className={nutPhu} onClick={() => void taoDeBangAI(true)}><RefreshCw className="w-4 h-4" /> Viết lại tất cả</button>
+            )}
+            {taoDeAI && !taoDeAI.dang && taoDeAI.loi.length > 0 && (
+              <ul className="w-full text-xs text-amber-800 list-disc pl-5 space-y-0.5">
+                {taoDeAI.loi.map((l) => <li key={l}>{l}</li>)}
+              </ul>
+            )}
           </div>
 
           {de.cau.some((c) => !c.deBai.trim()) && (

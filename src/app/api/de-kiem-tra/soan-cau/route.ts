@@ -10,19 +10,23 @@ interface Dong { baiHoc?: string; trangSgk?: string; tuan?: number | null; yccd?
 
 /**
  * AI soạn một câu theo đúng bài, trang trong đặc tả, dựa trên chữ của các trang SGK (và SGV nếu có) trong Kho sách.
- * POST { mon, dong, ghiChu? }. Không lưu gì; thầy xem rồi mới dùng. Thiếu căn cứ thì trả về lý do, không soạn bừa.
+ * POST { mon, dong, ghiChu?, baiDoc? }. baiDoc: bài đọc hiểu của đề Tiếng Việt (câu đọc hiểu soạn theo bài này). Không lưu gì; thầy xem rồi mới dùng. Thiếu căn cứ thì trả về lý do, không soạn bừa.
  */
 export async function POST(req: NextRequest) {
   try {
-    const b = (await req.json()) as { mon?: string; dong?: Dong; ghiChu?: string };
+    const b = (await req.json()) as { mon?: string; dong?: Dong; ghiChu?: string; baiDoc?: { tieuDe?: string; noiDung?: string; tacGia?: string } };
     const d = b.dong;
     if (!b.mon || !TEN_MON[b.mon] || !d) return NextResponse.json({ error: 'Thiếu môn hoặc dòng đặc tả.' }, { status: 400 });
     if (!d.yccd?.trim()) return NextResponse.json({ error: 'Dòng đặc tả chưa có yêu cầu cần đạt, chưa soạn được.' }, { status: 400 });
     const tt = await trangThaiViecAI('SOAN_DE');
     if (!tt.daCauHinh) return NextResponse.json({ error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}` }, { status: 503 });
     const ngu = await nguCanhChoCau(b.mon, 4, { baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', tuan: typeof d.tuan === 'number' ? d.tuan : null });
-    if (!ngu.sgk.trim()) return NextResponse.json({ error: `Chưa có trang SGK làm căn cứ để soạn. ${ngu.thieu.filter((x) => !/không bắt buộc/.test(x)).join(' ')}`, thieu: ngu.thieu }, { status: 422 });
-    const noiDung = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, ngu);
+    const baiDoc = b.baiDoc?.noiDung?.trim() ? b.baiDoc : null;
+    if (!ngu.sgk.trim() && !baiDoc) return NextResponse.json({ error: `Chưa có trang SGK làm căn cứ để soạn. ${ngu.thieu.filter((x) => !/không bắt buộc/.test(x)).join(' ')}`, thieu: ngu.thieu }, { status: 422 });
+    const noiDungGoc = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, ghiChuThay: (b.ghiChu ?? '').slice(0, 500) }, ngu);
+    const noiDung = baiDoc
+      ? `${noiDungGoc}\n\nBÀI ĐỌC HIỂU CỦA ĐỀ (câu hỏi phải dựa vào bài đọc này, không dùng bài đọc trong SGK; được trích ý trong bài đọc này):\nTên bài: ${baiDoc.tieuDe ?? ''}${baiDoc.tacGia ? ` (${baiDoc.tacGia})` : ''}\n${(baiDoc.noiDung ?? '').slice(0, 6000)}`
+      : noiDungGoc;
     let cau = null;
     for (let lan = 0; lan < 2 && !cau; lan++) {
       const kq = await goiAITheoViec('SOAN_DE', { heThong: HE_THONG_SOAN_CAU_TU_SACH, noiDung: lan ? `${noiDung}\n\nLần trước chưa trả đúng khối JSON. Trả lại đúng định dạng.` : noiDung, toiDaToken: 2500, timWeb: false });
