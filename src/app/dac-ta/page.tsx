@@ -146,7 +146,8 @@ export default function DacTaPage() {
         setTrangThai('CAN_XAC_NHAN_LAI');
         const them = kq.moi.length ? ` Câu mới cần điền: ${kq.moi.join('; ')}.` : '';
         const bo = kq.bo.length ? ` Câu không còn trong ma trận: ${kq.bo.join('; ')}.` : '';
-        setThongBao(`Ma trận riêng đã lên phiên bản ${moiNhat.phienBan} (đặc tả đang theo phiên bản ${nhap.phienBanMaTranRieng}). App đã tự cập nhật bản nháp đặc tả theo ma trận mới, giữ bài, tuần, trang thầy đã điền.${them}${bo} Thầy cô xem lại, bấm Lưu nháp rồi xác nhận lại.`);
+        const doi = kq.doi.length ? ` Câu đổi YCCĐ nên điền lại bài, trang: ${kq.doi.join('; ')}.` : '';
+        setThongBao(`Ma trận riêng đã lên phiên bản ${moiNhat.phienBan} (đặc tả đang theo phiên bản ${nhap.phienBanMaTranRieng}). App đã tự cập nhật bản nháp đặc tả theo ma trận mới, giữ bài, tuần, trang của câu không đổi YCCĐ.${them}${bo}${doi} Thầy cô xem lại rồi bấm Lưu.`);
       } else {
         // Ô bài đã có mà tuần, trang còn trống (đặc tả làm trước khi có mục lục SGK): điền thêm, không ghi đè ô đã điền
         const tietDs = pp.ok ? pp.j.tiet ?? [] : [];
@@ -185,7 +186,7 @@ export default function DacTaPage() {
     setTrangThai('CAN_XAC_NHAN_LAI');
     setKetQua(null);
     setDaXemTruoc(false);
-    setThongBao(`Đã dựng lại theo ma trận phiên bản ${mtrBan.phienBan}, giữ phần thầy đã điền.${kq.moi.length ? ` Câu mới cần điền: ${kq.moi.join('; ')}.` : ''}${kq.bo.length ? ` Câu không còn trong ma trận: ${kq.bo.join('; ')}.` : ''}`);
+    setThongBao(`Đã dựng lại theo ma trận phiên bản ${mtrBan.phienBan}, giữ phần thầy đã điền.${kq.moi.length ? ` Câu mới cần điền: ${kq.moi.join('; ')}.` : ''}${kq.bo.length ? ` Câu không còn trong ma trận: ${kq.bo.join('; ')}.` : ''}${kq.doi.length ? ` Câu đổi YCCĐ nên điền lại: ${kq.doi.join('; ')}.` : ''}`);
   };
 
   const sua = (fn: (d: DacTa) => DacTa) => {

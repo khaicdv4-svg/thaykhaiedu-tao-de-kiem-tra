@@ -137,6 +137,20 @@ describe('Dựng lại đề khi đặc tả đổi', () => {
     expect(layNoiDung(kq.de)[k0].deBai).toBe(layNoiDung(de)[k0].deBai);
     expect(layNoiDung(kq.de)[k0].dapAn).toBe(layNoiDung(de)[k0].dapAn);
   });
+
+  it('câu đổi YCCĐ hoặc mức thì bỏ nội dung cũ, soạn lại theo yêu cầu mới', () => {
+    const de = dienDu(taoDeTuDacTa(dacTa, 1));
+    const dacTaMoi = clone(dacTa);
+    dacTaMoi.dong[0].yccd = 'Một YCCĐ hoàn toàn khác';
+    const kq = dungLaiDe(dacTaMoi, 2, de);
+    const k0 = dacTa.dong[0].khoa;
+    expect(kq.doi).toEqual([k0]);
+    expect(layNoiDung(kq.de)[k0].deBai).toBe('');
+    expect(kq.de.cau.find((c) => c.khoa === k0)!.yccd).toBe('Một YCCĐ hoàn toàn khác');
+    // câu khác giữ nguyên
+    const k1 = dacTa.dong[1].khoa;
+    expect(layNoiDung(kq.de)[k1].deBai).toBe(layNoiDung(de)[k1].deBai);
+  });
 });
 
 describe('Trạng thái đề', () => {

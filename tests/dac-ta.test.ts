@@ -198,6 +198,16 @@ describe('Dựng lại đặc tả khi ma trận đổi: không mất phần gi�
     expect(kq.bo.length).toBe(1);
     expect(kq.dacTa.dong.find((r) => r.khoa === khoa)!.baiHoc).toBe('');
   });
+
+  it('câu đổi YCCĐ thì không giữ bài, trang cũ (bài cũ thuộc YCCĐ khác)', () => {
+    const cuKhac = clone(cu);
+    cuKhac.dong[0].yccd = 'YCCĐ cũ đã thay';
+    const kq = dungLaiDacTa(toan, mtr, 2, cuKhac);
+    expect(kq.doi.length).toBe(1);
+    const r = kq.dacTa.dong.find((x) => x.khoa === cu.dong[0].khoa)!;
+    expect(r.ghiChu).toBe('');
+    expect(kq.dacTa.dong[1].baiHoc).toBe(cu.dong[1].baiHoc);
+  });
 });
 
 describe('Gợi ý bài, tuần chỉ khi khớp đúng', () => {

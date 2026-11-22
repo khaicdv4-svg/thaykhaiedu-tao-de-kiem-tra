@@ -154,17 +154,30 @@ export function layMinhChung(d: DacTa): Record<string, MinhChungCau> {
 }
 
 /**
- * Dựng lại đặc tả khi ma trận riêng có phiên bản mới: số liệu lấy lại từ ma trận,
- * phần giáo viên đã điền được giữ theo khóa câu. Câu mới thì để trống, câu bị bỏ thì mất dòng (và được báo lại).
+ * Dựng lại đặc tả khi ma trận riêng có phiên bản mới: số liệu lấy lại từ ma trận.
+ * Phần giáo viên đã điền (bài, tuần, trang, ghi chú, hình) chỉ giữ cho câu còn nguyên YCCĐ.
+ * Câu đổi YCCĐ thì làm lại theo YCCĐ mới (bài cũ không còn đúng), câu mới để trống, câu bị bỏ thì mất dòng. Cả ba đều được báo lại.
  */
-export function dungLaiDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMoi: number, cu: DacTa): { dacTa: DacTa; moi: string[]; bo: string[] } {
-  const dacTa = taoDacTa(mtcGoc, mtr, phienBanMoi, { tuanKiemTra: cu.tuan_kiem_tra, minhChungCu: layMinhChung(cu) });
+export function dungLaiDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMoi: number, cu: DacTa): { dacTa: DacTa; moi: string[]; bo: string[]; doi: string[] } {
+  const khung = taoDacTa(mtcGoc, mtr, phienBanMoi, { tuanKiemTra: cu.tuan_kiem_tra });
+  const yccdMoi = new Map(khung.dong.map((r) => [r.khoa, chuanHoa(r.yccd)]));
+  const giu: Record<string, MinhChungCau> = {};
+  const doi: string[] = [];
+  const mc = layMinhChung(cu);
+  for (const r of cu.dong) {
+    const y = yccdMoi.get(r.khoa);
+    if (y === undefined) continue;
+    if (y === chuanHoa(r.yccd)) giu[r.khoa] = mc[r.khoa];
+    else doi.push(`${r.baiKiemTra}, Câu ${r.cau}`);
+  }
+  const dacTa = taoDacTa(mtcGoc, mtr, phienBanMoi, { tuanKiemTra: cu.tuan_kiem_tra, minhChungCu: giu });
   const khoaCu = new Set(cu.dong.map((r) => r.khoa));
   const khoaMoi = new Set(dacTa.dong.map((r) => r.khoa));
   return {
     dacTa,
     moi: dacTa.dong.filter((r) => !khoaCu.has(r.khoa)).map((r) => `${r.baiKiemTra}, Câu ${r.cau}`),
     bo: cu.dong.filter((r) => !khoaMoi.has(r.khoa)).map((r) => `${r.baiKiemTra}, Câu ${r.cau}`),
+    doi,
   };
 }
 

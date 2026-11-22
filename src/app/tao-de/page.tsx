@@ -106,7 +106,6 @@ export default function TaoDePage() {
   const [ketQua, setKetQua] = useState<KetQuaKiemDinhDe | null>(null);
   const [thongBao, setThongBao] = useState<string | null>(null);
   const [dangGui, setDangGui] = useState(false);
-  const [deCu, setDeCu] = useState<DeKiemTra | null>(null); // đề theo đặc tả cũ
   const [truong, setTruong] = useState('TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN');
   const [namHoc, setNamHoc] = useState('2026 - 2027');
   const [phut, setPhut] = useState(35);
@@ -136,7 +135,6 @@ export default function TaoDePage() {
     setThongBao(null);
     setKetQua(null);
     setDe(null);
-    setDeCu(null);
     setDacTaBan(null);
     const [dt, d] = await Promise.all([
       goiJson<{ moiNhat: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
@@ -153,8 +151,14 @@ export default function TaoDePage() {
       setDe(maMon === 'TIENG_VIET' && !ban.duLieu.tiengViet ? { ...ban.duLieu, tiengViet: taoNoiDungTiengVietRong() } : ban.duLieu);
       setTrangThai(ban.trangThai);
       if (ban.phienBanDacTa < (moiNhat.phienBan ?? 0)) {
-        setDeCu(ban.duLieu);
+        // Đặc tả đã có bản mới: tự dựng lại đề theo đặc tả mới, không hiện đề cũ.
+        // Chỉ giữ câu còn y nguyên yêu cầu; câu đổi YCCĐ, mức, dạng thì để trống cho thầy soạn lại.
+        const kq = dungLaiDe(moiNhat.duLieu, moiNhat.phienBan ?? 1, ban.duLieu);
+        setDe(maMon === 'TIENG_VIET' && !kq.de.tiengViet ? { ...kq.de, tiengViet: taoNoiDungTiengVietRong() } : kq.de);
         setTrangThai('CAN_KIEM_TRA_LAI');
+        const ten = (ds: string[]) => ds.map((k) => { const c = kq.de.cau.find((x) => x.khoa === k); return c ? nhanCau(c) : k; }).join(', ');
+        const giu = kq.de.cau.filter((c) => c.deBai.trim()).length;
+        setThongBao(`Đặc tả đã lên phiên bản ${moiNhat.phienBan} (đề đang soạn theo phiên bản ${ban.phienBanDacTa}). App đã đổi đề sang đặc tả mới: giữ ${giu} câu không đổi yêu cầu.${kq.doi.length ? ` Câu đổi YCCĐ hoặc mức nên đã xóa nội dung cũ, cần soạn lại: ${ten(kq.doi)}.` : ''}${kq.moi.length ? ` Câu mới cần soạn: ${ten(kq.moi)}.` : ''}${kq.bo.length ? ` Đã bỏ ${kq.bo.length} câu không còn trong đặc tả.` : ''} Muốn làm đề mới hoàn toàn thì bấm "Làm lại đề trống". Soạn xong bấm Lưu.`);
       }
     } else setTrangThai('BAN_NHAP');
     setDangTai(false);
@@ -164,20 +168,11 @@ export default function TaoDePage() {
 
   const taoMoi = () => {
     if (!dacTaBan) return;
+    if (de && de.cau.some((c) => c.deBai.trim()) && !window.confirm('Xóa hết nội dung đang soạn và làm lại đề trống theo đặc tả mới nhất? Đề đã duyệt trước đây vẫn giữ trong kho đề.')) return;
     setDe(taoDeTuDacTa(dacTaBan.duLieu, dacTaBan.phienBan ?? 1));
     setTrangThai('BAN_NHAP');
     setKetQua(null);
     setThongBao('Đã tạo khung đề từ đặc tả. Nhập đề bài, phương án và đáp án cho từng câu rồi lưu bản nháp.');
-  };
-
-  const dungLai = () => {
-    if (!dacTaBan || !deCu) return;
-    const kq = dungLaiDe(dacTaBan.duLieu, dacTaBan.phienBan ?? 1, deCu);
-    setDe(kq.de);
-    setDeCu(null);
-    setTrangThai('CAN_KIEM_TRA_LAI');
-    setKetQua(null);
-    setThongBao(`Đã dựng lại theo đặc tả phiên bản ${dacTaBan.phienBan}, giữ nội dung câu còn lại.${kq.moi.length ? ` Câu mới cần soạn: ${kq.moi.length}.` : ''}${kq.bo.length ? ` Câu không còn trong đặc tả: ${kq.bo.length}.` : ''}`);
   };
 
   const [goiYNH, setGoiYNH] = useState<{ ds: GoiYMotCau[]; chon: Record<string, boolean>; tin?: string } | null>(null);
@@ -451,21 +446,18 @@ export default function TaoDePage() {
         </div>
       )}
 
-      {deCu && dacTaBan && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 flex flex-wrap items-center justify-between gap-3">
-          <span>Đặc tả đã có phiên bản {dacTaBan.phienBan}, đề này đang theo phiên bản {deCu.phien_ban_dac_ta}. Dựng lại để khớp đặc tả mới; nội dung các câu còn lại được giữ nguyên.</span>
-          <button type="button" className={nutChinh} onClick={dungLai}><RefreshCw className="w-4 h-4" /> Dựng lại theo đặc tả mới</button>
-        </div>
-      )}
-
-      {de && dacTaBan && !deCu && (
+      {de && dacTaBan && (
         <>
           <div className="the-tke p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
             <span>{de.cau.length} câu · tổng <b>{fmtDiem(tongDiem)}</b> điểm</span>
             <span>Đã soạn xong <b>{tienDo.xong}/{tienDo.tong}</b> câu</span>
+            <span>Theo đặc tả phiên bản <b>{de.phien_ban_dac_ta}</b></span>
             <div className="h-2 w-40 rounded-full bg-slate-200 overflow-hidden" aria-hidden>
               <div className="h-full bg-emerald-500" style={{ width: `${tienDo.tong ? (tienDo.xong / tienDo.tong) * 100 : 0}%` }} />
             </div>
+            <button type="button" className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50" onClick={taoMoi} title="Bỏ nội dung đang soạn, làm khung đề trống theo đặc tả mới nhất">
+              <RefreshCw className="w-4 h-4" /> Làm lại đề trống
+            </button>
           </div>
 
           {de.cau.some((c) => !c.deBai.trim()) && (

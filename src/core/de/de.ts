@@ -247,7 +247,6 @@ export function layNoiDung(d: DeKiemTra): Record<string, NoiDungCau> {
   return kq;
 }
 
-/** Dựng lại đề khi đặc tả đổi: giữ nội dung các câu còn nguyên khóa, báo câu mới và câu bị bỏ. */
 /**
  * Làm đề mới cho kì khác từ một đề đã duyệt: chép đề bài, phương án, đáp án, hướng dẫn chấm, hình của những câu
  * trùng mã câu VÀ cùng hình thức, dạng, số ý với đặc tả mới. Câu còn lại để trống. Bài đọc Tiếng Việt không chép
@@ -269,13 +268,29 @@ export function saoChepDeSangKyMoi(dacTaDich: DacTa, phienBanDich: number, nguon
   return { de: taoDeTuDacTa(dacTaDich, phienBanDich, noiDungCu), daChep, trong };
 }
 
-export function dungLaiDe(dacTaMoi: DacTa, phienBanMoi: number, cu: DeKiemTra): { de: DeKiemTra; moi: string[]; bo: string[] } {
-  const noiDungCu = layNoiDung(cu);
+/** Dựng lại đề khi đặc tả đổi: giữ nội dung câu còn nguyên yêu cầu; báo câu mới, câu bị bỏ, câu đổi yêu cầu cần soạn lại. */
+export function dungLaiDe(dacTaMoi: DacTa, phienBanMoi: number, cu: DeKiemTra): { de: DeKiemTra; moi: string[]; bo: string[]; doi: string[] } {
+  // Chỉ giữ nội dung câu khi yêu cầu của câu còn y nguyên (YCCĐ, mức, hình thức, dạng, ý nhỏ).
+  // Câu đổi yêu cầu thì soạn lại: câu cũ không còn đo đúng YCCĐ mới.
+  const gon = (s: string) => s.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const dongMoi = new Map(dacTaMoi.dong.map((r) => [r.khoa, r]));
+  const tatCa = layNoiDung(cu);
+  const noiDungCu: Record<string, NoiDungCau> = {};
+  const doi: string[] = [];
+  for (const c of cu.cau) {
+    const r = dongMoi.get(c.khoa);
+    if (!r) continue;
+    const giong = gon(r.yccd) === gon(c.yccd) && r.muc === c.muc && r.hinhThuc === c.hinhThuc && r.dang === c.dang
+      && JSON.stringify(r.yNho ?? null) === JSON.stringify(c.yNho ?? null);
+    if (giong) noiDungCu[c.khoa] = tatCa[c.khoa];
+    else if (c.deBai.trim()) doi.push(c.khoa);
+  }
   const de = taoDeTuDacTa(dacTaMoi, phienBanMoi, noiDungCu, cu.tiengViet);
   const khoaMoi = new Set(dacTaMoi.dong.map((r) => r.khoa));
-  const moi = dacTaMoi.dong.filter((r) => !noiDungCu[r.khoa]).map((r) => r.khoa);
+  const khoaCu = new Set(cu.cau.map((c) => c.khoa));
+  const moi = dacTaMoi.dong.filter((r) => !khoaCu.has(r.khoa)).map((r) => r.khoa);
   const bo = cu.cau.filter((c) => !khoaMoi.has(c.khoa)).map((c) => c.khoa);
-  return { de, moi, bo };
+  return { de, moi, bo, doi };
 }
 
 // ---------------------------------------------------------------------------

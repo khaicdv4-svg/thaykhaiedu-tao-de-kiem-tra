@@ -15,8 +15,8 @@ import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-base px-6 py-3';
 
-interface Ban { phienBan?: number; trangThai?: string }
-interface TrangThaiBuoc { mtr: { moiNhat: Ban | null; banNhap: Ban | null } | null; dt: { moiNhat: Ban | null; banNhap: Ban | null } | null; de: { trangThai: string } | null; loi?: string }
+interface Ban { phienBan?: number | null; trangThai?: string; phienBanMaTranRieng?: number }
+interface TrangThaiBuoc { mtr: { moiNhat: Ban | null; banNhap: Ban | null } | null; dt: { moiNhat: Ban | null; banNhap: Ban | null } | null; de: { trangThai: string; phienBanDacTa?: number } | null; loi?: string }
 
 const TEN_TT_DE: Record<string, string> = {
   BAN_NHAP: 'bản nháp', CAN_KIEM_TRA: 'cần kiểm tra', CO_LOI: 'còn lỗi', SAN_SANG_DUYET: 'sẵn sàng duyệt',
@@ -49,7 +49,7 @@ export default function TestBuilderPage() {
     void Promise.all([
       lay<{ moiNhat: Ban | null; banNhap: Ban | null }>(`/api/ma-tran-rieng?mon=${maMon}&ky=${ky}`),
       lay<{ moiNhat: Ban | null; banNhap: Ban | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
-      lay<{ de: { trangThai: string } | null }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
+      lay<{ de: { trangThai: string; phienBanDacTa?: number } | null }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
     ]).then(([mtr, dt, de]) => {
       if (huy) return;
       setTt({ mtr, dt, de: de?.de ?? null, loi: !mtr && !dt && !de ? 'Chưa đọc được trạng thái. Thầy đăng nhập lại hoặc thử lại sau.' : undefined });
@@ -63,17 +63,33 @@ export default function TestBuilderPage() {
   const q = `mon=${maMon}&ky=${ky}`;
 
   const buoc = useMemo(() => {
-    const mtrXong = !!tt?.mtr?.moiNhat;
-    const dtXong = !!tt?.dt?.moiNhat;
+    const mtr = tt?.mtr?.moiNhat ?? null;
+    const dt = tt?.dt?.moiNhat ?? null;
     const de = tt?.de ?? null;
+    // Bước sau đang theo bản cũ của bước trước thì báo rõ, không coi là xong
+    const dtCu = !!mtr && !!dt && (dt.phienBanMaTranRieng ?? 0) < (mtr.phienBan ?? 0);
+    const deCu = !!dt && !!de && (de.phienBanDacTa ?? 0) < (dt.phienBan ?? 0);
     return [
-      { so: 2, ten: 'Ma trận riêng', xong: mtrXong, nhan: mtrXong ? `đã xác nhận (phiên bản ${tt?.mtr?.moiNhat?.phienBan ?? 1})` : tt?.mtr?.banNhap ? 'có bản nháp, chưa xác nhận' : 'chưa làm', href: `/matrices?${q}`, viec: mtrXong ? 'Xem ma trận' : tt?.mtr?.banNhap ? 'Tiếp tục ma trận' : 'Làm ma trận' },
-      { so: 3, ten: 'Bản đặc tả', xong: dtXong, nhan: dtXong ? `đã xác nhận (phiên bản ${tt?.dt?.moiNhat?.phienBan ?? 1})` : tt?.dt?.banNhap ? 'có bản nháp, chưa xác nhận' : mtrXong ? 'chưa làm' : 'cần ma trận trước', href: `/dac-ta?${q}`, viec: dtXong ? 'Xem đặc tả' : 'Làm đặc tả', khoa: !mtrXong },
-      { so: 4, ten: 'Tạo đề', xong: de?.trangThai === 'DA_DUYET', nhan: de ? TEN_TT_DE[de.trangThai] ?? de.trangThai : dtXong ? 'chưa làm' : 'cần đặc tả trước', href: `/tao-de?${q}`, viec: de ? 'Tiếp tục soạn đề' : 'Soạn đề', khoa: !dtXong },
+      {
+        so: 2, ten: 'Ma trận riêng', xong: !!mtr,
+        nhan: mtr ? `Đang dùng phiên bản ${mtr.phienBan ?? 1}` : tt?.mtr?.banNhap ? 'Có bản nháp, chưa lưu xong' : 'Chưa làm',
+        href: `/matrices?${q}`, viec: mtr ? 'Xem, sửa ma trận' : 'Làm ma trận',
+      },
+      {
+        so: 3, ten: 'Bản đặc tả', xong: !!dt && !dtCu, canhBao: dtCu,
+        nhan: !mtr ? 'Cần ma trận trước' : dtCu ? `Đang theo ma trận cũ (phiên bản ${dt?.phienBanMaTranRieng}). Mở để cập nhật theo ma trận mới.` : dt ? `Đang dùng phiên bản ${dt.phienBan ?? 1}` : tt?.dt?.banNhap ? 'Có bản nháp, chưa lưu xong' : 'Chưa làm',
+        href: `/dac-ta?${q}`, viec: dt ? 'Xem, sửa đặc tả' : 'Làm đặc tả', khoa: !mtr,
+      },
+      {
+        so: 4, ten: 'Soạn đề', xong: !!de && !deCu && de.trangThai === 'DA_DUYET', canhBao: deCu,
+        nhan: !dt ? 'Cần đặc tả trước' : deCu ? `Đề đang theo đặc tả cũ (phiên bản ${de?.phienBanDacTa}). Mở để chuyển sang đặc tả mới; câu đổi yêu cầu sẽ phải soạn lại.` : de ? `Đề ${TEN_TT_DE[de.trangThai] ?? de.trangThai}` : 'Chưa soạn',
+        href: `/tao-de?${q}`, viec: de ? 'Mở đề' : 'Soạn đề', khoa: !dt,
+      },
     ];
   }, [tt, q]);
 
-  const tiep = buoc.find((b) => !b.xong && !('khoa' in b && b.khoa)) ?? buoc[buoc.length - 1];
+  // Bước đang dở: bước đầu tiên chưa xong (hoặc đang theo bản cũ)
+  const dangDo = buoc.find((b) => !b.xong && !('khoa' in b && b.khoa));
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-8">
@@ -82,7 +98,7 @@ export default function TestBuilderPage() {
       <div className="the-tke p-6 space-y-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Bước 1. Thiết lập đề kiểm tra</h1>
-          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp 4. Mỗi đề đi qua ma trận riêng, đặc tả, soạn đề rồi duyệt; thầy xác nhận từng bước, AI chỉ hỗ trợ.</p>
+          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp 4, rồi đi lần lượt: <b>Ma trận riêng → Đặc tả → Soạn đề → Duyệt</b>. Sửa bước trước thì bước sau đổi theo bản mới: câu nào đổi YCCĐ phải làm lại, câu không đổi được giữ.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select aria-label="Môn" className={`${o} min-w-44`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
@@ -103,10 +119,12 @@ export default function TestBuilderPage() {
           <ul className="divide-y divide-slate-100">
             {buoc.map((b) => (
               <li key={b.so} className="py-3 flex flex-wrap items-center gap-3">
-                {b.xong ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" /> : <CircleDashed className="w-5 h-5 text-slate-400 shrink-0" />}
+                {'canhBao' in b && b.canhBao
+                  ? <TriangleAlert className="w-5 h-5 text-amber-600 shrink-0" />
+                  : b.xong ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" /> : <CircleDashed className="w-5 h-5 text-slate-400 shrink-0" />}
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-slate-900">Bước {b.so}. {b.ten}</div>
-                  <div className="text-xs text-slate-500">{b.nhan}</div>
+                  <div className={`text-xs ${'canhBao' in b && b.canhBao ? 'text-amber-800' : 'text-slate-500'}`}>{b.nhan}</div>
                 </div>
                 {'khoa' in b && b.khoa
                   ? <span className="text-xs text-slate-400">Chưa mở</span>
@@ -116,8 +134,12 @@ export default function TestBuilderPage() {
           </ul>
         )}
         {tt && !tt.loi && (
-          <div className="pt-2">
-            <Link href={tiep.href} className={`${nutChinh} inline-flex items-center gap-2`}>{tiep.viec} <ArrowRight className="w-5 h-5" /></Link>
+          <div className="pt-2 flex flex-wrap items-center gap-3">
+            {/* Nút chính luôn sang bước 2: làm lần lượt từng bước, không nhảy cóc */}
+            <Link href={`/matrices?${q}`} className={`${nutChinh} inline-flex items-center gap-2`}>Tiếp theo: Bước 2. Ma trận riêng <ArrowRight className="w-5 h-5" /></Link>
+            {dangDo && dangDo.so !== 2 && (
+              <Link href={dangDo.href} className="text-sm text-blue-700 underline">Hoặc đi tới bước đang dở: Bước {dangDo.so}. {dangDo.ten}</Link>
+            )}
           </div>
         )}
       </div>

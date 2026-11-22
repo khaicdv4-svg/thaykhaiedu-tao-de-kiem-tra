@@ -98,7 +98,7 @@ export async function capNhatSauMaTranRieng(maMon: string, ky: string): Promise<
   } catch {
     // Chưa có PPCT hoặc mục lục thì để ô trống cho thầy cô điền
   }
-  const them = kq.moi.length ? ` Câu mới: ${kq.moi.join('; ')}.` : '';
+  const them = `${kq.moi.length ? ` Câu mới: ${kq.moi.join('; ')}.` : ''}${kq.doi.length ? ` Câu đổi YCCĐ, đã điền lại bài, trang: ${kq.doi.join('; ')}.` : ''}`;
   try {
     const xn = await xacNhanDacTa(maMon, ky, mtrBan.id, dacTa);
     return [{ buoc: 'DAC_TA', ok: true, thongBao: `Đặc tả đã tự cập nhật theo ma trận riêng phiên bản ${mtrBan.phienBan} và xác nhận thành phiên bản ${xn.ban.phienBan}.${them}` }];
