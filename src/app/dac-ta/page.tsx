@@ -7,7 +7,7 @@
  * Thầy điền bài học, tuần, trang SGK cho từng câu. Ứng dụng không tự đoán: chỉ gợi ý khi khớp Kho chương trình.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Eye, ListChecks, Loader2, RefreshCw, Save, ShieldCheck } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
@@ -96,6 +96,11 @@ export default function DacTaPage() {
     if (h) { setMaMon(h.mon); setKy(h.ky); luuHoSoDe(h); }
   }, []);
 
+  // Tự điền bài, tuần, trang cho câu còn trống (một lần cho mỗi bản đặc tả) và tự tạo đặc tả khi chưa có
+  const [dangGhep, setDangGhep] = useState(false);
+  const daThuGhep = useRef('');
+  const daTuTao = useRef('');
+
   const tuanKiemTra = useMemo(() => (tiet.length ? khoangTuanTheoKy(tiet, ky).tuanDen : null), [tiet, ky]);
   const goiY = useMemo(() => taoGoiYTheoYccd(yccdKho, tiet), [yccdKho, tiet]);
   const dsBaiPpct = useMemo(() => [...new Set(tiet.map((t) => t.baiTen?.replace(/\s+/g, ' ').trim()).filter((b): b is string => !!b))], [tiet]);
@@ -163,6 +168,48 @@ export default function DacTaPage() {
 
   useEffect(() => { void nap(); }, [nap]);
 
+  /** Gửi đặc tả lên máy chủ để tự chọn bài (AI hoặc theo từ chung) cho các câu còn trống. Không ghi đè ô đã điền. */
+  const ghepBai = async (d: DacTa) => {
+    setDangGhep(true);
+    const r = await goiJson<{ dacTa?: DacTa; soDong?: number; soAI?: number; tuanTu?: number; tuanDen?: number; ghiChuAI?: string }>('/api/dac-ta/ghep-bai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mon: maMon, ky, dacTa: d }),
+    });
+    setDangGhep(false);
+    if (!r.ok || !r.j.dacTa) { setThongBao(`Chưa tự điền được bài học: ${r.j.error ?? 'lỗi kết nối'}. Thầy chọn bài ở từng câu.`); return; }
+    const moi = new Map(r.j.dacTa.dong.map((x) => [x.khoa, x]));
+    let conTrong = 0;
+    setDacTa((cur) => {
+      if (!cur) return cur;
+      const dong = cur.dong.map((row) => {
+        const m = moi.get(row.khoa);
+        if (row.baiHoc?.trim() || !m?.baiHoc?.trim()) return row;
+        return { ...row, baiHoc: m.baiHoc, tuan: row.tuan ?? m.tuan, trangSgk: row.trangSgk?.trim() ? row.trangSgk : m.trangSgk };
+      });
+      conTrong = dong.filter((x) => !x.baiHoc?.trim()).length;
+      return { ...cur, dong };
+    });
+    if (r.j.soDong) {
+      setTrangThai((t) => trangThaiDacTaSauKhiSua(t));
+      setKetQua(null);
+      setDaXemTruoc(false);
+    }
+    const pham = r.j.tuanTu && r.j.tuanDen ? ` trong các bài dạy tuần ${r.j.tuanTu}–${r.j.tuanDen}` : '';
+    const ai = r.j.soAI ? ` AI chọn ${r.j.soAI} câu theo YCCĐ, còn lại chọn theo từ khóa.` : r.j.ghiChuAI ? ' (AI chưa dùng được nên app chọn theo từ khóa.)' : '';
+    setThongBao(r.j.soDong
+      ? `App đã tự điền bài, tuần, trang SGK cho ${r.j.soDong} câu${pham}.${ai}${conTrong ? ` Còn ${conTrong} câu chưa tìm được bài, thầy chọn giúp.` : ''} Thầy cô xem lại rồi bấm Lưu.`
+      : 'App chưa tìm được bài phù hợp cho các câu còn trống. Thầy chọn bài ở từng câu.');
+  };
+
+  useEffect(() => {
+    if (!dacTa || dangTai || !mtrBan) return;
+    const khoa = `${maMon}|${ky}|${dacTa.phien_ban_ma_tran_rieng}`;
+    if (daThuGhep.current === khoa || !dacTa.dong.some((r) => !r.baiHoc?.trim())) return;
+    daThuGhep.current = khoa;
+    void ghepBai(dacTa);
+  }, [dacTa, dangTai, mtrBan, maMon, ky]);
+
   const taoMoi = () => {
     if (!mtrBan) return;
     const { ma_tran_chung: mtc, ma_tran_rieng: mtr } = mtrBan.duLieu;
@@ -170,8 +217,16 @@ export default function DacTaPage() {
     setTrangThai('BAN_NHAP');
     setKetQua(null);
     setDaXemTruoc(false);
-    setThongBao('Đã tạo đặc tả từ ma trận riêng. Điền bài học, tuần, trang SGK cho từng câu. Ô có gợi ý từ Kho chương trình thầy xem lại cho đúng.');
+    setThongBao('Đã tạo đặc tả từ ma trận riêng. App đang tự điền bài học, tuần, trang SGK cho từng câu…');
   };
+
+  useEffect(() => {
+    if (!mtrBan || dacTa || dangTai || loiTai) return;
+    const khoa = `${maMon}|${ky}|${mtrBan.id}`;
+    if (daTuTao.current === khoa) return;
+    daTuTao.current = khoa;
+    taoMoi();
+  }, [mtrBan, dacTa, dangTai, loiTai, maMon, ky]);
 
   const dungLai = () => {
     if (!mtrBan || !baiCu) return;
@@ -243,6 +298,7 @@ export default function DacTaPage() {
     if (!dacTa) return;
     const kq = dienLaiTuPpct(dacTa, goiY, tiet, mucLuc);
     setDacTa(kq.dacTa);
+    if (kq.dacTa.dong.some((r) => !r.baiHoc?.trim())) { void ghepBai(kq.dacTa); return; }
     setThongBao(kq.soDong ? `Đã điền bài, tuần cho ${kq.soDong} câu từ phân phối chương trình. Thầy xem lại và ghi chú nếu cần.` : tiet.length ? 'Không có ô trống nào tìm được bài khớp trong phân phối chương trình. Thầy nhập tay giúp.' : 'Môn này chưa có phân phối chương trình trong hệ thống. Thầy nhập ở mục Phân phối chương trình trước.');
   };
   const daXacNhan = trangThai === 'DA_XAC_NHAN';
@@ -313,7 +369,7 @@ export default function DacTaPage() {
               />
               <span className="text-xs text-slate-500">Bài dạy sau tuần này là chưa học.</span>
             </label>
-            {!daXacNhan && cheDo === 'sua' && <button type="button" className={nutPhu} onClick={dienLai}>Điền bài, tuần từ PPCT</button>}
+            {!daXacNhan && cheDo === 'sua' && <button type="button" className={nutPhu} disabled={dangGhep} onClick={dienLai}>{dangGhep ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {dangGhep ? 'Đang tự điền bài…' : 'Tự điền bài, tuần, trang'}</button>}
             {phienBanXacNhan !== null && <span className="text-emerald-700">Đã có phiên bản xác nhận: {phienBanXacNhan}</span>}
           </div>
 
@@ -342,7 +398,7 @@ export default function DacTaPage() {
                             <input aria-label={`Tuần câu ${r.cau}`} type="number" min={1} max={40} className={`${o} mt-0.5 ${r.tuan !== null ? '' : 'border-amber-400 bg-amber-50'}`} disabled={daXacNhan} value={r.tuan ?? ''} onChange={(e) => suaDong(r.khoa, { tuan: e.target.value ? Number(e.target.value) : null })} />
                           </label>
                           <label className="text-xs text-slate-500">Trang SGK
-                            <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="tr. 45" disabled={daXacNhan} value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
+                            <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="trang" disabled={daXacNhan} value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
                           </label>
                           <label className="text-xs text-slate-500 sm:col-span-1">Hình kèm theo
                             <select aria-label={`Hình kèm theo câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} value={r.hinhKem ?? 'KHONG'} onChange={(e) => suaDong(r.khoa, { hinhKem: e.target.value as KieuHinhKem })}>

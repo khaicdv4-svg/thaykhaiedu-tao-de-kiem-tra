@@ -11,6 +11,7 @@ import { chuyenMaTranRiengSangBanMoi, ganSanYccdDuyNhat, kiemDinhMaTranChung } f
 import { dienLaiTuPpct, dungLaiDacTa, taoGoiYTheoYccd, type DacTa, type TrangThaiDacTa } from '@/core/dac-ta/dac-ta';
 import { maTranChungTuKho } from './kho-ma-tran.repository';
 import { dsMucLucSgk, dsTietPpct, dsYccd } from './chuong-trinh.repository';
+import { ghepBaiTuDong } from './ghep-bai.repository';
 import {
   layDacTa,
   layMaTranRieng,
@@ -101,6 +102,8 @@ export async function capNhatSauMaTranRieng(maMon: string, ky: string, chu?: str
       dsMucLucSgk(maMon, lop),
     ]);
     dacTa = dienLaiTuPpct(dacTa, taoGoiYTheoYccd(yccd, tiet), tiet, mucLuc).dacTa;
+    // Câu còn trống bài (câu mới, câu đổi YCCĐ): tự ghép bài trong PPCT của kì
+    dacTa = (await ghepBaiTuDong(maMon, ky, dacTa, lop)).dacTa;
   } catch {
     // Chưa có PPCT hoặc mục lục thì để ô trống cho thầy cô điền
   }
