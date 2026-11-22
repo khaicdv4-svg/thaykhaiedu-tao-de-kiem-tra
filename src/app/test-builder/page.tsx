@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * Bước 1 – Thiết lập: chọn môn và kì kiểm tra, xem từng bước (ma trận riêng, đặc tả, đề) đã xong tới đâu
- * và đi thẳng tới việc cần làm tiếp theo. Không tự tạo hay sửa dữ liệu, chỉ đọc trạng thái đã lưu.
+ * Bước 1 – Thiết lập: chọn môn và kì kiểm tra, xem bộ của mình (ma trận riêng, đặc tả, đề) đã xong tới đâu,
+ * rồi chọn: tiếp tục phần đang làm dở, hoặc tạo mới theo ma trận chung hiện tại của tổ (bộ cũ được cất vào lịch sử).
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BookOpenText, CheckCircle2, CircleDashed, Loader2, TriangleAlert } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, BookOpenText, CheckCircle2, CircleDashed, FilePlus2, Loader2, TriangleAlert } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
@@ -33,6 +34,9 @@ export default function TestBuilderPage() {
   const [tt, setTt] = useState<TrangThaiBuoc | null>(null);
   const [dangTai, setDangTai] = useState(false);
   const [daDocHoSo, setDaDocHoSo] = useState(false);
+  const [dangTaoMoi, setDangTaoMoi] = useState(false);
+  const [loiTaoMoi, setLoiTaoMoi] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const h = docHoSoDe();
@@ -88,8 +92,29 @@ export default function TestBuilderPage() {
     ];
   }, [tt, q]);
 
-  // Bước đang dở: bước đầu tiên chưa xong (hoặc đang theo bản cũ)
-  const dangDo = buoc.find((b) => !b.xong && !('khoa' in b && b.khoa));
+  // Bước đang dở: bước đầu tiên chưa xong (hoặc đang theo bản cũ); xong hết thì mở đề
+  const dangDo = buoc.find((b) => !b.xong && !('khoa' in b && b.khoa)) ?? buoc[buoc.length - 1];
+  const daCoGi = !!(tt?.mtr?.moiNhat || tt?.mtr?.banNhap || tt?.dt?.moiNhat || tt?.dt?.banNhap || tt?.de);
+
+  /** Tạo mới: cất bộ của mình (ma trận riêng, đặc tả) vào lịch sử rồi lập lại từ ma trận chung hiện tại. */
+  const taoMoi = async () => {
+    if (daCoGi && !window.confirm(`Tạo mới ${tenMon}, ${tenKy} theo ma trận chung hiện tại của tổ?\n\nMa trận riêng, đặc tả đang có được cất vào lịch sử (không xóa). Đề sẽ soạn lại từ đầu; đề đã duyệt vẫn giữ trong kho đề.`)) return;
+    setDangTaoMoi(true);
+    setLoiTaoMoi(null);
+    try {
+      const r = await fetch('/api/ho-so-de/bat-dau-lai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, ky }) });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) throw new Error(j.error ?? `Lỗi ${r.status}`);
+      // Bản nháp cũ còn lưu trên máy cũng bỏ, để bước 2 bắt đầu sạch
+      try {
+        for (const k of Object.keys(window.localStorage)) if (k.startsWith(`thaykhaiedu.maTranRieng.${maMon}.${ky}`)) window.localStorage.removeItem(k);
+      } catch { /* không có localStorage */ }
+      router.push(`/matrices?${q}`);
+    } catch (e) {
+      setLoiTaoMoi(e instanceof Error ? e.message : String(e));
+      setDangTaoMoi(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-8">
@@ -98,7 +123,7 @@ export default function TestBuilderPage() {
       <div className="the-tke p-6 space-y-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Bước 1. Thiết lập đề kiểm tra</h1>
-          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp 4, rồi đi lần lượt: <b>Ma trận riêng → Đặc tả → Soạn đề → Duyệt</b>. Sửa bước trước thì bước sau đổi theo bản mới: câu nào đổi YCCĐ phải làm lại, câu không đổi được giữ.</p>
+          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp 4. Mỗi thầy cô có bộ riêng, đi lần lượt: <b>Ma trận riêng</b> (chọn từ ma trận chung của tổ) <b>→ Đặc tả → Soạn đề → Duyệt</b>. Bấm Lưu ở mỗi bước là dùng ngay; bước sau tự đổi theo bước trước.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select aria-label="Môn" className={`${o} min-w-44`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
@@ -112,7 +137,7 @@ export default function TestBuilderPage() {
       </div>
 
       <div className="the-tke p-6 space-y-3">
-        <h2 className="font-semibold text-slate-900">Tiến độ của đề này</h2>
+        <h2 className="font-semibold text-slate-900">Bộ đề của thầy cô: {tenMon}, {tenKy}</h2>
         {dangTai && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Đang đọc trạng thái…</div>}
         {tt?.loi && <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><TriangleAlert className="w-4 h-4 mt-0.5" />{tt.loi}</div>}
         {tt && !tt.loi && (
@@ -134,12 +159,27 @@ export default function TestBuilderPage() {
           </ul>
         )}
         {tt && !tt.loi && (
-          <div className="pt-2 flex flex-wrap items-center gap-3">
-            {/* Nút chính luôn sang bước 2: làm lần lượt từng bước, không nhảy cóc */}
-            <Link href={`/matrices?${q}`} className={`${nutChinh} inline-flex items-center gap-2`}>Tiếp theo: Bước 2. Ma trận riêng <ArrowRight className="w-5 h-5" /></Link>
-            {dangDo && dangDo.so !== 2 && (
-              <Link href={dangDo.href} className="text-sm text-blue-700 underline">Hoặc đi tới bước đang dở: Bước {dangDo.so}. {dangDo.ten}</Link>
+          <div className="pt-2 grid gap-3 sm:grid-cols-2">
+            {daCoGi ? (
+              <Link href={dangDo.href} className="rounded-xl border-2 border-indigo-600 bg-indigo-600 p-4 text-white hover:bg-indigo-700">
+                <div className="flex items-center gap-2 text-base font-semibold"><ArrowRight className="w-5 h-5" /> Tiếp tục bản đang làm</div>
+                <div className="text-sm text-indigo-100 mt-1">Mở Bước {dangDo.so}. {dangDo.ten}. Bước nào đổi theo ma trận mới, app tự cập nhật và báo chỗ cần làm lại.</div>
+              </Link>
+            ) : (
+              <Link href={`/matrices?${q}`} className="rounded-xl border-2 border-indigo-600 bg-indigo-600 p-4 text-white hover:bg-indigo-700">
+                <div className="flex items-center gap-2 text-base font-semibold"><ArrowRight className="w-5 h-5" /> Bắt đầu: Bước 2. Ma trận riêng</div>
+                <div className="text-sm text-indigo-100 mt-1">Lập ma trận riêng của thầy cô từ ma trận chung của tổ.</div>
+              </Link>
             )}
+            {daCoGi && (
+              <button type="button" disabled={dangTaoMoi} onClick={() => void taoMoi()} className="text-left rounded-xl border-2 border-slate-300 bg-white p-4 hover:border-indigo-400 hover:bg-indigo-50 disabled:opacity-60">
+                <div className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                  {dangTaoMoi ? <Loader2 className="w-5 h-5 animate-spin" /> : <FilePlus2 className="w-5 h-5 text-indigo-600" />} Tạo mới theo ma trận chung hiện tại
+                </div>
+                <div className="text-sm text-slate-600 mt-1">Làm lại từ đầu, không mang nội dung cũ. Bản cũ được cất vào lịch sử, đề đã duyệt vẫn giữ.</div>
+              </button>
+            )}
+            {loiTaoMoi && <div className="sm:col-span-2 text-sm text-red-700">Chưa tạo mới được: {loiTaoMoi}</div>}
           </div>
         )}
       </div>

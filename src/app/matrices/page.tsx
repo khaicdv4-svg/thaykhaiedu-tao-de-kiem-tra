@@ -39,10 +39,6 @@ import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
 import { DungTiengViet } from '@/components/matrices/DungTiengViet';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
-import { useAuth } from '@/core/contexts/AuthContext';
-
-/** Tổ trưởng, quản trị: bấm Lưu là app tự kiểm tra, xác nhận và cập nhật đặc tả. */
-const VAI_TRO_TU_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
 const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
 
@@ -193,8 +189,8 @@ export default function MatricesPage() {
   const [phienBanXacNhan, setPhienBanXacNhan] = useState<number | null>(null);
   const [chungMoiHon, setChungMoiHon] = useState<{ phienBan: number; xacNhanLuc: string } | null>(null);
   const [dangLuuHeThong, setDangLuuHeThong] = useState(false);
-  const { activeRole } = useAuth();
-  const tuXacNhan = VAI_TRO_TU_XAC_NHAN.includes(activeRole as string);
+  // Ma trận riêng, đặc tả là của chính người đăng nhập: bấm Lưu là tự kiểm tra và dùng ngay
+  const tuXacNhan = true;
 
   const mtc = useMemo(
     () => (cachLap === 'CHUONG_TRINH'
@@ -252,7 +248,7 @@ export default function MatricesPage() {
     setPhienBanXacNhan(null);
     setChungMoiHon(null);
 
-    // Bản lưu trên hệ thống (cả tổ cùng thấy) được ưu tiên hơn bản lưu trên máy
+    // Bản lưu trên hệ thống (của chính mình) được ưu tiên hơn bản lưu trên máy
     let huy = false;
     fetch(`/api/ma-tran-rieng?mon=${mtc.ma_mon}&ky=${mtc.ky_kiem_tra}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -261,6 +257,13 @@ export default function MatricesPage() {
         setPhienBanXacNhan(j.moiNhat?.phienBan ?? null);
         setChungMoiHon(j.maTranChungMoiHon ?? null);
         const d = j.banNhap?.duLieu;
+        if (!j.banNhap && !j.moiNhat) {
+          // Hệ thống chưa có bộ nào của mình (hoặc vừa bấm "Tạo mới"): làm mới từ ma trận chung, bỏ bản cũ còn trên máy
+          try { window.localStorage.removeItem(khoaLuu(mtc)); } catch { /* bỏ qua */ }
+          setMtr(ganSanYccdDuyNhat(mtc, khoiTao));
+          setThongBao(null);
+          return;
+        }
         // Chỉ dùng khi đúng cùng ma trận chung (khung dựng từ chương trình có thể đã khác)
         if (d?.ma_tran_rieng && d.ma_tran_chung && JSON.stringify(d.ma_tran_chung) === JSON.stringify(mtc)) {
           setMtr(ganSanYccdDuyNhat(mtc, d.ma_tran_rieng));
@@ -393,7 +396,7 @@ export default function MatricesPage() {
     setDangLuuHeThong(true);
     const kq = await guiHeThong('LUU_NHAP', mtr);
     setDangLuuHeThong(false);
-    if (kq.ket === 'OK') { ghiBanNhap(mtc, mtr); setThongBao('Đã lưu bản nháp lên hệ thống. Cả tổ cùng thấy bản này.'); return; }
+    if (kq.ket === 'OK') { ghiBanNhap(mtc, mtr); setThongBao('Đã lưu bản nháp lên hệ thống. '); return; }
     if (kq.ket === 'LOI') { setThongBao(`Chưa lưu lên hệ thống: ${kq.thongBao}`); return; }
     setThongBao(ghiBanNhap(mtc, mtr) ? `Đã lưu bản nháp trên máy này (${kq.thongBao ?? 'tài khoản chưa được lưu lên hệ thống'}).` : 'Không lưu được bản nháp trên trình duyệt này.');
   };

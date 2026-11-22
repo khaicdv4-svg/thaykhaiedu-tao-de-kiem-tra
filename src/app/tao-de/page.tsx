@@ -138,7 +138,7 @@ export default function TaoDePage() {
     setDacTaBan(null);
     const [dt, d] = await Promise.all([
       goiJson<{ moiNhat: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
-      goiJson<{ de: BanDeApi | null }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
+      goiJson<{ de: BanDeApi | null; dacTaDaCat?: boolean }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
     ]);
     if (!dt.ok) { setLoiTai(dt.j.error ?? 'Không đọc được bản đặc tả.'); setDangTai(false); return; }
     const moiNhat = dt.j.moiNhat;
@@ -150,7 +150,13 @@ export default function TaoDePage() {
     if (ban) {
       setDe(maMon === 'TIENG_VIET' && !ban.duLieu.tiengViet ? { ...ban.duLieu, tiengViet: taoNoiDungTiengVietRong() } : ban.duLieu);
       setTrangThai(ban.trangThai);
-      if (ban.phienBanDacTa < (moiNhat.phienBan ?? 0)) {
+      if (d.j.dacTaDaCat && ban.dacTaId !== moiNhat.id) {
+        // Thầy cô đã bấm "Tạo mới" ở bước 1: soạn đề mới hoàn toàn theo đặc tả mới, không mang nội dung cũ
+        const moi = taoDeTuDacTa(moiNhat.duLieu, moiNhat.phienBan ?? 1);
+        setDe(maMon === 'TIENG_VIET' && !moi.tiengViet ? { ...moi, tiengViet: taoNoiDungTiengVietRong() } : moi);
+        setTrangThai('BAN_NHAP');
+        setThongBao(`Đề mới theo đặc tả phiên bản ${moiNhat.phienBan}: ${moiNhat.duLieu.dong.length} câu, nội dung để trống. Đề cũ đã duyệt vẫn giữ trong kho đề. Soạn xong bấm Lưu.`);
+      } else if (ban.phienBanDacTa < (moiNhat.phienBan ?? 0) || ban.dacTaId !== moiNhat.id) {
         // Đặc tả đã có bản mới: tự dựng lại đề theo đặc tả mới, không hiện đề cũ.
         // Chỉ giữ câu còn y nguyên yêu cầu; câu đổi YCCĐ, mức, dạng thì để trống cho thầy soạn lại.
         const kq = dungLaiDe(moiNhat.duLieu, moiNhat.phienBan ?? 1, ban.duLieu);
@@ -158,7 +164,7 @@ export default function TaoDePage() {
         setTrangThai('CAN_KIEM_TRA_LAI');
         const ten = (ds: string[]) => ds.map((k) => { const c = kq.de.cau.find((x) => x.khoa === k); return c ? nhanCau(c) : k; }).join(', ');
         const giu = kq.de.cau.filter((c) => c.deBai.trim()).length;
-        setThongBao(`Đặc tả đã lên phiên bản ${moiNhat.phienBan} (đề đang soạn theo phiên bản ${ban.phienBanDacTa}). App đã đổi đề sang đặc tả mới: giữ ${giu} câu không đổi yêu cầu.${kq.doi.length ? ` Câu đổi YCCĐ hoặc mức nên đã xóa nội dung cũ, cần soạn lại: ${ten(kq.doi)}.` : ''}${kq.moi.length ? ` Câu mới cần soạn: ${ten(kq.moi)}.` : ''}${kq.bo.length ? ` Đã bỏ ${kq.bo.length} câu không còn trong đặc tả.` : ''} Muốn làm đề mới hoàn toàn thì bấm "Làm lại đề trống". Soạn xong bấm Lưu.`);
+        setThongBao(`Đặc tả đã có bản mới (phiên bản ${moiNhat.phienBan}, đề đang soạn theo phiên bản ${ban.phienBanDacTa}). App đã đổi đề sang đặc tả mới: giữ ${giu} câu không đổi yêu cầu.${kq.doi.length ? ` Câu đổi YCCĐ hoặc mức nên đã xóa nội dung cũ, cần soạn lại: ${ten(kq.doi)}.` : ''}${kq.moi.length ? ` Câu mới cần soạn: ${ten(kq.moi)}.` : ''}${kq.bo.length ? ` Đã bỏ ${kq.bo.length} câu không còn trong đặc tả.` : ''} Muốn làm đề mới hoàn toàn thì bấm "Làm lại đề trống". Soạn xong bấm Lưu.`);
       }
     } else setTrangThai('BAN_NHAP');
     setDangTai(false);

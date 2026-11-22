@@ -36,10 +36,6 @@ import {
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
 import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
 import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
-import { useAuth } from '@/core/contexts/AuthContext';
-
-/** Tổ trưởng, quản trị: bấm Lưu là app tự kiểm tra và xác nhận. */
-const VAI_TRO_TU_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
 interface BanMaTranRieng { id: string; phienBan: number | null; xacNhanLuc: string | null; duLieu: { ma_tran_chung: MaTranChung; ma_tran_rieng: MaTranRieng } }
 interface BanDacTaApi { id: string; phienBan: number | null; trangThai: TrangThaiDacTa; maTranRiengId: string; phienBanMaTranRieng: number; duLieu: DacTa }
@@ -86,8 +82,8 @@ export default function DacTaPage() {
   const [daXemTruoc, setDaXemTruoc] = useState(false);
   const [thongBao, setThongBao] = useState<string | null>(null);
   const [dangGui, setDangGui] = useState(false);
-  const { activeRole } = useAuth();
-  const tuXacNhan = VAI_TRO_TU_XAC_NHAN.includes(activeRole as string);
+  // Ma trận riêng, đặc tả là của chính người đăng nhập: bấm Lưu là tự kiểm tra và dùng ngay
+  const tuXacNhan = true;
   const [tiet, setTiet] = useState<Tiet[]>([]);
   const [mucLuc, setMucLuc] = useState<MucLucSgk[]>([]);
   const [yccdKho, setYccdKho] = useState<Yccd[]>([]);
@@ -222,7 +218,7 @@ export default function DacTaPage() {
     });
     setDangGui(false);
     if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa ${hanhDong === 'XAC_NHAN' ? 'xác nhận' : 'lưu'} được: ${r.j.error}`); return; }
-    if (hanhDong === 'LUU_NHAP') { setThongBao('Đã lưu bản nháp đặc tả lên hệ thống. Cả tổ cùng thấy bản này.'); return; }
+    if (hanhDong === 'LUU_NHAP') { setThongBao('Đã lưu bản nháp đặc tả lên hệ thống. '); return; }
     if (hanhDong === 'LUU' && !r.j.daXacNhan) {
       if (r.j.ban?.trangThai) setTrangThai(r.j.ban.trangThai);
       setThongBao(r.j.loiXacNhan ? `Đã lưu bản nháp. Chưa dùng được vì còn lỗi: ${r.j.loiXacNhan}. Sửa xong bấm Lưu lại.` : 'Đã lưu bản nháp đặc tả lên hệ thống.');
