@@ -376,7 +376,7 @@ export function cacPhanDe(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptions[] {
     },
   };
   return [
-    { properties: trang, children: [...dauDe(t), bangCau(de.cau, false, de.ma_mon), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
+    { properties: trang, children: [...dauDe(t), bangCau(de.cau, true, de.ma_mon), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
     { properties: trang, children: huongDanCham(t, de) },
   ];
 }
