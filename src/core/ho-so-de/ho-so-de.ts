@@ -75,3 +75,25 @@ export function luuHoSoDe(h: HoSoDe): void {
   }
   window.dispatchEvent(new Event(SU_KIEN_HO_SO));
 }
+
+/** Câu cần mở ngay khi vào trang (?cau=<khóa câu>), dùng khi bấm "Sửa câu này" từ màn Xem đề. */
+export function cauTrenDiaChi(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('cau');
+}
+
+/** Đường dẫn mở đúng một câu ở một bước: "/dac-ta?mon=TOAN&ky=CUOI_HK1&cau=…". */
+export function duongDanCau(href: string, h: HoSoDe, khoa: string): string {
+  return `${ganHoSo(href, h)}&cau=${encodeURIComponent(khoa)}`;
+}
+
+/** Cuộn tới câu có id "cau-<khóa>" và tô viền vài giây cho dễ thấy. */
+export function cuonToiCau(khoa: string): boolean {
+  if (typeof document === 'undefined') return false;
+  const el = document.getElementById(`cau-${khoa}`);
+  if (!el) return false;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('ring-4', 'ring-amber-400', 'rounded-lg');
+  window.setTimeout(() => el.classList.remove('ring-4', 'ring-amber-400'), 4000);
+  return true;
+}

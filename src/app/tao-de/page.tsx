@@ -8,7 +8,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Download, Eye, FilePlus2, ImagePlus, Square, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, Download, Eye, FilePlus2, ImagePlus, Lock, PenLine, Square, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
@@ -24,7 +24,7 @@ import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { ChuPhanSo } from '@/components/de/ChuPhanSo';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
-import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { cauTrenDiaChi, cuonToiCau, docHoSoDe, duongDanCau, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
 import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
 import {
   NHAN_LUA_CHON,
@@ -37,6 +37,7 @@ import {
   type HinhCau,
   dungLaiDe,
   kiemDinhDe,
+  lechTungCau,
   nhanCau,
   taoDeTuDacTa,
   tienDoDe,
@@ -49,7 +50,7 @@ import {
   type TrangThaiDe,
 } from '@/core/de/de';
 
-interface BanDacTaApi { id: string; phienBan: number | null; duLieu: DacTa }
+interface BanDacTaApi { id: string; phienBan: number | null; duLieu: DacTa; trangThai?: string }
 interface BanDeApi { id: string; trangThai: TrangThaiDe; dacTaId: string; phienBanDacTa: number; duLieu: DeKiemTra }
 
 
@@ -110,7 +111,13 @@ export default function TaoDePage() {
   const [namHoc, setNamHoc] = useState('2026 - 2027');
   const [phut, setPhut] = useState(35);
   const [dangXuat, setDangXuat] = useState(false);
-  const [xemTruoc, setXemTruoc] = useState(false);
+  // Hai chế độ: soạn từng câu, hoặc xem cả đề như bản in (từ đó bấm sửa đúng câu, đúng bước, rồi xuất Word)
+  const [cheDo, setCheDo] = useState<'soan' | 'xem'>('soan');
+  // Đặc tả đang được sửa ở bước 3 (chưa lưu hoặc còn lỗi): chưa cho tạo đề theo bản cũ
+  const [dacTaDangSua, setDacTaDangSua] = useState<string | null>(null);
+  // Có thay đổi chưa lưu lên hệ thống (để xuất Word đúng bản đang xem)
+  const [daSua, setDaSua] = useState(false);
+  const deRef = useRef<DeKiemTra | null>(null);
   const [loiHinh, setLoiHinh] = useState<Record<string, string>>({});
   const conTro = useRef<Record<string, number>>({});
   const [veAI, setVeAI] = useState<Record<string, { mo?: boolean; moTa: string; dich: number | null; dang?: boolean; loi?: string; xem?: HinhCau }>>({});
@@ -136,14 +143,19 @@ export default function TaoDePage() {
     setKetQua(null);
     setDe(null);
     setDacTaBan(null);
+    setDacTaDangSua(null);
+    setDaSua(false);
     const [dt, d] = await Promise.all([
-      goiJson<{ moiNhat: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
+      goiJson<{ moiNhat: BanDacTaApi | null; banNhap: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
       goiJson<{ de: BanDeApi | null; dacTaDaCat?: boolean }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
     ]);
     if (!dt.ok) { setLoiTai(dt.j.error ?? 'Không đọc được bản đặc tả.'); setDangTai(false); return; }
     const moiNhat = dt.j.moiNhat;
     setDacTaBan(moiNhat);
     if (!moiNhat) { setDangTai(false); return; }
+    // Bản nháp đặc tả đang sửa dở hoặc còn lỗi: phải lưu xong ở bước 3 rồi mới tạo đề, tránh soạn đề theo bản cũ
+    const nhapDt = dt.j.banNhap;
+    if (nhapDt && nhapDt.trangThai && nhapDt.trangThai !== 'DA_XAC_NHAN') { setDacTaDangSua(nhapDt.trangThai); setDangTai(false); return; }
     if (!d.ok) { setLoiTai(d.j.error ?? 'Không đọc được đề kiểm tra.'); setDangTai(false); return; }
     const ban = d.j.de;
     setDeId(ban?.id ?? null);
@@ -166,17 +178,36 @@ export default function TaoDePage() {
         const giu = kq.de.cau.filter((c) => c.deBai.trim()).length;
         setThongBao(`Đặc tả đã có bản mới (phiên bản ${moiNhat.phienBan}, đề đang soạn theo phiên bản ${ban.phienBanDacTa}). App đã đổi đề sang đặc tả mới: giữ ${giu} câu không đổi yêu cầu.${kq.doi.length ? ` Câu đổi YCCĐ hoặc mức nên đã xóa nội dung cũ, cần soạn lại: ${ten(kq.doi)}.` : ''}${kq.moi.length ? ` Câu mới cần soạn: ${ten(kq.moi)}.` : ''}${kq.bo.length ? ` Đã bỏ ${kq.bo.length} câu không còn trong đặc tả.` : ''} Muốn làm đề mới hoàn toàn thì bấm "Làm lại đề trống". Soạn xong bấm Lưu.`);
       }
+      // Thầy đã đổi đặc tả nên phải soạn lại: ở chế độ soạn. Đề đủ nội dung: mở thẳng màn Xem đề
+      else if (ban.duLieu.cau.length && ban.duLieu.cau.every((c) => c.deBai.trim()) && !cauTrenDiaChi()) setCheDo('xem');
+      if (d.j.dacTaDaCat || ban.phienBanDacTa < (moiNhat.phienBan ?? 0) || ban.dacTaId !== moiNhat.id) setDaSua(true);
     } else setTrangThai('BAN_NHAP');
     setDangTai(false);
   }, [maMon, ky]);
 
   useEffect(() => { void nap(); }, [nap]);
+  deRef.current = de;
+
+  // Mở từ màn Xem đề hoặc địa chỉ có ?cau=: chuyển sang soạn và cuộn tới đúng câu
+  const moCau = (khoa: string) => {
+    setCheDo('soan');
+    window.setTimeout(() => cuonToiCau(khoa), 150);
+  };
+  const daMoCau = useRef(false);
+  useEffect(() => {
+    if (daMoCau.current || !de || dangTai) return;
+    daMoCau.current = true;
+    const khoa = cauTrenDiaChi();
+    if (khoa) moCau(khoa);
+  }, [de, dangTai]);
 
   const taoMoi = () => {
     if (!dacTaBan) return;
     if (de && de.cau.some((c) => c.deBai.trim()) && !window.confirm('Xóa hết nội dung đang soạn và làm lại đề trống theo đặc tả mới nhất? Đề đã duyệt trước đây vẫn giữ trong kho đề.')) return;
     setDe(taoDeTuDacTa(dacTaBan.duLieu, dacTaBan.phienBan ?? 1));
     setTrangThai('BAN_NHAP');
+    setDaSua(true);
+    setCheDo('soan');
     setKetQua(null);
     setThongBao('Đã tạo khung đề từ đặc tả. Nhập đề bài, phương án và đáp án cho từng câu rồi lưu bản nháp.');
   };
@@ -184,14 +215,15 @@ export default function TaoDePage() {
   // Chưa có đề: tự dựng khung đề từ đặc tả để thầy cô bấm "Tạo đề" ngay
   const daTuDung = useRef('');
   useEffect(() => {
-    if (!dacTaBan || de || dangTai || loiTai) return;
+    if (!dacTaBan || de || dangTai || loiTai || dacTaDangSua) return;
     const khoa = `${maMon}|${ky}|${dacTaBan.id}`;
     if (daTuDung.current === khoa) return;
     daTuDung.current = khoa;
     setDe(taoDeTuDacTa(dacTaBan.duLieu, dacTaBan.phienBan ?? 1));
     setTrangThai('BAN_NHAP');
+    setDaSua(true);
     setThongBao(`Đã dựng khung ${dacTaBan.duLieu.dong.length} câu theo đặc tả phiên bản ${dacTaBan.phienBan}. Bấm "Tạo đề" để AI soạn tất cả các câu và đáp án.`);
-  }, [dacTaBan, de, dangTai, loiTai, maMon, ky]);
+  }, [dacTaBan, de, dangTai, loiTai, maMon, ky, dacTaDangSua]);
 
   const [goiYNH, setGoiYNH] = useState<{ ds: GoiYMotCau[]; chon: Record<string, boolean>; tin?: string } | null>(null);
   const [dangGoiYNH, setDangGoiY] = useState(false);
@@ -232,6 +264,7 @@ export default function TaoDePage() {
   const suaCau = (khoa: string, p: Partial<NoiDungCau>) => {
     setDe((d) => (d ? { ...d, cau: d.cau.map((c) => (c.khoa === khoa ? { ...c, ...p } : c)) } : d));
     setTrangThai((t) => trangThaiDeSauKhiSua(t));
+    setDaSua(true);
     setKetQua(null);
   };
   const suaLuaChon = (c: CauDe, i: number, v: string) => {
@@ -253,16 +286,19 @@ export default function TaoDePage() {
 
   const dongDacTaCua = (c: CauDe) => {
     const d = dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa);
-    return { yNho: c.yNho, baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa };
+    return { yNho: c.yNho, baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa, dangBai: d?.dangBai?.trim() || undefined };
   };
-  /** Ghi chú của thầy ở đặc tả (ví dụ "dạng đổi đơn vị"): AI luôn soạn theo. */
-  const ghiChuDacTa = (c: CauDe) => dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa)?.ghiChu?.trim() || undefined;
+  const dangBaiCua = (c: CauDe) => dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa)?.dangBai?.trim() || '';
+  /** Ghi chú riêng của thầy ở đặc tả: AI luôn soạn theo (dạng bài gửi riêng ở dòng đặc tả). */
+  const ghiChuRieng = (c: CauDe) => dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa)?.ghiChu?.trim() || undefined;
+  /** Dạng bài và ghi chú gộp lại, cho chỗ AI viết lại câu (chỉ nhận một ô yêu cầu). */
+  const ghiChuDacTa = (c: CauDe) => [dangBaiCua(c) && `Dạng bài bắt buộc: ${dangBaiCua(c)}`, ghiChuRieng(c)].filter(Boolean).join('. ') || undefined;
   const moTaTrang = (kh: { tap: number | null; tu: number; den: number } | null | undefined, co: number[] | undefined) =>
     kh ? `SGK${kh.tap ? ` tập ${kh.tap}` : ''} tr. ${kh.tu}${kh.den > kh.tu ? `–${kh.den}` : ''}${co ? `, có chữ ${co.length} trang` : ''}` : undefined;
   const soanTuSach = async (c: CauDe) => {
     setSach((g) => ({ ...g, [c.khoa]: { dang: 'soan' } }));
     const r = await goiJson<{ cau?: NonNullable<KetQuaSach['soan']>; khoang?: { tap: number | null; tu: number; den: number }; trangDaDung?: number[]; thieu?: string[] }>('/api/de-kiem-tra/soan-cau', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, ky, dong: dongDacTaCua(c), ghiChu: ghiChuDacTa(c) }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon: maMon, ky, dong: dongDacTaCua(c), ghiChu: ghiChuRieng(c) }),
     });
     if (!r.ok || !r.j.cau) { setSach((g) => ({ ...g, [c.khoa]: { loi: r.j.error ?? 'AI chưa soạn được.', thieu: r.j.thieu } })); return; }
     setSach((g) => ({ ...g, [c.khoa]: { soan: r.j.cau, thieu: r.j.thieu, trang: moTaTrang(r.j.khoang, r.j.trangDaDung) } }));
@@ -302,7 +338,7 @@ export default function TaoDePage() {
       if (docHieu && !baiDoc?.noiDung?.trim()) { loi.push(`${nhanCau(c)}: chưa có bài đọc hiểu, chọn bài đọc trước.`); return; }
       const r = await goiJson<{ cau?: NonNullable<KetQuaSach['soan']> }>('/api/de-kiem-tra/soan-cau', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mon: maMon, ky, dong: dongDacTaCua(c), ghiChu: ghiChuDacTa(c), ...(docHieu ? { baiDoc } : {}) }),
+        body: JSON.stringify({ mon: maMon, ky, dong: dongDacTaCua(c), ghiChu: ghiChuRieng(c), ...(docHieu ? { baiDoc } : {}) }),
       });
       const x = r.j.cau;
       if (!r.ok || !x) { loi.push(`${nhanCau(c)}: ${r.j.error ?? 'AI chưa soạn được'}`); return; }
@@ -326,8 +362,10 @@ export default function TaoDePage() {
     setTaoDeAI({ dang: false, xong, tong: ds.length, loi });
     const daSoan = ds.length - loi.length;
     if (daSoan > 0) await gui('BAN_NHAP', deTam);
+    const soLech = Object.keys(lechTungCau(dacTaBan.duLieu, deTam)).length;
+    if (daSoan > 0 && !loi.length) setCheDo('xem');
     setThongBao(daSoan
-      ? `AI đã soạn ${daSoan}/${ds.length} câu cùng đáp án và đã lưu bản nháp.${loi.length ? ` Còn ${loi.length} câu chưa soạn được (xem danh sách bên dưới).` : ''} Thầy cô đọc lại từng câu, sửa nếu cần, rồi bấm Kiểm tra và gửi duyệt.`
+      ? `AI đã soạn ${daSoan}/${ds.length} câu cùng đáp án và đã lưu bản nháp.${loi.length ? ` Còn ${loi.length} câu chưa soạn được (xem danh sách bên dưới).` : ''} ${soLech ? `Có ${soLech} câu cần xem lại (đánh dấu đỏ ở màn Xem đề).` : ''} Thầy cô xem lại cả đề, bấm "Sửa câu này" ở câu cần sửa, xem đúng rồi xuất Word.`
       : 'AI chưa soạn được câu nào. Xem lí do bên dưới.');
   };
 
@@ -415,6 +453,7 @@ export default function TaoDePage() {
   const suaTiengViet = (g: NoiDungTiengViet) => {
     setDe((d) => (d ? { ...d, tiengViet: g } : d));
     setTrangThai((t) => trangThaiDeSauKhiSua(t));
+    setDaSua(true);
     setKetQua(null);
   };
 
@@ -426,8 +465,8 @@ export default function TaoDePage() {
     return kq;
   };
 
-  const gui = async (tt: TrangThaiDe, deGui: DeKiemTra | null = de) => {
-    if (!dacTaBan || !deGui) return;
+  const gui = async (tt: TrangThaiDe, deGui: DeKiemTra | null = de): Promise<boolean> => {
+    if (!dacTaBan || !deGui) return false;
     setDangGui(true);
     const r = await goiJson<{ ban?: BanDeApi; kiemDinh?: KetQuaKiemDinhDe }>('/api/de-kiem-tra', {
       method: 'POST',
@@ -435,13 +474,17 @@ export default function TaoDePage() {
       body: JSON.stringify({ mon: maMon, ky, dacTaId: dacTaBan.id, de: deGui, trangThai: tt }),
     });
     setDangGui(false);
-    if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa lưu được: ${r.j.error}`); return; }
+    if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa lưu được: ${r.j.error}`); return false; }
     if (r.j.ban) { setTrangThai(r.j.ban.trangThai); setDeId(r.j.ban.id); }
+    if (deRef.current === deGui || tt === 'SAN_SANG_DUYET') setDaSua(false);
     if (r.j.kiemDinh) setKetQua(r.j.kiemDinh);
     setThongBao(tt === 'SAN_SANG_DUYET' ? 'Đã gửi đề đi thẩm định. Theo dõi nhận xét và các bước duyệt ở Kho đề.' : 'Đã lưu đề lên hệ thống. Đề của thầy/cô chỉ mình thầy/cô xem, đến khi chia sẻ hoặc gửi thẩm định.');
+    return true;
   };
 
   const xuatWord = async (hoSo = false) => {
+    // Word xuất từ bản đã lưu: đang có thay đổi thì lưu trước, để file đúng với bản đang xem
+    if (daSua && !(await gui('BAN_NHAP'))) return;
     setDangXuat(true);
     try {
       try { localStorage.setItem('tke.truong', truong); localStorage.setItem('tke.namHoc', namHoc); localStorage.setItem('tke.phut', String(phut)); } catch { /* bỏ qua */ }
@@ -461,7 +504,7 @@ export default function TaoDePage() {
         const ghiMau = mau.startsWith('da-dung:') ? ` Đầu bài theo mẫu đề của tổ (${mau.slice(8)}).`
           : mau.startsWith('loi:') ? ` Chưa dùng được mẫu đề của tổ (${mau.slice(4)}), đầu bài theo khung mặc định.`
           : mau === 'chua-co' ? ' Môn này chưa có mẫu đề của tổ, đầu bài theo khung mặc định.' : '';
-        setThongBao((hoSo ? 'Đã xuất bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm) từ bản đề đã lưu.' : 'Đã xuất tệp Word (đề và hướng dẫn chấm) từ bản đề đã lưu. Nếu vừa sửa, thầy bấm Lưu bản nháp trước khi xuất.') + ghiMau);
+        setThongBao((hoSo ? 'Đã xuất bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm) đúng bản đang xem.' : 'Đã xuất tệp Word (đề và hướng dẫn chấm) đúng bản đang xem.') + ghiMau);
       }
     } catch {
       setThongBao('Chưa xuất được: không kết nối được hệ thống.');
@@ -512,7 +555,20 @@ export default function TaoDePage() {
         </div>
       )}
 
-      {dacTaBan && !de && !dangTai && !loiTai && (
+      {dacTaDangSua && !dangTai && (
+        <div className="the-tke p-6 space-y-3 border-2 border-amber-300">
+          <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2"><Lock className="w-5 h-5 text-amber-600" /> Đặc tả đang được chỉnh sửa</h2>
+          <p className="text-sm text-slate-700">
+            {dacTaDangSua === 'CO_LOI'
+              ? 'Bản đặc tả ở bước 3 còn lỗi. '
+              : 'Bản đặc tả ở bước 3 có thay đổi chưa lưu xong. '}
+            Để đề soạn đúng theo đặc tả mới, thầy cô mở bước 3, xem lại và bấm <b>Lưu</b>. Lưu xong, không còn lỗi thì quay lại đây tạo đề.
+          </p>
+          <Link href={`/dac-ta?mon=${maMon}&ky=${ky}`} className={nutChinh}><ArrowLeft className="w-4 h-4" /> Về bước 3: Đặc tả</Link>
+        </div>
+      )}
+
+      {dacTaBan && !de && !dangTai && !loiTai && !dacTaDangSua && (
         <div className="the-tke p-6 space-y-3">
           <h2 className="text-lg font-semibold text-slate-900">Tạo khung đề cho {tenMon}</h2>
           <p className="text-sm text-slate-600">Ứng dụng dựng sẵn {dacTaBan.duLieu.dong.length} câu theo đặc tả phiên bản {dacTaBan.phienBan}. Nội dung để trống, thầy nhập từng câu.</p>
@@ -522,6 +578,15 @@ export default function TaoDePage() {
 
       {de && dacTaBan && (
         <>
+          <div className="the-tke p-2 flex flex-wrap items-center gap-2" role="tablist" aria-label="Chế độ làm đề">
+            {([['soan', 'Soạn đề', PenLine], ['xem', 'Xem đề', Eye]] as const).map(([k, t, Icon]) => (
+              <button key={k} type="button" role="tab" aria-selected={cheDo === k} onClick={() => { setCheDo(k); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${cheDo === k ? 'text-white bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow' : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'}`}>
+                <Icon className="w-4 h-4" /> {t}
+              </button>
+            ))}
+            <span className="text-xs text-slate-500 px-2">{cheDo === 'soan' ? 'Soạn, sửa từng câu. Xong thì sang Xem đề để kiểm tra cả đề và xuất Word.' : 'Xem cả đề như bản in. Câu đánh dấu đỏ cần xem lại; bấm "Sửa câu này" hoặc "Sửa ở bước Đặc tả".'}{daSua ? ' Có thay đổi chưa lưu.' : ''}</span>
+          </div>
           <div className="the-tke p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
             <span>{de.cau.length} câu · tổng <b>{fmtDiem(tongDiem)}</b> điểm</span>
             <span>Đã soạn xong <b>{tienDo.xong}/{tienDo.tong}</b> câu</span>
@@ -534,6 +599,7 @@ export default function TaoDePage() {
             </button>
           </div>
 
+          {cheDo === 'soan' && (<>
           <div className="the-tke p-4 flex flex-wrap items-center gap-3 border-2 border-indigo-200">
             <button type="button" className={nutChinh} disabled={!!taoDeAI?.dang || !de.cau.some((c) => !c.deBai.trim())} onClick={() => void taoDeBangAI()}>
               {taoDeAI?.dang ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
@@ -597,13 +663,15 @@ export default function TaoDePage() {
                 <h2 className="font-semibold text-slate-900">{ten}</h2>
                 <div className="divide-y divide-slate-100">
                   {cauNhom.map((c) => (
-                    <div key={c.khoa} className="py-4 space-y-2">
+                    <div key={c.khoa} id={`cau-${c.khoa}`} className="py-4 space-y-2 transition-shadow">
                       <div className="flex flex-wrap items-baseline gap-x-3">
                         <span className="font-semibold text-slate-900">{nhanCau(c)}{c.yNho ? ` (${c.yNho.join(', ')})` : ''}</span>
                         <span className="text-xs text-slate-500">{TEN_MUC[c.muc]} · {c.hinhThuc}{c.dang ? ` · ${TEN_DANG[c.dang] ?? c.dang}` : ''} · {fmtDiem(c.diem)} điểm</span>
                         {cauDaXong(c) && <span className="text-xs text-emerald-700">Đã đủ</span>}
                       </div>
                       <div className="text-xs text-slate-500">YCCĐ: {c.yccd || 'chưa có'}</div>
+                      {dangBaiCua(c) && <div className="text-xs text-indigo-800"><b>Dạng bài (đặc tả):</b> {dangBaiCua(c)}</div>}
+                      {(() => { const l = lechTungCau(dacTaBan.duLieu, { ...de, cau: [c] })[c.khoa]?.filter((x) => /dạng|Mức|điểm, đặc tả|Hình thức/.test(x)); return l?.length ? <div className="text-xs text-red-700">{l.join(' ')}</div> : null; })()}
 
                       <div className="flex flex-wrap items-center gap-2 text-xs">
                         <button type="button" className="rounded border border-slate-300 bg-white px-2 py-1 hover:bg-slate-50" onClick={() => setMoNganHang(moNganHang === c.khoa ? null : c.khoa)}>{moNganHang === c.khoa ? 'Đóng ngân hàng' : 'Lấy từ ngân hàng'}</button>
@@ -822,9 +890,22 @@ export default function TaoDePage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" className={nutPhu} onClick={() => setXemTruoc((v) => !v)}><Eye className="w-4 h-4" /> {xemTruoc ? 'Ẩn bản xem trước' : 'Xem trước đề và đáp án'}</button>
+            <button type="button" className={nutChinh} onClick={() => { setCheDo('xem'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Eye className="w-4 h-4" /> Xem đề để kiểm tra và xuất Word</button>
           </div>
-          {xemTruoc && <XemTruocDe de={de} truong={truong} tenMon={tenMon} phut={phut} />}
+          </>)}
+
+          {cheDo === 'xem' && (() => {
+            const lech = lechTungCau(dacTaBan.duLieu, de);
+            const soLech = Object.keys(lech).length;
+            return (<>
+              <div className={`rounded-xl border p-4 text-sm flex flex-wrap items-center justify-between gap-3 ${soLech ? 'border-red-200 bg-red-50 text-red-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>
+                <span>{soLech ? `Có ${soLech} câu cần xem lại (đánh dấu đỏ ngay trên câu). Sai nội dung câu thì bấm "Sửa câu này"; sai từ gốc (YCCĐ, dạng bài, bài học) thì bấm "Sửa ở bước Đặc tả".` : 'Các câu đều khớp đặc tả. Thầy cô đọc lại toàn đề và đáp án, đúng rồi thì xuất Word.'}</span>
+                {soLech > 0 && <button type="button" className={nutPhu} onClick={() => { const k = Object.keys(lech)[0]; document.getElementById(`xem-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Tới câu đầu tiên cần sửa</button>}
+              </div>
+              <XemTruocDe de={de} truong={truong} tenMon={tenMon} phut={phut} tieuDe="Xem đề"
+                congCu={{ lech, onSuaCau: moCau, hrefDacTa: (k) => duongDanCau('/dac-ta', { mon: maMon, ky }, k) }} />
+            </>);
+          })()}
 
           {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra đề" /></div>}
 
@@ -841,7 +922,7 @@ export default function TaoDePage() {
             </div>
           )}
 
-          <div className="the-tke p-4 flex flex-wrap items-end gap-3 text-sm">
+          {cheDo === 'xem' && <div className="the-tke p-4 flex flex-wrap items-end gap-3 text-sm">
             <label className="flex-1 min-w-60">
               <span className="block text-slate-600 mb-1">Tên trường (in ở đầu đề)</span>
               <input aria-label="Tên trường" className={o} value={truong} onChange={(e) => setTruong(e.target.value)} />
@@ -854,13 +935,14 @@ export default function TaoDePage() {
               <span className="block text-slate-600 mb-1">Thời gian (phút)</span>
               <input aria-label="Thời gian làm bài" type="number" min={5} max={120} className={`${o} w-28`} value={phut} onChange={(e) => setPhut(Number(e.target.value) || 35)} />
             </label>
-            <button type="button" className={nutPhu} disabled={dangXuat} onClick={() => void xuatWord(false)}>
-              {dangXuat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Xuất Word (đề + hướng dẫn chấm)
+            <button type="button" className={nutChinh} disabled={dangXuat || dangGui} onClick={() => void xuatWord(false)}>
+              {dangXuat || dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Xuất Word (đề + hướng dẫn chấm)
             </button>
-            <button type="button" className={nutPhu} disabled={dangXuat} onClick={() => void xuatWord(true)}>
+            <button type="button" className={nutPhu} disabled={dangXuat || dangGui} onClick={() => void xuatWord(true)}>
               <Download className="w-4 h-4" /> Xuất bộ hồ sơ
             </button>
-          </div>
+            <span className="w-full text-xs text-slate-500">File Word xuất đúng bản đang xem{daSua ? '; app sẽ lưu các thay đổi trước khi xuất' : ''}.</span>
+          </div>}
 
           <div className="flex flex-wrap justify-between gap-2">
             <Link href={`/dac-ta?mon=${maMon}&ky=${ky}`} className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về đặc tả</Link>

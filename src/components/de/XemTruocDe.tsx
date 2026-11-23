@@ -2,9 +2,12 @@
 
 /**
  * Bản xem trước đề và đáp án, trình bày gần giống bản in: đen trắng, Times New Roman, điểm bên trái,
- * đường kẻ dọc, phương án A–B / C–D hai bên, dòng chấm chừa chỗ làm bài. Chỉ để xem; xuất Word dùng cùng quy tắc.
+ * đường kẻ dọc, phương án A–B / C–D hai bên, dòng chấm chừa chỗ làm bài. Xuất Word dùng cùng quy tắc.
+ * Màn Xem đề ở bước 4 truyền thêm chỗ lệch từng câu và nút sửa: các phần này chỉ hiện trên màn hình, không in.
  */
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { AlertTriangle, ListChecks, Pencil } from 'lucide-react';
 import { ChuPhanSo as PS } from '@/components/de/ChuPhanSo';
 import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 
@@ -95,14 +98,44 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
   );
 }
 
-export function XemTruocDe({ de, truong, tenMon, phut }: { de: DeKiemTra; truong: string; tenMon: string; phut: number }) {
+/** Nút sửa và chỗ lệch của một câu, đặt ngay trên câu đó (chỉ để xem trên màn hình). */
+export interface CongCuSuaCau {
+  /** Chỗ lệch đặc tả của từng câu (khóa câu → các lỗi). */
+  lech?: Record<string, string[]>;
+  /** Mở câu ở bước 4 (soạn đề). */
+  onSuaCau?: (khoa: string) => void;
+  /** Đường dẫn mở câu ở bước 3 (đặc tả). */
+  hrefDacTa?: (khoa: string) => string;
+}
+
+function ThanhSuaCau({ c, cc }: { c: CauDe; cc: CongCuSuaCau }) {
+  const lech = cc.lech?.[c.khoa] ?? [];
+  if (!cc.onSuaCau && !cc.hrefDacTa && !lech.length) return null;
+  return (
+    <div className={`print:hidden font-sans text-sm rounded-lg px-3 py-2 mt-2 mb-1 flex flex-wrap items-start gap-2 ${lech.length ? 'border border-red-300 bg-red-50' : 'border border-slate-200 bg-slate-50'}`} style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+      <div className="flex-1 min-w-48">
+        {lech.length ? (
+          <ul className="text-red-800 space-y-0.5">
+            {lech.map((x) => <li key={x} className="flex gap-1.5"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />{nhanCau(c)}: {x}</li>)}
+          </ul>
+        ) : <span className="text-slate-500">{nhanCau(c)}: khớp đặc tả</span>}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {cc.onSuaCau && <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100" onClick={() => cc.onSuaCau!(c.khoa)}><Pencil className="w-3.5 h-3.5" /> Sửa câu này</button>}
+        {cc.hrefDacTa && <Link href={cc.hrefDacTa(c.khoa)} className="inline-flex items-center gap-1 rounded-lg border border-indigo-300 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50" title="Sai từ gốc (YCCĐ, dạng bài, bài học): sửa ở đặc tả"><ListChecks className="w-3.5 h-3.5" /> Sửa ở bước Đặc tả</Link>}
+      </div>
+    </div>
+  );
+}
+
+export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem trước' }: { de: DeKiemTra; truong: string; tenMon: string; phut: number; congCu?: CongCuSuaCau; tieuDe?: string }) {
   const [tab, setTab] = useState<'de' | 'dap-an'>('de');
   const cau = [...de.cau].sort((a, b) => (/^\d+$/.test(a.cau) ? Number(a.cau) : 1e9) - (/^\d+$/.test(b.cau) ? Number(b.cau) : 1e9));
   const tong = Math.round(cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
   return (
     <div className="the-tke p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="font-semibold text-slate-900 mr-2">Xem trước</h2>
+        <h2 className="font-semibold text-slate-900 mr-2">{tieuDe}</h2>
         {([['de', 'Đề kiểm tra'], ['dap-an', 'Đáp án, hướng dẫn chấm']] as const).map(([k, t]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-lg border px-3 py-1.5 text-sm ${tab === k ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold' : 'border-slate-300 bg-white text-slate-700'}`}>{t}</button>
         ))}
@@ -115,7 +148,12 @@ export function XemTruocDe({ de, truong, tenMon, phut }: { de: DeKiemTra; truong
           {tab === 'de' && <div>Thời gian: {phut} phút</div>}
         </div>
         {tab === 'de' ? (
-          <div>{cau.map((c) => <MotCau key={c.khoa} c={c} maMon={de.ma_mon} />)}<div className="text-center font-bold pt-2">HẾT ĐỀ</div></div>
+          <div>{cau.map((c) => (
+            <div key={c.khoa} id={`xem-${c.khoa}`}>
+              {congCu && <ThanhSuaCau c={c} cc={congCu} />}
+              <MotCau c={c} maMon={de.ma_mon} />
+            </div>
+          ))}<div className="text-center font-bold pt-2">HẾT ĐỀ</div></div>
         ) : (
           <table className="w-full border-collapse text-[16px]">
             <thead><tr><th className="border border-black p-1 w-16">Câu</th><th className="border border-black p-1">Đáp án, hướng dẫn chấm</th><th className="border border-black p-1 w-16">Điểm</th></tr></thead>

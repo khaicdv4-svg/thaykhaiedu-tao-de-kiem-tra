@@ -12,6 +12,7 @@ import type { DangCau, HinhThucCau, KyKiemTra, MucDo } from '@/types/matrix-temp
 import { xepDongTheoCau, type DacTa, type KieuHinhKem } from '@/core/dac-ta/dac-ta';
 import { kiemDinhTiengViet, taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { kiemTraDangBai } from '@/core/de/dang-bai';
 
 export type TrangThaiDe =
   | 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'CAN_KIEM_TRA_LAI' // đang soạn
@@ -401,6 +402,12 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
     }
   }
 
+  // Câu lệch dạng bài giáo viên chọn ở đặc tả (nhận theo dấu hiệu trong chữ nên chỉ cảnh báo, giáo viên quyết định)
+  const dongTheoKhoa = new Map(dacTa.dong.map((r) => [r.khoa, r]));
+  for (const c of xepDongTheoCau(de.cau)) {
+    for (const x of kiemTraDangBai(dongTheoKhoa.get(c.khoa)?.dangBai, c)) canhBao.push(`${nhanCau(c)}: ${x}`);
+  }
+
   for (const c of xepDongTheoCau(de.cau)) {
     if (/hình|bảng|biểu đồ|sơ đồ/i.test(c.deBai) && !c.ghiChuHinh.trim() && !(c.hinh ?? []).length) {
       canhBao.push(`${nhanCau(c)}: đề bài nhắc đến hình hoặc bảng nhưng chưa ghi mô tả để dàn trang.`);
@@ -408,6 +415,30 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
   }
 
   return { hopLe: loi.length === 0, loi, canhBao };
+}
+
+/**
+ * Chỗ lệch của TỪNG câu so với đặc tả, để đánh dấu ngay trên màn Xem đề: sai mức, dạng câu, điểm; thiếu đề bài,
+ * phương án, đáp án; sai dạng bài giáo viên chọn. Khóa là khóa câu. Câu không lệch thì không có trong kết quả.
+ */
+export function lechTungCau(dacTa: DacTa, de: DeKiemTra): Record<string, string[]> {
+  const kq: Record<string, string[]> = {};
+  const dong = new Map(dacTa.dong.map((r) => [r.khoa, r]));
+  const boTen = (x: string, c: CauDe) => x.replace(`${nhanCau(c)}: `, '');
+  for (const c of de.cau) {
+    const r = dong.get(c.khoa);
+    const ds: string[] = [];
+    if (!r) ds.push('Câu này không còn trong đặc tả.');
+    else {
+      if (c.muc !== r.muc) ds.push(`Mức ${c.muc}, đặc tả ghi Mức ${r.muc}.`);
+      if (c.hinhThuc !== r.hinhThuc || c.dang !== r.dang) ds.push('Hình thức hoặc dạng câu khác đặc tả.');
+      if (lamTron(c.diem) !== lamTron(r.diem)) ds.push(`${String(c.diem).replace('.', ',')} điểm, đặc tả ghi ${String(r.diem).replace('.', ',')} điểm.`);
+      ds.push(...kiemTraDangBai(r.dangBai, c));
+    }
+    ds.push(...kiemDinhMotCau(c).map((x) => boTen(x, c)));
+    if (ds.length) kq[c.khoa] = [...new Set(ds)];
+  }
+  return kq;
 }
 
 export function trangThaiDeSauKiemDinh(hienTai: TrangThaiDe, kq: KetQuaKiemDinhDe): TrangThaiDe {

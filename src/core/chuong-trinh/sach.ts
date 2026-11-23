@@ -4,6 +4,7 @@
  */
 import { boNhanPhuongAn, chuanHoaPhanSo, DAN_AI_PHAN_SO } from '@/core/de/phan-so';
 import { quyTacTheoMon } from '@/core/de/quy-tac-soan-de';
+import { huongDanTheoDang } from '@/core/de/dang-bai';
 
 const chuanHoaTen = (s: string) => s.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
 
@@ -122,6 +123,8 @@ Quy tắc bắt buộc:
 export interface CauChoAI {
   tenMon: string; dang: string | null; hinhThuc: string; muc: number; diem: number; yccd: string; baiHoc: string; trangSgk: string;
   deBai?: string; luaChon?: string[]; dapAn?: string; huongDanCham?: string; yeuCauHinh?: string; ghiChuThay?: string;
+  /** Dạng bài cụ thể giáo viên chọn ở đặc tả (thu hẹp YCCĐ). Bắt buộc theo. */
+  dangBai?: string;
   /** Các ý nhỏ của câu theo ma trận, ví dụ ['a', 'b', 'c', 'd']. */
   yNho?: string[] | null;
   /** Mã môn, kì, tuần: để đưa quy tắc số liệu, giới hạn kĩ thuật đúng giai đoạn. */
@@ -148,11 +151,19 @@ export function soYTrongCau(deBai: string, luaChon: string[], dang: string | nul
   return new Set([...deBai.matchAll(/(?:^|[\s\n(])([a-h])\)/g)].map((m) => m[1])).size;
 }
 
+/** Dạng bài giáo viên chọn: yêu cầu bắt buộc, kèm cách trình bày của các dạng hay gặp. */
+function moTaDangBai(c: CauChoAI): string {
+  const d = c.dangBai?.trim();
+  if (!d) return '';
+  const them = huongDanTheoDang(d);
+  return `\nDẠNG BÀI BẮT BUỘC (giáo viên chọn ở đặc tả): ${d}. Chỉ soạn đúng dạng này trong YCCĐ, không đổi sang dạng khác dù YCCĐ rộng hơn.${them ? `\n${them}` : ''}`;
+}
+
 function mota(c: CauChoAI): string {
   const lc = c.luaChon?.some((x) => x.trim()) ? `\nPhương án/ý: ${c.luaChon.map((x, i) => `${'ABCD'[i] ?? i + 1}. ${x}`).join(' | ')}` : '';
   return `Môn ${c.tenMon} lớp 4. Câu ${c.hinhThuc === 'TL' ? 'tự luận' : 'trắc nghiệm'}${c.dang ? ` (dạng ${c.dang})` : ''}, mức ${c.muc}, ${String(c.diem).replace('.', ',')} điểm.
 Yêu cầu cần đạt: ${c.yccd || '(chưa ghi)'}
-Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaYNho(c)}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYÊU CẦU RIÊNG CỦA GIÁO VIÊN CHO CÂU NÀY (bắt buộc theo đúng dạng bài này; YCCĐ rộng hơn thì chỉ soạn phần khớp yêu cầu, không đổi sang dạng khác): ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}
+Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaDangBai(c)}${moTaYNho(c)}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYÊU CẦU RIÊNG CỦA GIÁO VIÊN CHO CÂU NÀY (bắt buộc theo đúng dạng bài này; YCCĐ rộng hơn thì chỉ soạn phần khớp yêu cầu, không đổi sang dạng khác): ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}
 
 QUY TẮC CỦA TỔ KHỐI 4 (bắt buộc tuân theo):
 ${quyTacTheoMon({ maMon: c.maMon, tenMon: c.tenMon, ky: c.ky, muc: c.muc, tuan: c.tuan })}`;

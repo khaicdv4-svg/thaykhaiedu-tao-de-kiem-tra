@@ -684,7 +684,7 @@ function bangDacTa(dacTa: DacTa): Table {
         oN([r.tuan == null ? '' : String(r.tuan)], w[6], { align: AlignmentType.CENTER }),
         oN([r.baiHoc], w[7]),
         oN([r.trangSgk], w[8]),
-        oN([r.ghiChu], w[9]),
+        oN([r.dangBai?.trim() ? `Dạng bài: ${r.dangBai.trim()}${r.ghiChu.trim() ? `. ${r.ghiChu.trim()}` : ''}` : r.ghiChu], w[9]),
       ],
     }));
   }

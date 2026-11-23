@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Eye, ListChecks, Loader2, RefreshCw, Save, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, ListChecks, Loader2, Lock, RefreshCw, Save, ShieldCheck } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
@@ -34,7 +34,8 @@ import {
   type TrangThaiDacTa,
 } from '@/core/dac-ta/dac-ta';
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
-import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { cauTrenDiaChi, cuonToiCau, docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { goiYDangBai, yccdRong } from '@/core/de/dang-bai';
 import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
 
 interface BanMaTranRieng { id: string; phienBan: number | null; xacNhanLuc: string | null; duLieu: { ma_tran_chung: MaTranChung; ma_tran_rieng: MaTranRieng } }
@@ -89,6 +90,11 @@ export default function DacTaPage() {
   const [yccdKho, setYccdKho] = useState<Yccd[]>([]);
   const [chungMoiHon, setChungMoiHon] = useState<{ phienBan: number } | null>(null); // ma trận chung của tổ mới hơn ma trận riêng
   const [baiCu, setBaiCu] = useState<DacTa | null>(null); // đặc tả cũ khi ma trận đã có phiên bản mới hơn
+  // Có thay đổi chưa lưu lên hệ thống: app tự lưu bản nháp sau vài giây; còn thay đổi chưa lưu thì chưa sang bước 4
+  const [chuaLuu, setChuaLuu] = useState(false);
+  const [dangTuLuu, setDangTuLuu] = useState(false);
+  const dacTaRef = useRef<DacTa | null>(null);
+  dacTaRef.current = dacTa;
 
   // Hồ sơ đề (môn, kì) chọn ở bước 1: địa chỉ ?mon=&ky= hoặc hồ sơ lưu trên máy
   useEffect(() => {
@@ -115,6 +121,7 @@ export default function DacTaPage() {
     setBaiCu(null);
     setDacTa(null);
     setMtrBan(null);
+    setChuaLuu(false);
 
     const [mtr, dt, pp, yc, ml] = await Promise.all([
       goiJson<{ moiNhat: BanMaTranRieng | null; maTranChungMoiHon?: { phienBan: number } | null }>(`/api/ma-tran-rieng?mon=${maMon}&ky=${ky}`),
@@ -145,6 +152,7 @@ export default function DacTaPage() {
         const kq = dungLaiDacTa(mtcMoi, mtrMoi, moiNhat.phienBan ?? 1, nhap.duLieu);
         setDacTa(kq.dacTa);
         setTrangThai('CAN_XAC_NHAN_LAI');
+        setChuaLuu(true);
         const them = kq.moi.length ? ` Câu mới cần điền: ${kq.moi.join('; ')}.` : '';
         const bo = kq.bo.length ? ` Câu không còn trong ma trận: ${kq.bo.join('; ')}.` : '';
         const doi = kq.doi.length ? ` Câu đổi YCCĐ nên điền lại bài, trang: ${kq.doi.join('; ')}.` : '';
@@ -156,6 +164,7 @@ export default function DacTaPage() {
         setDacTa(dien.dacTa);
         if (dien.soDong) {
           setTrangThai((t) => trangThaiDacTaSauKhiSua(t));
+          setChuaLuu(true);
           setThongBao(`App đã điền thêm bài, tuần, trang SGK còn trống cho ${dien.soDong} câu theo PPCT và mục lục sách. Thầy cô xem lại rồi bấm Lưu.`);
         }
       }
@@ -192,6 +201,7 @@ export default function DacTaPage() {
     });
     if (r.j.soDong) {
       setTrangThai((t) => trangThaiDacTaSauKhiSua(t));
+      setChuaLuu(true);
       setKetQua(null);
       setDaXemTruoc(false);
     }
@@ -215,6 +225,7 @@ export default function DacTaPage() {
     const { ma_tran_chung: mtc, ma_tran_rieng: mtr } = mtrBan.duLieu;
     setDacTa(dienLaiTuPpct(taoDacTa(mtc, mtr, mtrBan.phienBan ?? 1, { tuanKiemTra, goiYTheoYccd: goiY, tiet }), goiY, tiet, mucLuc).dacTa);
     setTrangThai('BAN_NHAP');
+    setChuaLuu(true);
     setKetQua(null);
     setDaXemTruoc(false);
     setThongBao('Đã tạo đặc tả từ ma trận riêng. App đang tự điền bài học, tuần, trang SGK cho từng câu…');
@@ -235,6 +246,7 @@ export default function DacTaPage() {
     setDacTa(kq.dacTa);
     setBaiCu(null);
     setTrangThai('CAN_XAC_NHAN_LAI');
+    setChuaLuu(true);
     setKetQua(null);
     setDaXemTruoc(false);
     setThongBao(`Đã dựng lại theo ma trận phiên bản ${mtrBan.phienBan}, giữ phần thầy đã điền.${kq.moi.length ? ` Câu mới cần điền: ${kq.moi.join('; ')}.` : ''}${kq.bo.length ? ` Câu không còn trong ma trận: ${kq.bo.join('; ')}.` : ''}${kq.doi.length ? ` Câu đổi YCCĐ nên điền lại: ${kq.doi.join('; ')}.` : ''}`);
@@ -243,6 +255,7 @@ export default function DacTaPage() {
   const sua = (fn: (d: DacTa) => DacTa) => {
     setDacTa((d) => (d ? fn(d) : d));
     setTrangThai((t) => trangThaiDacTaSauKhiSua(t));
+    setChuaLuu(true);
     setKetQua(null);
     setDaXemTruoc(false);
   };
@@ -262,18 +275,22 @@ export default function DacTaPage() {
     return kq;
   };
 
-  const gui = async (hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN') => {
+  const gui = async (hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN', imLang = false) => {
     if (!mtrBan || !dacTa) return;
     if (hanhDong === 'LUU') kiemTra();
-    setDangGui(true);
+    const banGui = dacTa;
+    if (imLang) setDangTuLuu(true); else setDangGui(true);
     const r = await goiJson<{ ban?: BanDacTaApi; taoPhienBanMoi?: boolean; daXacNhan?: boolean; loiXacNhan?: string }>('/api/dac-ta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hanhDong, mon: maMon, ky, maTranRiengId: mtrBan.id, dacTa, trangThai }),
     });
     setDangGui(false);
-    if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa ${hanhDong === 'XAC_NHAN' ? 'xác nhận' : 'lưu'} được: ${r.j.error}`); return; }
-    if (hanhDong === 'LUU_NHAP') { setThongBao('Đã lưu bản nháp đặc tả lên hệ thống. '); return; }
+    setDangTuLuu(false);
+    if (!r.ok) { if (imLang) return; setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa ${hanhDong === 'XAC_NHAN' ? 'xác nhận' : 'lưu'} được: ${r.j.error}`); return; }
+    // Trong lúc gửi mà thầy cô sửa tiếp thì vẫn còn thay đổi chưa lưu
+    if (dacTaRef.current === banGui) setChuaLuu(false);
+    if (hanhDong === 'LUU_NHAP') { if (!imLang) setThongBao('Đã lưu bản nháp đặc tả lên hệ thống. '); return; }
     if (hanhDong === 'LUU' && !r.j.daXacNhan) {
       if (r.j.ban?.trangThai) setTrangThai(r.j.ban.trangThai);
       setThongBao(r.j.loiXacNhan ? `Đã lưu bản nháp. Chưa dùng được vì còn lỗi: ${r.j.loiXacNhan}. Sửa xong bấm Lưu lại.` : 'Đã lưu bản nháp đặc tả lên hệ thống.');
@@ -283,6 +300,23 @@ export default function DacTaPage() {
     setPhienBanXacNhan(r.j.ban?.phienBan ?? null);
     setThongBao(r.j.taoPhienBanMoi === false ? `Nội dung không đổi so với phiên bản ${r.j.ban?.phienBan}, giữ nguyên phiên bản đó.` : `Đã xác nhận đặc tả, phiên bản ${r.j.ban?.phienBan}. Bước tiếp theo: tạo đề.`);
   };
+
+  // Tự lưu bản nháp 2 giây sau lần sửa cuối, để bước 4 biết đặc tả đang được sửa và không tạo đề theo bản cũ
+  useEffect(() => {
+    if (!chuaLuu || !dacTa || !mtrBan || dangGui || trangThai === 'DA_XAC_NHAN') return;
+    const t = window.setTimeout(() => { void gui('LUU_NHAP', true); }, 2000);
+    return () => window.clearTimeout(t);
+  }, [chuaLuu, dacTa, mtrBan, dangGui, trangThai]);
+
+  // Mở từ màn Xem đề (nút "Sửa ở bước Đặc tả"): cuộn tới đúng câu
+  const daMoCau = useRef(false);
+  useEffect(() => {
+    if (daMoCau.current || !dacTa || dangTai) return;
+    const khoa = cauTrenDiaChi();
+    if (!khoa) { daMoCau.current = true; return; }
+    setCheDo('sua');
+    window.setTimeout(() => { if (cuonToiCau(khoa)) daMoCau.current = true; }, 300);
+  }, [dacTa, dangTai]);
 
   const xemTruoc = () => {
     const kq = kiemTra();
@@ -363,7 +397,7 @@ export default function DacTaPage() {
                 aria-label="Tuần kiểm tra"
                 type="number" min={1} max={40}
                 className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm"
-                disabled={cheDo === 'xem' || daXacNhan}
+                disabled={cheDo === 'xem'}
                 value={dacTa.tuan_kiem_tra ?? ''}
                 onChange={(e) => sua((d) => ({ ...d, tuan_kiem_tra: e.target.value ? Number(e.target.value) : null }))}
               />
@@ -381,37 +415,58 @@ export default function DacTaPage() {
                   <h2 className="font-semibold text-slate-900">{ten}</h2>
                   <div className="divide-y divide-slate-100">
                     {dong.map((r) => (
-                      <div key={r.khoa} className="py-3 grid grid-cols-1 lg:grid-cols-[minmax(260px,1.2fr)_2fr] gap-3">
+                      <div key={r.khoa} id={`cau-${r.khoa}`} className="py-3 grid grid-cols-1 lg:grid-cols-[minmax(260px,1.2fr)_2fr] gap-3 transition-shadow">
                         <div className="space-y-1">
                           <div className="font-semibold text-slate-900">
                             Câu {r.cau}{r.yNho ? ` (${r.yNho.join(', ')})` : ''}
                             <span className="ml-2 text-xs font-normal text-slate-500">{TEN_MUC[r.muc]} · {r.hinhThuc}{r.dang ? ` · ${TEN_DANG[r.dang] ?? r.dang}` : ''} · {fmtDiem(r.diem)} điểm</span>
                           </div>
                           <div className="text-xs text-slate-500">{r.noiDung ?? r.mach}</div>
-                          <div className="text-sm text-slate-700">{r.yccd || <span className="text-amber-700">Chưa có YCCĐ</span>}</div>
+                          <div className="text-sm text-slate-700 whitespace-pre-line">{r.yccd || <span className="text-amber-700">Chưa có YCCĐ</span>}</div>
+                          <Link href={`/matrices?mon=${maMon}&ky=${ky}`} className="text-xs text-indigo-700 underline">Đổi YCCĐ, mức, điểm ở bước 2</Link>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-[2fr_90px_1fr] gap-2 items-start">
                           <label className="text-xs text-slate-500">Bài học (theo PPCT)
-                            <input aria-label={`Bài học câu ${r.cau}`} list="ds-bai-ppct" className={`${o} mt-0.5 ${r.baiHoc ? '' : 'border-amber-400 bg-amber-50'}`} disabled={daXacNhan} value={r.baiHoc} onChange={(e) => chonBai(r, e.target.value)} />
+                            <input aria-label={`Bài học câu ${r.cau}`} list="ds-bai-ppct" className={`${o} mt-0.5 ${r.baiHoc ? '' : 'border-amber-400 bg-amber-50'}`} value={r.baiHoc} onChange={(e) => chonBai(r, e.target.value)} />
                           </label>
                           <label className="text-xs text-slate-500">Tuần
-                            <input aria-label={`Tuần câu ${r.cau}`} type="number" min={1} max={40} className={`${o} mt-0.5 ${r.tuan !== null ? '' : 'border-amber-400 bg-amber-50'}`} disabled={daXacNhan} value={r.tuan ?? ''} onChange={(e) => suaDong(r.khoa, { tuan: e.target.value ? Number(e.target.value) : null })} />
+                            <input aria-label={`Tuần câu ${r.cau}`} type="number" min={1} max={40} className={`${o} mt-0.5 ${r.tuan !== null ? '' : 'border-amber-400 bg-amber-50'}`} value={r.tuan ?? ''} onChange={(e) => suaDong(r.khoa, { tuan: e.target.value ? Number(e.target.value) : null })} />
                           </label>
                           <label className="text-xs text-slate-500">Trang SGK
-                            <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="trang" disabled={daXacNhan} value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
+                            <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="trang" value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
                           </label>
                           <label className="text-xs text-slate-500 sm:col-span-1">Hình kèm theo
-                            <select aria-label={`Hình kèm theo câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} value={r.hinhKem ?? 'KHONG'} onChange={(e) => suaDong(r.khoa, { hinhKem: e.target.value as KieuHinhKem })}>
+                            <select aria-label={`Hình kèm theo câu ${r.cau}`} className={`${o} mt-0.5`} value={r.hinhKem ?? 'KHONG'} onChange={(e) => suaDong(r.khoa, { hinhKem: e.target.value as KieuHinhKem })}>
                               {(Object.keys(TEN_KIEU_HINH) as KieuHinhKem[]).map((k) => <option key={k} value={k}>{TEN_KIEU_HINH[k]}</option>)}
                             </select>
                           </label>
                           {(r.hinhKem ?? 'KHONG') !== 'KHONG' && (
                             <label className="text-xs text-slate-500 sm:col-span-2">Mô tả hình cần có (ngắn gọn)
-                              <input aria-label={`Mô tả hình câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="Ví dụ: 4 góc nhọn, vuông, tù, bẹt; nhãn A, B, C, D" disabled={daXacNhan} value={r.moTaHinh ?? ''} onChange={(e) => suaDong(r.khoa, { moTaHinh: e.target.value })} />
+                              <input aria-label={`Mô tả hình câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="Ví dụ: 4 góc nhọn, vuông, tù, bẹt; nhãn A, B, C, D" value={r.moTaHinh ?? ''} onChange={(e) => suaDong(r.khoa, { moTaHinh: e.target.value })} />
                             </label>
                           )}
+                          {r.dang !== 'VIET' && (() => {
+                            const goiY = goiYDangBai(r.yccd);
+                            const nenChon = !r.dangBai?.trim() && yccdRong(r.yccd);
+                            return (
+                              <div className="sm:col-span-3 space-y-1">
+                                <label className="block text-xs text-slate-500">Dạng bài cụ thể (AI bắt buộc soạn đúng dạng này)
+                                  <input aria-label={`Dạng bài câu ${r.cau}`} list={`dang-bai-${r.khoa}`} className={`${o} mt-0.5 ${nenChon ? 'border-amber-400 bg-amber-50' : ''}`} placeholder={goiY.length ? 'Chọn một dạng gợi ý bên dưới hoặc tự ghi' : 'Ví dụ: Tìm hai số khi biết tổng và hiệu'} value={r.dangBai ?? ''} onChange={(e) => suaDong(r.khoa, { dangBai: e.target.value })} />
+                                </label>
+                                <datalist id={`dang-bai-${r.khoa}`}>{goiY.map((g) => <option key={g} value={g} />)}</datalist>
+                                {goiY.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {goiY.map((g) => (
+                                      <button key={g} type="button" onClick={() => suaDong(r.khoa, { dangBai: g })} className={`rounded-full border px-2.5 py-1 text-xs text-left ${r.dangBai === g ? 'border-indigo-500 bg-indigo-50 text-indigo-800 font-semibold' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>{g}</button>
+                                    ))}
+                                  </div>
+                                )}
+                                {nenChon && <div className="text-xs text-amber-800">YCCĐ này gồm nhiều nội dung. Chọn đúng dạng bài thầy cô muốn hỏi để AI không ra nhầm dạng khác.</div>}
+                              </div>
+                            );
+                          })()}
                           <label className="text-xs text-slate-500 sm:col-span-3">Ghi chú – yêu cầu riêng cho câu (AI luôn soạn theo)
-                            <input aria-label={`Ghi chú câu ${r.cau}`} className={`${o} mt-0.5`} disabled={daXacNhan} placeholder="VD: dạng đổi đơn vị đo, không ra bài toán có lời văn" value={r.ghiChu} onChange={(e) => suaDong(r.khoa, { ghiChu: e.target.value })} />
+                            <input aria-label={`Ghi chú câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="VD: dạng đổi đơn vị đo, không ra bài toán có lời văn" value={r.ghiChu} onChange={(e) => suaDong(r.khoa, { ghiChu: e.target.value })} />
                           </label>
                         </div>
                       </div>
@@ -444,7 +499,7 @@ export default function DacTaPage() {
                           <td className="border border-slate-300 px-2 py-1.5">{r.baiHoc}</td>
                           <td className="border border-slate-300 px-2 py-1.5 text-center">{r.tuan}</td>
                           <td className="border border-slate-300 px-2 py-1.5 whitespace-nowrap">{r.trangSgk}</td>
-                          <td className="border border-slate-300 px-2 py-1.5">{r.ghiChu}{(r.hinhKem ?? 'KHONG') !== 'KHONG' && <div className="text-violet-800">Hình: {TEN_KIEU_HINH[r.hinhKem!]}{r.moTaHinh ? ` (${r.moTaHinh})` : ''}</div>}</td>
+                          <td className="border border-slate-300 px-2 py-1.5">{r.dangBai?.trim() && <div className="font-semibold">Dạng bài: {r.dangBai}</div>}{r.ghiChu}{(r.hinhKem ?? 'KHONG') !== 'KHONG' && <div className="text-violet-800">Hình: {TEN_KIEU_HINH[r.hinhKem!]}{r.moTaHinh ? ` (${r.moTaHinh})` : ''}</div>}</td>
                         </tr>
                       ))}
                     </React.Fragment>
@@ -464,12 +519,22 @@ export default function DacTaPage() {
             </label>
           )}
 
-          {daXacNhan && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-emerald-900">
-              <span>Đặc tả đã xác nhận (phiên bản {phienBanXacNhan}). Sửa bất kì ô nào, đặc tả sẽ chuyển sang &quot;Cần xác nhận lại&quot; và tạo phiên bản mới khi xác nhận.</span>
-              <Link href={`/tao-de?mon=${maMon}&ky=${ky}`} className={nutChinh}>Sang bước 4: Tạo đề</Link>
-            </div>
-          )}
+          {(() => {
+            const lyDo = chungMoiHon ? 'Ma trận chung của tổ vừa đổi. Xác nhận lại ma trận riêng ở bước 2 trước.'
+              : !daXacNhan ? (trangThai === 'CO_LOI' ? 'Đặc tả còn lỗi. Sửa các lỗi ở trên rồi bấm Lưu.' : 'Đặc tả có thay đổi chưa dùng. Bấm Lưu để app kiểm tra; không lỗi thì sang được bước 4.')
+                : chuaLuu ? 'Đang lưu thay đổi…' : null;
+            return lyDo ? (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-900">
+                <span className="flex items-center gap-2"><Lock className="w-4 h-4 shrink-0" /> Chưa sang bước 4 được. {lyDo}{dangTuLuu ? ' (đang tự lưu bản nháp…)' : ''}</span>
+                <button type="button" className={nutChinh} disabled title={lyDo}>Tiếp theo: Tạo đề <ArrowRight className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-emerald-900">
+                <span>Đặc tả đã lưu và dùng được (phiên bản {phienBanXacNhan}). Vẫn sửa được bất kì ô nào; sửa xong bấm Lưu lại, đề ở bước 4 sẽ theo bản mới.</span>
+                <Link href={`/tao-de?mon=${maMon}&ky=${ky}`} className={nutChinh}>Tiếp theo: Tạo đề <ArrowRight className="w-4 h-4" /></Link>
+              </div>
+            );
+          })()}
 
           <div className="flex flex-wrap justify-between gap-2">
             {cheDo === 'xem'

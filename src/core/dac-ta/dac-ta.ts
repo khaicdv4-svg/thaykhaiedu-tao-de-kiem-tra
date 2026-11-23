@@ -12,6 +12,7 @@
 
 import type { DangCau, HinhThucCau, KyKiemTra, MaTranChung, MaTranRieng, MucDo } from '@/types/matrix-template';
 import { apDungSuaCau, danhSachCau, laCauBaiViet, yccdCuaCauRieng } from '@/core/matrix/matrix-template';
+import { yccdRong } from '@/core/de/dang-bai';
 
 export type TrangThaiDacTa = 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'DA_XAC_NHAN' | 'CAN_XAC_NHAN_LAI';
 
@@ -38,6 +39,11 @@ export interface MinhChungCau {
   hinhKem?: KieuHinhKem;
   /** Mô tả ngắn hình cần có, ví dụ "4 góc nhọn, vuông, tù, bẹt". */
   moTaHinh?: string;
+  /**
+   * Dạng bài cụ thể giáo viên chọn trong YCCĐ, ví dụ "Chuyển đổi số đo khối lượng" hay "Tìm hai số khi biết tổng và hiệu".
+   * AI bắt buộc soạn đúng dạng này. Đặc tả cũ chưa có: coi như để trống.
+   */
+  dangBai?: string;
 }
 
 export interface DongDacTa extends MinhChungCau {
@@ -136,6 +142,7 @@ export function taoDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMaTranRi
       ghiChu: cu?.ghiChu ?? '',
       hinhKem: cu?.hinhKem ?? 'KHONG',
       moTaHinh: cu?.moTaHinh ?? '',
+      dangBai: cu?.dangBai ?? '',
     };
   });
   return {
@@ -150,7 +157,7 @@ export function taoDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMaTranRi
 
 /** Lấy phần giáo viên đã điền ra khỏi một đặc tả, để dựng lại mà không mất. */
 export function layMinhChung(d: DacTa): Record<string, MinhChungCau> {
-  return Object.fromEntries(d.dong.map((r) => [r.khoa, { baiHoc: r.baiHoc, tuan: r.tuan, trangSgk: r.trangSgk, ghiChu: r.ghiChu, hinhKem: r.hinhKem ?? 'KHONG', moTaHinh: r.moTaHinh ?? '' }]));
+  return Object.fromEntries(d.dong.map((r) => [r.khoa, { baiHoc: r.baiHoc, tuan: r.tuan, trangSgk: r.trangSgk, ghiChu: r.ghiChu, hinhKem: r.hinhKem ?? 'KHONG', moTaHinh: r.moTaHinh ?? '', dangBai: r.dangBai ?? '' }]));
 }
 
 /**
@@ -245,6 +252,9 @@ export function kiemDinhDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, d: DacTa, t
     }
     if (!r.trangSgk.trim()) {
       (tuyChon.batBuocTrangSgk ? loi : canhBao).push(`${tenDong(r)}: chưa ghi trang SGK.`);
+    }
+    if (r.dang !== 'VIET' && !r.dangBai?.trim() && yccdRong(r.yccd)) {
+      canhBao.push(`${tenDong(r)}: YCCĐ gồm nhiều nội dung, nên chọn dạng bài cụ thể để AI ra đúng dạng.`);
     }
   }
 
