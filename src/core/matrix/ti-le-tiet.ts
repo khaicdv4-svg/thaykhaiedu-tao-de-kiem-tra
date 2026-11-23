@@ -188,6 +188,34 @@ const lam1 = (x: number) => Math.round(x * 10) / 10;
 const lam2 = (x: number) => Math.round(x * 100) / 100;
 
 /**
+ * Cho điểm gợi ý và số câu gợi ý khớp nhau ở từng mạch (sửa tại chỗ):
+ * mạch có điểm thì phải có ít nhất 1 câu, mạch có câu thì mỗi câu ít nhất 0,5 điểm.
+ * Chia riêng điểm và câu theo số tiết có thể ra "0,5 điểm – 0 câu" ở mạch ít tiết; khi đó
+ * lấy 1 câu (hoặc 0,5 điểm) từ mạch đang dư nhiều nhất. Tổng điểm, tổng câu giữ nguyên.
+ * nuaDiem: điểm tính theo bước 0,5 (1 = 0,5 điểm).
+ */
+export function canDiemVaCau(nuaDiem: number[], cau: number[]): void {
+  for (let vong = 0; vong < nuaDiem.length * 4; vong++) {
+    let doi = false;
+    for (let i = 0; i < nuaDiem.length; i++) {
+      if (nuaDiem[i] > 0 && cau[i] === 0) {
+        // Lấy 1 câu từ mạch nhiều câu nhất mà vẫn còn ít nhất 1 câu
+        const j = cau.map((c, k) => ({ c, k })).filter((x) => x.k !== i && x.c > 1).sort((a, b) => b.c - a.c || a.k - b.k)[0]?.k;
+        if (j === undefined) continue;
+        cau[j] -= 1; cau[i] += 1; doi = true;
+      }
+      if (nuaDiem[i] < cau[i]) {
+        // Mỗi câu ít nhất 0,5 điểm: lấy 0,5 điểm từ mạch dư điểm nhiều nhất so với số câu
+        const j = nuaDiem.map((d, k) => ({ du: d - Math.max(cau[k], 1), k })).filter((x) => x.k !== i && x.du > 0).sort((a, b) => b.du - a.du || a.k - b.k)[0]?.k;
+        if (j === undefined) continue;
+        nuaDiem[j] -= 1; nuaDiem[i] += 1; doi = true;
+      }
+    }
+    if (!doi) return;
+  }
+}
+
+/**
  * Báo cáo tỉ lệ. Điểm gợi ý chia theo bước 0,5 (tổng bằng tổng điểm ma trận), số câu gợi ý chia theo tổng số câu ma trận;
  * cả hai chia theo số tiết của các mạch, phần dư dồn cho mạch có phần lẻ lớn hơn.
  * baiMach: khóa bài → tên mạch (tổ trưởng đã xếp).
@@ -208,8 +236,10 @@ export function tinhTiLeMach(p: { tiet: TietTiLe[]; mucLuc: MucLucTiLe[]; tuyCho
   for (const b of bai) if (b.mach && !ds.some((x) => chuan(x) === chuan(b.mach!))) ds.push(b.mach);
   const tiet = ds.map((m) => bai.filter((b) => b.mach && chuan(b.mach) === chuan(m)).reduce((s, b) => s + b.soTiet, 0));
   const tongDaXep = tiet.reduce((a, b) => a + b, 0);
-  const diem = tongDaXep ? chiaTheoTrongSo(tiet, Math.round(tongDiem / 0.5)).map((x) => x * 0.5) : tiet.map(() => 0);
+  const nuaDiem = tongDaXep ? chiaTheoTrongSo(tiet, Math.round(tongDiem / 0.5)) : tiet.map(() => 0);
   const cauGoiY = tongDaXep ? chiaTheoTrongSo(tiet, tongCau) : tiet.map(() => 0);
+  canDiemVaCau(nuaDiem, cauGoiY);
+  const diem = nuaDiem.map((x) => x * 0.5);
 
   const dong: DongTiLeMach[] = ds.map((m, i) => {
     const cuaMach = cau.filter((c) => chuan(c.dong.mach) === chuan(m));

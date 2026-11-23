@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
-import { baiThieuTrongMucLuc, cacMachCuaMaTran, docGoiYMach, ganBaiChoTiet, tinhTiLeMach, trangTrongTenTiet, type MucLucTiLe, type TietTiLe } from '../src/core/matrix/ti-le-tiet';
+import { baiThieuTrongMucLuc, canDiemVaCau, cacMachCuaMaTran, docGoiYMach, ganBaiChoTiet, tinhTiLeMach, trangTrongTenTiet, type MucLucTiLe, type TietTiLe } from '../src/core/matrix/ti-le-tiet';
 import { lamSachBaiMach, lamSachBoNao } from '../src/core/bo-nao/bo-nao';
 
 // Trích PPCT Toán 4 học kì I và mục lục SGK thật trên tao-de-thu-nghiem (23/11/2026); mục lục thiếu bài 1 và bài 22.
@@ -119,5 +119,26 @@ describe('AI gợi ý mạch và lưu bảng Bài → Mạch', () => {
     expect(lamSachBaiMach({ TOAN: { 'bai-1': ' Số và phép tính ', 'bai-2': '' }, 'x y': { a: 'b' } })).toEqual({ TOAN: { 'bai-1': 'Số và phép tính' } });
     expect(lamSachBoNao({ baiMach: { TOAN: { 'bai-1': 'Số' } } }).baiMach).toEqual({ TOAN: { 'bai-1': 'Số' } });
     expect(lamSachBoNao({}).baiMach).toBeUndefined();
+  });
+});
+
+describe('canDiemVaCau', () => {
+  it('mạch ít tiết có 0,5 điểm thì cũng có 1 câu (51 – 36 – 3 tiết, 10 điểm, 15 câu)', async () => {
+    const { chiaTheoTrongSo } = await import('../src/core/matrix/dung-tu-chuong-trinh');
+    const tiet = [51, 36, 3];
+    const nua = chiaTheoTrongSo(tiet, 20);
+    const cau = chiaTheoTrongSo(tiet, 15);
+    expect(cau[2]).toBe(0);
+    canDiemVaCau(nua, cau);
+    expect(nua.reduce((a, b) => a + b, 0)).toBe(20);
+    expect(cau.reduce((a, b) => a + b, 0)).toBe(15);
+    nua.forEach((d, i) => { expect(d > 0).toBe(cau[i] > 0); expect(d).toBeGreaterThanOrEqual(cau[i]); });
+    expect(cau[2]).toBe(1);
+  });
+  it('mạch có câu mà chưa có điểm thì nhận 0,5 điểm', () => {
+    const nua = [12, 8, 0];
+    const cau = [8, 6, 1];
+    canDiemVaCau(nua, cau);
+    expect(nua).toEqual([11, 8, 1]);
   });
 });
