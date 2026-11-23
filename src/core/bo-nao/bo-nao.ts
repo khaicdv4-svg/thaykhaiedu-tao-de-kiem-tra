@@ -22,6 +22,11 @@ export interface BoNao {
   ky: Partial<Record<KyKiemTraBaiDoc, QuyDinhMotKy>>;
   /** Quy định riêng của tổ (viết tay hoặc lấy từ file). Chỉ để AI đọc, không tự thành luật kiểm tra. */
   quyDinhRieng: string;
+  /**
+   * Bài → Mạch của từng môn (tổ trưởng xếp, dùng cho báo cáo tỉ lệ theo số tiết ở Ma trận chung).
+   * Mã môn → (khóa bài → tên mạch). Đặc tả cũ chưa có thì để trống.
+   */
+  baiMach?: Record<string, Record<string, string>>;
 }
 
 export const DUNG_SAI_MAC_DINH = { thanhTieng: 5, docHieu: 10 } as const;
@@ -56,6 +61,23 @@ export function lamSachBoNao(v: unknown): BoNao {
       chuDiem: Array.isArray(m.chuDiem) ? m.chuDiem.filter((x: unknown) => typeof x === 'string').slice(0, 6) : [],
       tenFile: typeof m.tenFile === 'string' ? m.tenFile.slice(0, 200) : undefined,
     };
+  }
+  const bm = lamSachBaiMach(o.baiMach);
+  if (Object.keys(bm).length) kq.baiMach = bm;
+  return kq;
+}
+
+/** Giữ đúng dạng mã môn → (khóa bài → tên mạch), bỏ ô rỗng, giới hạn độ dài. */
+export function lamSachBaiMach(v: unknown): Record<string, Record<string, string>> {
+  const kq: Record<string, Record<string, string>> = {};
+  if (!v || typeof v !== 'object') return kq;
+  for (const [mon, ds] of Object.entries(v as Record<string, unknown>).slice(0, 20)) {
+    if (!/^[A-Z_]{2,20}$/.test(mon) || !ds || typeof ds !== 'object') continue;
+    const m: Record<string, string> = {};
+    for (const [k, mach] of Object.entries(ds as Record<string, unknown>).slice(0, 500)) {
+      if (typeof mach === 'string' && mach.trim() && k.length <= 200) m[k] = mach.trim().slice(0, 200);
+    }
+    if (Object.keys(m).length) kq[mon] = m;
   }
   return kq;
 }

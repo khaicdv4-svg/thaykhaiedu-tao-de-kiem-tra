@@ -187,7 +187,7 @@ const MON_SANG_PPCT: Record<string, string> = {
  * Lịch tiết của một môn, lấy từ kho chung PPCT HUB về (xem /api/ppct-hub).
  * Nếu một môn có nhiều lần nhập thì lấy lần nhập mới nhất, tránh cộng dồn tiết.
  */
-export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null; tietTen: string | null }[]> {
+export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: number; tuan: number | null; hocKi: number | null; chuDe: string | null; baiTen: string | null; tietTen: string | null; loaiTiet: string | null }[]> {
   const tienTo = MON_SANG_PPCT[mon];
   if (!tienTo) throw new Error('Môn này chưa có phân phối chương trình trong ứng dụng.');
   if (!Number.isInteger(lop) || lop < 1 || lop > 5) throw new Error('Lớp phải từ 1 đến 5.');
@@ -195,7 +195,7 @@ export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: num
   const { supabase, orgId } = await layNguoiDung();
   const { data, error } = await supabase
     .from('ppct_tiet')
-    .select('thu_tu, tuan, hoc_ki, chu_de, bai_ten, tiet_ten, source_id, created_at')
+    .select('thu_tu, tuan, hoc_ki, chu_de, bai_ten, tiet_ten, loai_tiet, source_id, created_at')
     .eq('organization_id', orgId)
     .eq('subject_id', subjectId)
     .eq('grade', lop)
@@ -207,7 +207,7 @@ export async function dsTietPpct(mon: string, lop: number): Promise<{ thuTu: num
   const moiNhat = hang.reduce<{ id: string | null; luc: string }>((m, r) => (r.created_at > m.luc ? { id: r.source_id as string, luc: r.created_at as string } : m), { id: null, luc: '' });
   return hang
     .filter((r) => !moiNhat.id || r.source_id === moiNhat.id)
-    .map((r) => ({ thuTu: r.thu_tu as number, tuan: r.tuan as number | null, hocKi: r.hoc_ki as number | null, chuDe: r.chu_de as string | null, baiTen: r.bai_ten as string | null, tietTen: (r.tiet_ten as string | null) ?? null }));
+    .map((r) => ({ thuTu: r.thu_tu as number, tuan: r.tuan as number | null, hocKi: r.hoc_ki as number | null, chuDe: r.chu_de as string | null, baiTen: r.bai_ten as string | null, tietTen: (r.tiet_ten as string | null) ?? null, loaiTiet: (r.loai_tiet as string | null) ?? null }));
 }
 
 /**

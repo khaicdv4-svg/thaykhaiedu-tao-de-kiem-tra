@@ -28,6 +28,7 @@ import {
 } from '@/core/kho-ma-tran/phan-loai';
 import type { TaiLieuMaTran } from '@/lib/repositories/kho-ma-tran.repository';
 import { XemTaiLieuWord, type ViTriSua } from '@/components/ui/XemTaiLieuWord';
+import { TiLeTheoSoTiet } from '@/components/kho-ma-tran/TiLeTheoSoTiet';
 
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const VAI_TRO_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -644,6 +645,9 @@ export function KhoMaTranView({ loai }: { loai: LoaiMaTranTo }) {
               )}
               <span className="text-xs text-slate-500">File mới thành bản tiếp theo của đúng ô này, không cần đặt tên file theo môn, kì.</span>
             </div>
+          )}
+          {loai === 'CHUNG' && duocTai && dangXem[0]?.ky && (
+            <TiLeTheoSoTiet key={`${dangXem[0].maMon}-${dangXem[0].ky}`} mon={dangXem[0].maMon} ky={dangXem[0].ky} duocSua={duocXacNhan} />
           )}
           <p className="text-xs text-slate-500">
             Bản đã xác nhận mới nhất là bản được dùng. Sửa trực tiếp hoặc tải bản thay thế đều tạo bản mới chờ xác nhận, bản cũ vẫn giữ.
