@@ -3,7 +3,9 @@
 /**
  * Ma trận & Đặc tả (MOD-03) – bước 2 của quy trình tạo đề (Phụ lục 1.1).
  *
- * 1. Chọn môn → 2. Xem ma trận chung của tổ → 3. Lập ma trận riêng → 4. Xem trước và xác nhận.
+ * Môn, kì và cách lập (ma trận chung của tổ / dựng từ chương trình) chọn ở bước 1.
+ * Bước 2 còn hai bước con: Lập ma trận riêng (ma trận chung xem nhanh ở khung thu gọn đầu trang) → Xem trước, lưu.
+ * Trang "chuẩn bị" (buoc 0) chỉ hiện khi chưa mở thẳng được: tổ chưa có ma trận chung, ma trận chung còn lỗi, hoặc cần dựng khung.
  * Mẫu ma trận chung: src/core/matrix/templates (nguồn: docs/mau-ma-tran).
  *
  * Lưu: tổ trưởng, tổ phó, quản trị lưu bản nháp và xác nhận phiên bản lên hệ thống (bảng ma_tran_rieng).
@@ -38,9 +40,9 @@ import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
 import { DungTiengViet } from '@/components/matrices/DungTiengViet';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
-import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, tenKyHoSo, tenMonHoSo } from '@/core/ho-so-de/ho-so-de';
 
-const BUOC = ['Chọn môn', 'Ma trận chung', 'Lập ma trận riêng', 'Xem trước, xác nhận'] as const;
+const BUOC = ['Lập ma trận riêng', 'Xem trước, lưu'] as const;
 
 const NHAN_TRANG_THAI: Record<TrangThaiMaTran, { ten: string; mau: string }> = {
   BAN_NHAP: { ten: 'Bản nháp', mau: 'bg-slate-100 text-slate-700 border-slate-200' },
@@ -203,11 +205,15 @@ export default function MatricesPage() {
   const [daDocHoSo, setDaDocHoSo] = useState(false);
   useEffect(() => {
     const h = docHoSoDe();
-    if (h) { setMaMon(h.mon); setKyDung(h.ky); }
+    if (h) {
+      setMaMon(h.mon); setKyDung(h.ky);
+      const c = new URLSearchParams(window.location.search).get('cach');
+      setCachLap(c === 'CHUONG_TRINH' || c === 'MA_TRAN_CHUNG' ? c : docCachLap(h.mon, h.ky));
+    }
     setDaDocHoSo(true);
   }, []);
   // Đổi môn, kì ở đây thì hồ sơ đề cho các bước sau cũng đổi theo
-  useEffect(() => { if (daDocHoSo && maMon) luuHoSoDe({ mon: maMon, ky: kyDung }); }, [daDocHoSo, maMon, kyDung]);
+  useEffect(() => { if (daDocHoSo && maMon) { luuHoSoDe({ mon: maMon, ky: kyDung }); luuCachLap(maMon, kyDung, cachLap); } }, [daDocHoSo, maMon, kyDung, cachLap]);
 
   // Lấy ma trận chung của tổ (bản đã xác nhận mới nhất) theo môn × kì
   useEffect(() => {
@@ -227,6 +233,10 @@ export default function MatricesPage() {
   const khungDungHienTai = laKhungDung(mtc);
   const tenMonDangChon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? '';
   const kqChung = useMemo(() => (mtc ? kiemDinhMaTranChung(mtc) : null), [mtc]);
+  // Ma trận chung của tổ dùng được: mở thẳng trang lập ma trận riêng, không qua trang chuẩn bị
+  useEffect(() => {
+    if (buoc === 0 && !dangDung && cachLap === 'MA_TRAN_CHUNG' && mtc && kqChung?.hopLe) setBuoc(2);
+  }, [buoc, dangDung, cachLap, mtc, kqChung]);
 
   // Nạp bản nháp (nếu có) khi chọn môn
   useEffect(() => {
@@ -309,7 +319,7 @@ export default function MatricesPage() {
     }
     setKhungDung(m);
     setDangDung(false);
-    setBuoc(1);
+    setBuoc(2);
   };
 
   const doiNguonYccd = (nguon: 'MA_TRAN_CHUNG' | 'CHUONG_TRINH') => capNhat((m) => ({ ...m, nguon_yccd: nguon }));
@@ -480,7 +490,7 @@ export default function MatricesPage() {
   const chonDuPhuongAn = !!mtr && nhomLuaChon.every((n) => mtr.lua_chon_da_dung[n.ma]);
   const banTrinhBay = useMemo(() => (mtc && mtr && chonDuPhuongAn ? dungMaTranRieng(mtc, mtr) : null), [mtc, mtr, chonDuPhuongAn]);
 
-  const xong = [!!mtc, !!mtc && buoc > 1, !!ketQua?.hopLe, mtr?.trang_thai === 'DA_XAC_NHAN'];
+  const xong = [buoc === 3 || !!ketQua?.hopLe, mtr?.trang_thai === 'DA_XAC_NHAN'];
   const trangThai = mtr ? NHAN_TRANG_THAI[mtr.trang_thai] : null;
 
   return (
@@ -501,9 +511,11 @@ export default function MatricesPage() {
         )}
       </div>
 
-      <div className="the-tke p-4">
-        <Stepper buoc={buoc} xong={xong} />
-      </div>
+      {buoc >= 2 && (
+        <div className="the-tke p-4">
+          <Stepper buoc={buoc === 3 ? 1 : 0} xong={xong} />
+        </div>
+      )}
 
       {chungMoiHon && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
@@ -528,106 +540,80 @@ export default function MatricesPage() {
           : <DungTuChuongTrinh key={`${maMon}-${kyDung}`} maMon={maMon} tenMon={tenMonDangChon} ky={kyDung} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
       )}
 
-      {/* Bước 1: chọn môn */}
+      {/* Chuẩn bị: chỉ hiện khi chưa mở thẳng được trang lập ma trận riêng */}
       {buoc === 0 && !dangDung && (
         <div className="the-tke p-6 space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Chọn môn kiểm tra</h2>
-            <p className="text-sm text-slate-600">Năm học 2026 – 2027, Lớp 4. Chọn môn và kì kiểm tra.</p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {([
-              ['MA_TRAN_CHUNG', 'Dùng ma trận chung của tổ', 'Tổ đã có ma trận chung. Lập ma trận riêng từ đó.'],
-              ['CHUONG_TRINH', 'Dựng từ chương trình', 'Tổ chưa có ma trận chung. Dựng khung từ phân phối chương trình và YCCĐ đã duyệt.'],
-            ] as const).map(([k, ten, mt]) => (
-              <button key={k} type="button" aria-pressed={cachLap === k} onClick={() => { setCachLap(k); setKhungDung(null); setBuoc(0); }} className={`text-left rounded-lg border p-3 ${cachLap === k ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50'}`}>
-                <div className={`text-sm font-semibold ${cachLap === k ? 'text-blue-800' : 'text-slate-800'}`}>{cachLap === k ? '● ' : '○ '}{ten}</div>
-                <div className="text-xs text-slate-600 mt-0.5">{mt}</div>
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {MAU_MA_TRAN_CHUNG.map((m) => (
-              <button
-                key={m.ma_mon}
-                type="button"
-                onClick={() => setMaMon(m.ma_mon)}
-                className={`rounded-xl border p-4 text-left transition ${maMon === m.ma_mon ? 'border-blue-600 ring-2 ring-blue-100 bg-blue-50' : 'border-slate-200 hover:border-blue-300'}`}
-              >
-                <div className="font-semibold text-slate-900">{m.mon}</div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {m.bai_kiem_tra.length > 1 ? 'Bài Đọc và bài Viết, mỗi bài 10 điểm' : '10 điểm'}
-                  {m.thoi_gian_phut ? ` · ${m.thoi_gian_phut} phút` : ''}
-                </div>
-              </button>
-            ))}
-          </div>
-          {(
-            <fieldset>
-              <legend className="text-sm font-semibold text-slate-900 mb-1">Kì kiểm tra</legend>
-              <div className="flex flex-wrap gap-2">
-                {DANH_SACH_KY.map((k) => (
-                  <label key={k.ma} className={`cursor-pointer rounded-lg border px-4 py-2 text-sm ${kyDung === k.ma ? 'border-blue-600 bg-blue-50 text-blue-800 font-medium' : 'border-slate-200 bg-white'}`}>
-                    <input type="radio" className="sr-only" name="ky-kiem-tra" checked={kyDung === k.ma} onChange={() => setKyDung(k.ma)} />
-                    {k.ten}
-                  </label>
-                ))}
-              </div>
-              {cachLap === 'CHUONG_TRINH' && <p className="text-xs text-slate-500 mt-1">Ứng dụng tự lọc các bài đúng giai đoạn của kì đã chọn, thầy tick bài cần dùng ở bước sau.</p>}
-            </fieldset>
-          )}
-          {cachLap === 'MA_TRAN_CHUNG' && maMon && (
-            dangTaiKho ? (
-              <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Đang đọc ma trận chung trong kho…</div>
-            ) : khoMtc?.mtc ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                Dùng ma trận chung tổ đã xác nhận: <b>{khoMtc.tenFile}</b> (bản {khoMtc.phienBan}).
-                {khoMtc.canhBao.length > 0 && <> App đọc bảng có <b>{khoMtc.canhBao.length} chỗ cần xem lại</b>, hiện ở bước sau.</>}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
-                <div>
-                  {khoMtc?.loi
-                    ? <>Chưa dùng được ma trận chung{khoMtc.tenFile ? <> <b>{khoMtc.tenFile}</b></> : null}: {khoMtc.loi}</>
-                    : <>Tổ chưa có ma trận chung đã xác nhận cho môn và kì này. Tổ trưởng tải file ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>, hoặc chọn &quot;Dựng từ chương trình&quot;.</>}
-                </div>
-                {kyDung === 'CUOI_HK1' && !dungMauCo && (
-                  <button type="button" className={nutPhu} onClick={() => setDungMauCo(true)}>Tạm dùng mẫu Cuối HKI có sẵn trong app</button>
-                )}
-                {dungMauCo && <div className="text-xs">Đang dùng mẫu có sẵn trong app (Cuối HKI). Mẫu này không tự cập nhật theo file của tổ.</div>}
-              </div>
-            )
-          )}
-          {cachLap === 'CHUONG_TRINH' ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              {khungDaLuu && maMon && (
-                <button type="button" className={nutPhu} onClick={() => { setKhungDung(khungDaLuu); setBuoc(1); }}>
-                  Mở lại khung đã dựng
-                </button>
-              )}
-              <button type="button" className={nutChinh} disabled={!maMon} onClick={() => setDangDung(true)}>
-                Dựng khung từ chương trình <ArrowRight className="w-4 h-4" />
-              </button>
+          {!maMon ? (
+            <div className="text-sm text-slate-700">
+              Chưa chọn môn và kì kiểm tra. Thầy cô chọn ở <Link href="/test-builder" className="text-blue-700 underline font-medium">Bước 1. Thiết lập</Link>.
             </div>
           ) : (
-            <div className="flex justify-end">
-              <button type="button" className={nutChinh} disabled={!mtc} onClick={() => setBuoc(1)}>
-                Tiếp tục <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
+            <>
+              <div className="text-sm text-slate-600">
+                Lớp 4 · <b>{tenMonHoSo(maMon)}</b> · <b>{tenKyHoSo(kyDung)}</b> · {cachLap === 'CHUONG_TRINH' ? 'Dựng từ chương trình' : 'Dùng ma trận chung của tổ'}
+                {' '}(<Link href="/test-builder" className="text-blue-700 underline">đổi ở Bước 1</Link>)
+              </div>
+              {cachLap === 'MA_TRAN_CHUNG' && (
+                dangTaiKho || (mtc && kqChung?.hopLe) ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Đang mở ma trận chung của tổ…</div>
+                ) : mtc && kqChung ? (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                      Ma trận chung {khoMtc?.tenFile ? <b>{khoMtc.tenFile}</b> : null} còn lỗi nên chưa lập được ma trận riêng. Tổ trưởng sửa ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>.
+                    </div>
+                    <ValidationPanel ketQua={kqChung} />
+                    <div className="rounded-xl border border-slate-200 overflow-hidden"><MatrixPreview maTran={mtc} /></div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
+                    <div>
+                      {khoMtc?.loi
+                        ? <>Chưa dùng được ma trận chung{khoMtc.tenFile ? <> <b>{khoMtc.tenFile}</b></> : null}: {khoMtc.loi}</>
+                        : <>Tổ chưa có ma trận chung đã xác nhận cho môn và kì này. Tổ trưởng tải file ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>, hoặc về Bước 1 chọn &quot;Dựng từ chương trình&quot;.</>}
+                    </div>
+                    {kyDung === 'CUOI_HK1' && !dungMauCo && (
+                      <button type="button" className={nutPhu} onClick={() => setDungMauCo(true)}>Tạm dùng mẫu Cuối HKI có sẵn trong app</button>
+                    )}
+                  </div>
+                )
+              )}
+              {cachLap === 'CHUONG_TRINH' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600">Tổ chưa có ma trận chung: app dựng khung từ phân phối chương trình và YCCĐ đã duyệt, tự lọc các bài đúng giai đoạn của kì; thầy cô tick bài cần dùng.</p>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {khungDaLuu && (
+                      <button type="button" className={nutPhu} onClick={() => { setKhungDung(khungDaLuu); setBuoc(2); }}>
+                        Mở lại khung đã dựng
+                      </button>
+                    )}
+                    <button type="button" className={nutChinh} onClick={() => setDangDung(true)}>
+                      Dựng khung từ chương trình <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
 
-      {/* Bước 2: ma trận chung */}
-      {buoc === 1 && mtc && kqChung && (
-        <div className="space-y-4">
-          <div className="the-tke p-6 space-y-3">
-            <h2 className="text-lg font-semibold text-slate-900">{khungDungHienTai ? 'Khung ma trận dựng từ chương trình' : 'Ma trận chung của tổ'} – {mtc.mon}</h2>
+      {/* Ma trận chung (hoặc khung dựng) xem nhanh, thu gọn, ở đầu trang lập ma trận riêng */}
+      {buoc === 2 && mtc && kqChung && (
+        <details className="the-tke p-4 group" open={!kqChung.hopLe}>
+          <summary className="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold text-slate-900">
+              {khungDungHienTai ? 'Khung ma trận dựng từ chương trình' : 'Ma trận chung của tổ'} – {mtc.mon}
+              {!khungDungHienTai && khoMtc?.phienBan ? <span className="font-normal text-slate-500"> (bản {khoMtc.phienBan})</span> : null}
+              {dungMauCo && !khoMtc?.mtc ? <span className="font-normal text-amber-700"> · mẫu có sẵn trong app</span> : null}
+            </span>
+            <span className="text-sm text-blue-700 group-open:hidden">Xem ▾</span>
+            <span className="text-sm text-blue-700 hidden group-open:inline">Thu gọn ▴</span>
+          </summary>
+          <div className="mt-3 space-y-3">
             <p className="text-sm text-slate-600">
               {khungDungHienTai
-                ? 'Khung do ứng dụng dựng từ phân phối chương trình và YCCĐ đã duyệt, chưa phải khung tổ đã thống nhất. Số câu, mức, hình thức và điểm là gợi ý, thầy chỉnh ở bước sau.'
-                : 'Đây là khung tổ đã thống nhất. Ma trận riêng giữ nguyên số câu, mức, hình thức và điểm của từng câu.'}
+                ? 'Khung do ứng dụng dựng từ phân phối chương trình và YCCĐ đã duyệt, chưa phải khung tổ đã thống nhất. Số câu, mức, hình thức và điểm là gợi ý, thầy cô chỉnh ngay ở từng câu bên dưới.'
+                : 'Khung tổ đã thống nhất. Ma trận riêng giữ nguyên số câu, mức, hình thức và điểm của từng câu; cần thì sửa ở từng câu bên dưới.'}
             </p>
             {mtc.van_de_can_xac_nhan && mtc.van_de_can_xac_nhan.length > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -637,20 +623,13 @@ export default function MatricesPage() {
                 </ul>
               </div>
             )}
-            <ValidationPanel ketQua={kqChung} />
+            {!kqChung.hopLe && <ValidationPanel ketQua={kqChung} />}
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <MatrixPreview maTran={mtc} />
+            </div>
           </div>
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <MatrixPreview maTran={mtc} />
-          </div>
-          <div className="flex justify-between">
-            <button type="button" className={nutPhu} onClick={() => { setBuoc(0); setDangDung(khungDungHienTai); }}><ArrowLeft className="w-4 h-4" /> Quay lại</button>
-            <button type="button" className={nutChinh} disabled={!kqChung.hopLe} onClick={() => setBuoc(2)}>
-              Lập ma trận riêng <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        </details>
       )}
-
       {/* Bước 3: lập ma trận riêng */}
       {buoc === 2 && mtc && mtr && (
         <div className="space-y-4">
@@ -816,7 +795,9 @@ export default function MatricesPage() {
           {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra ma trận riêng" /></div>}
 
           <div className="flex flex-wrap justify-between gap-2">
-            <button type="button" className={nutPhu} onClick={() => setBuoc(1)}><ArrowLeft className="w-4 h-4" /> Quay lại</button>
+            {khungDungHienTai
+              ? <button type="button" className={nutPhu} onClick={() => { setBuoc(0); setDangDung(true); }}><ArrowLeft className="w-4 h-4" /> Dựng lại khung</button>
+              : <Link href="/test-builder" className={nutPhu}><ArrowLeft className="w-4 h-4" /> Bước 1. Thiết lập</Link>}
             <div className="flex flex-wrap gap-2">
               <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void (tuXacNhan ? luuTuDong() : luuNhap())} title={tuXacNhan ? 'Lưu, app tự kiểm tra; không có lỗi thì dùng ngay và cập nhật đặc tả' : undefined}>{dangLuuHeThong ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {tuXacNhan ? 'Lưu' : 'Lưu bản nháp'}</button>
               <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>

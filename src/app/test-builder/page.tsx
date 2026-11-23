@@ -3,6 +3,8 @@
 /**
  * Bước 1 – Thiết lập: chọn môn và kì kiểm tra, xem bộ của mình (ma trận riêng, đặc tả, đề) đã xong tới đâu,
  * rồi chọn: tiếp tục phần đang làm dở, hoặc tạo mới theo ma trận chung hiện tại của tổ (bộ cũ được cất vào lịch sử).
+ * Chọn luôn cách lập ma trận riêng (ma trận chung của tổ / dựng từ chương trình) để bước 2 mở thẳng trang lập ma trận.
+ * Khung Lịch sử: xem mọi bản ma trận riêng, đặc tả của mình và xóa bản không cần.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -11,7 +13,8 @@ import { ArrowRight, BookOpenText, CheckCircle2, CircleDashed, FilePlus2, Loader
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
-import { docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, type CachLap } from '@/core/ho-so-de/ho-so-de';
+import { LichSuBan } from '@/components/ho-so-de/LichSuBan';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-base px-6 py-3';
@@ -36,6 +39,9 @@ export default function TestBuilderPage() {
   const [daDocHoSo, setDaDocHoSo] = useState(false);
   const [dangTaoMoi, setDangTaoMoi] = useState(false);
   const [loiTaoMoi, setLoiTaoMoi] = useState<string | null>(null);
+  const [cachLap, setCachLap] = useState<CachLap>('MA_TRAN_CHUNG');
+  // Tăng lên để đọc lại trạng thái các bước (sau khi xóa bản)
+  const [lanDoc, setLanDoc] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -46,6 +52,9 @@ export default function TestBuilderPage() {
 
   // Chọn môn, kì ở đây là chọn hồ sơ đề cho cả 5 bước
   useEffect(() => { if (daDocHoSo) luuHoSoDe({ mon: maMon, ky }); }, [daDocHoSo, maMon, ky]);
+  // Cách lập nhớ theo từng môn, kì
+  useEffect(() => { if (daDocHoSo) setCachLap(docCachLap(maMon, ky)); }, [daDocHoSo, maMon, ky]);
+  const chonCachLap = (c: CachLap) => { setCachLap(c); luuCachLap(maMon, ky, c); };
 
   useEffect(() => {
     let huy = false;
@@ -60,7 +69,7 @@ export default function TestBuilderPage() {
       setDangTai(false);
     });
     return () => { huy = true; };
-  }, [maMon, ky]);
+  }, [maMon, ky, lanDoc]);
 
   const tenMon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? maMon;
   const tenKy = DANH_SACH_KY.find((k) => k.ma === ky)?.ten ?? ky;
@@ -134,6 +143,20 @@ export default function TestBuilderPage() {
           </select>
           <span className="text-sm text-slate-500">Lớp 4 · {tenMon} · {tenKy}</span>
         </div>
+        <div>
+          <div className="text-sm font-semibold text-slate-900 mb-1">Lập ma trận riêng từ</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              ['MA_TRAN_CHUNG', 'Ma trận chung của tổ', 'Tổ đã có ma trận chung. Lập ma trận riêng từ đó.'],
+              ['CHUONG_TRINH', 'Dựng từ chương trình', 'Tổ chưa có ma trận chung. Dựng khung từ phân phối chương trình và YCCĐ đã duyệt.'],
+            ] as const).map(([k, ten, mt]) => (
+              <button key={k} type="button" aria-pressed={cachLap === k} onClick={() => chonCachLap(k)} className={`text-left rounded-lg border p-3 ${cachLap === k ? 'border-blue-600 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50'}`}>
+                <div className={`text-sm font-semibold ${cachLap === k ? 'text-blue-800' : 'text-slate-800'}`}>{cachLap === k ? '● ' : '○ '}{ten}</div>
+                <div className="text-xs text-slate-600 mt-0.5">{mt}</div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="the-tke p-6 space-y-3">
@@ -183,6 +206,8 @@ export default function TestBuilderPage() {
           </div>
         )}
       </div>
+
+      {daDocHoSo && <LichSuBan maMon={maMon} ky={ky} tenMonKy={`${tenMon}, ${tenKy}`} onDaXoa={() => setLanDoc((x) => x + 1)} />}
 
       {maMon === 'TIENG_VIET' && (
         <div className="the-tke p-6 flex flex-wrap items-center justify-between gap-3">

@@ -97,3 +97,17 @@ export function cuonToiCau(khoa: string): boolean {
   window.setTimeout(() => el.classList.remove('ring-4', 'ring-amber-400'), 4000);
   return true;
 }
+
+/** Cách lập ma trận riêng cho một môn, kì: từ ma trận chung của tổ, hoặc dựng khung từ chương trình. Chọn ở bước 1. */
+export type CachLap = 'MA_TRAN_CHUNG' | 'CHUONG_TRINH';
+const khoaCachLap = (mon: string, ky: string) => `tke.cachLap.${mon}.${ky}`;
+
+export function docCachLap(mon: string, ky: string): CachLap {
+  if (typeof window === 'undefined') return 'MA_TRAN_CHUNG';
+  try { return window.localStorage.getItem(khoaCachLap(mon, ky)) === 'CHUONG_TRINH' ? 'CHUONG_TRINH' : 'MA_TRAN_CHUNG'; } catch { return 'MA_TRAN_CHUNG'; }
+}
+
+export function luuCachLap(mon: string, ky: string, c: CachLap): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(khoaCachLap(mon, ky), c); } catch { /* không lưu được thì thôi */ }
+}

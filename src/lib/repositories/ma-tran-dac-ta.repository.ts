@@ -2,7 +2,8 @@
  * ThayKhaiEdu - Lưu ma trận riêng và bản đặc tả lên cơ sở dữ liệu (bảng ma_tran_rieng, dac_ta).
  *
  * Mỗi giáo viên có bộ riêng (cột chu_so_huu) cho từng (trường, khối, môn, kì): một bản nháp (sửa được) và các phiên bản
- * đã xác nhận (1, 2, 3…, không sửa, không xóa). "Tạo mới" cất cả bộ vào lịch sử (cột cat_luc), không xóa.
+ * đã xác nhận (1, 2, 3…, không sửa). "Tạo mới" cất cả bộ vào lịch sử (cột cat_luc), không xóa.
+ * Người sở hữu tự xóa được bản của mình (xoaBanCuaToi), kể cả bộ đang dùng; đề đã gửi duyệt hoặc đã duyệt thì chặn.
  * Xác nhận luôn chạy lại kiểm định ở máy chủ, không tin kết quả từ trình duyệt.
  * Giáo viên ghi được bộ của mình; tổ trưởng, tổ phó, quản trị ghi được mọi bộ (RLS cũng chặn ở tầng dữ liệu).
  */
@@ -372,6 +373,86 @@ export async function batDauLai(maMon: string, ky: string): Promise<{ maTran: nu
   const dacTa = await cat('dac_ta');
   const maTran = await cat('ma_tran_rieng');
   return { maTran, dacTa };
+}
+
+/** Một bản ma trận riêng hoặc đặc tả của chính mình (để xem lịch sử, chọn xóa ở bước 1). */
+export interface DongBanCuaToi {
+  id: string;
+  loai: 'MA_TRAN' | 'DAC_TA';
+  phienBan: number | null;
+  banNhap: boolean;
+  daCat: boolean;
+  /** Đang dùng: bản nháp hoặc phiên bản xác nhận mới nhất, chưa cất. */
+  dangDung: boolean;
+  capNhatLuc: string;
+  /** Đặc tả: lập từ ma trận riêng nào (id) và phiên bản mấy. */
+  maTranRiengId?: string | null;
+  phienBanMaTranRieng?: number | null;
+  /** Có đề đã gửi duyệt / đã duyệt dựa vào (trực tiếp hoặc qua đặc tả lập từ ma trận này): không xóa được. */
+  giuLai: boolean;
+}
+
+const TT_DE_XOA_DUOC = ['BAN_NHAP', 'CAN_KIEM_TRA', 'CO_LOI', 'CAN_KIEM_TRA_LAI', 'TRA_LAI'];
+
+/** Mọi bản ma trận riêng, đặc tả của chính mình cho một môn, kì (kể cả bản đã cất), mới nhất trước. */
+export async function dsBanCuaToi(maMon: string, ky: string): Promise<DongBanCuaToi[]> {
+  kiemMonKy(maMon, ky);
+  const { supabase, user, orgId } = await layNguoiDung();
+  const loc = (q: any) => q.eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('chu_so_huu', user.id);
+  const [{ data: mtr, error: e1 }, { data: dt, error: e2 }] = await Promise.all([
+    loc(supabase.from('ma_tran_rieng').select('id, phien_ban, la_ban_nhap, cat_luc, updated_at')),
+    loc(supabase.from('dac_ta').select('id, phien_ban, la_ban_nhap, cat_luc, updated_at, ma_tran_rieng_id, phien_ban_ma_tran_rieng')),
+  ]);
+  if (e1 || e2) throw new Error(`Không đọc được lịch sử: ${(e1 ?? e2)!.message}`);
+  const dsDt = (dt ?? []) as any[];
+  const idDt = dsDt.map((d) => d.id as string);
+  // Đặc tả nào đang có đề không xóa được dựa vào
+  const giuDt = new Set<string>();
+  if (idDt.length) {
+    const [{ data: de }, { data: duyet }] = await Promise.all([
+      supabase.from('de_kiem_tra').select('dac_ta_id, trang_thai, created_by').in('dac_ta_id', idDt),
+      supabase.from('de_da_duyet').select('dac_ta_id').in('dac_ta_id', idDt),
+    ]);
+    for (const d of (de ?? []) as any[]) if (d.created_by !== user.id || !TT_DE_XOA_DUOC.includes(d.trang_thai)) giuDt.add(d.dac_ta_id);
+    for (const d of (duyet ?? []) as any[]) giuDt.add(d.dac_ta_id);
+  }
+  const moiNhat = (ds: any[]) => ds.filter((x) => !x.cat_luc && !x.la_ban_nhap).reduce((m, x) => Math.max(m, x.phien_ban ?? 0), 0);
+  const mnMtr = moiNhat((mtr ?? []) as any[]);
+  const mnDt = moiNhat(dsDt);
+  const kq: DongBanCuaToi[] = [
+    ...((mtr ?? []) as any[]).map((m) => ({
+      id: m.id, loai: 'MA_TRAN' as const, phienBan: m.phien_ban, banNhap: m.la_ban_nhap, daCat: !!m.cat_luc,
+      dangDung: !m.cat_luc && (m.la_ban_nhap || m.phien_ban === mnMtr), capNhatLuc: m.updated_at,
+      giuLai: dsDt.some((d) => d.ma_tran_rieng_id === m.id && giuDt.has(d.id)),
+    })),
+    ...dsDt.map((d) => ({
+      id: d.id, loai: 'DAC_TA' as const, phienBan: d.phien_ban, banNhap: d.la_ban_nhap, daCat: !!d.cat_luc,
+      dangDung: !d.cat_luc && (d.la_ban_nhap || d.phien_ban === mnDt), capNhatLuc: d.updated_at,
+      maTranRiengId: d.ma_tran_rieng_id, phienBanMaTranRieng: d.phien_ban_ma_tran_rieng, giuLai: giuDt.has(d.id),
+    })),
+  ];
+  return kq.sort((a, b) => (b.capNhatLuc ?? '').localeCompare(a.capNhatLuc ?? ''));
+}
+
+export interface KetQuaXoaBan {
+  maTran: { id: string; phienBan: number | null; banNhap: boolean; daCat: boolean }[];
+  dacTa: { id: string; phienBan: number | null; banNhap: boolean; daCat: boolean }[];
+  de: { id: string; trangThai: string }[];
+  /** Lí do không xóa được (có thì không xóa gì). */
+  chan: string[];
+  daXoa: boolean;
+}
+
+/**
+ * Xóa ma trận riêng, đặc tả của chính mình. thucHien = false: chỉ xem trước sẽ xóa những gì
+ * (đặc tả lập từ ma trận bị xóa, đề còn ở bước soạn đi kèm) và lí do bị chặn. Cơ sở dữ liệu kiểm quyền, xóa trọn hoặc không xóa gì.
+ */
+export async function xoaBanCuaToi(maTran: string[], dacTa: string[], thucHien: boolean): Promise<KetQuaXoaBan> {
+  if (!maTran.length && !dacTa.length) throw new Error('Chưa chọn bản nào để xóa.');
+  const { supabase } = await layNguoiDung();
+  const { data, error } = await supabase.rpc('xoa_ma_tran_dac_ta', { p_ma_tran: maTran, p_dac_ta: dacTa, p_thuc_hien: thucHien });
+  if (error) throw new Error(/function .*does not exist|Could not find the function/i.test(error.message) ? 'Cơ sở dữ liệu chưa có chức năng xóa. Cần chạy migration 20261123150000_xoa_ma_tran_dac_ta.sql.' : error.message);
+  return data as KetQuaXoaBan;
 }
 
 /** Một đề theo mã, nếu người đăng nhập được phép xem (quyền xem do cơ sở dữ liệu quyết định). */
