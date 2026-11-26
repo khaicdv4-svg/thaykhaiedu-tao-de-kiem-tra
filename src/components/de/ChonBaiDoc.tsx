@@ -43,9 +43,14 @@ interface Props {
   so?: string;
   /** Báo bài đọc hiểu hiện tại (để bước 2 chọn đúng phần VBVH / VBTT của ma trận). */
   onDocHieu?: (b: BaiDocDe | null) => void;
+  /** Phần đọc thành tiếng: 'chonBai' (chọn 4 bài) hoặc 'cauHoi' (câu hỏi, đáp án cho từng bài, có AI tạo). */
+  cheDoTT?: 'chonBai' | 'cauHoi';
 }
 
-export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
+export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu, cheDoTT = 'chonBai' }: Props) {
+  const laCauHoi = phan === 'thanhTieng' && cheDoTT === 'cauHoi';
+  const [dangAI, setDangAI] = useState(false);
+  const [loiAI, setLoiAI] = useState<string | null>(null);
   const boNao = useBoNao();
   const [kho, setKho] = useState<BaiKho[]>([]);
   const [bd, setBd] = useState<BaiDocChon>(baiDocChonRong());
@@ -76,11 +81,11 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
       setBd(bdMoi);
       setTuDe(!!c.tuDe);
       const phanCo = laDocHieu ? !!bdMoi.baiDocHieu.noiDung.trim() : bdMoi.baiDocThanhTieng.some((b) => b.noiDung.trim());
-      setMo(!phanCo);
+      setMo(laCauHoi || !phanCo);
       setDangTai(false);
     });
     return () => { huy = true; };
-  }, [ky, laDocHieu]);
+  }, [ky, laDocHieu, laCauHoi]);
 
   // Báo bài đọc hiểu cho trang cha
   useEffect(() => { if (!dangTai) onDocHieu?.(bd.baiDocHieu.noiDung.trim() || bd.baiDocHieu.theLoai ? bd.baiDocHieu : null); }, [bd.baiDocHieu, dangTai, onDocHieu]);
@@ -134,7 +139,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
   const tuKho = (b: BaiKho, noiDung = b.noiDung): BaiDocDe => ({ tieuDe: b.tieuDe, noiDung, tacGia: b.tacGia, nguon: b.nguon, khoId: b.id, theLoai: b.theLoai, chuDiem: b.chuDiem });
   const tuKhoTT = (b: BaiKho): BaiDocDe => {
     const d = kh ? catDoanTotNhat(b.noiDung, { min: kh.min, max: kh.max, dungSai: kh.dungSai }) : null;
-    return tuKho(b, d?.doan ?? b.noiDung);
+    return { ...tuKho(b, d?.doan ?? b.noiDung), cauHoi: '', traLoi: '' };
   };
 
   const goiY = () => {
@@ -147,7 +152,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
       baiDocThanhTieng: b.baiDocThanhTieng.map((cu, i) => {
         const x = kq.baiDoc[i];
         const goc = x && kho.find((k) => k.id === x.id);
-        return goc ? tuKho(goc, x.doan.doan) : cu;
+        return goc ? { ...tuKho(goc, x.doan.doan), cauHoi: '', traLoi: '' } : cu;
       }),
     }));
   };
@@ -172,12 +177,34 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
     setDocFileDang(false);
   };
 
+  /** AI soạn câu hỏi, đáp án cho các bài đọc thành tiếng còn trống câu hỏi (vietLai: soạn lại tất cả). */
+  const taoCauHoiAI = async (vietLai = false) => {
+    const chiSo = bd.baiDocThanhTieng.map((b, i) => ({ b, i })).filter(({ b }) => b.noiDung.trim() && (vietLai || !b.cauHoi?.trim()));
+    if (!chiSo.length) { setLoiAI('Các bài đã có câu hỏi. Muốn soạn lại thì bấm "AI soạn lại tất cả".'); return; }
+    setDangAI(true); setLoiAI(null);
+    try {
+      const r = await fetch('/api/bai-doc-chon/cau-hoi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ baiDoc: chiSo.map(({ b }) => ({ tieuDe: b.tieuDe, noiDung: b.noiDung })) }) });
+      const j = (await r.json().catch(() => ({}))) as { cauHoi?: { cauHoi: string; traLoi: string }[]; error?: string };
+      if (!r.ok || !j.cauHoi) throw new Error(j.error ?? `Lỗi ${r.status}`);
+      doi((b) => ({ ...b, baiDocThanhTieng: b.baiDocThanhTieng.map((x, i) => {
+        const k = chiSo.findIndex((c) => c.i === i);
+        const c = k >= 0 ? j.cauHoi![k] : null;
+        return c && c.cauHoi ? { ...x, cauHoi: c.cauHoi, traLoi: c.traLoi } : x;
+      }) }));
+    } catch (e) {
+      setLoiAI(`AI chưa tạo được câu hỏi: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setDangAI(false);
+  };
+
   const hieu = bd.baiDocHieu;
   const trung = bd.baiDocThanhTieng.some((b) => (b.tieuDe.trim() || b.khoId) && (hieu.tieuDe.trim() || hieu.khoId)
     && laCungBai({ id: b.khoId ?? undefined, tieuDe: b.tieuDe }, { id: hieu.khoId ?? undefined, tieuDe: hieu.tieuDe }));
   const soXong = laDocHieu
     ? (hieu.tieuDe.trim() && hieu.noiDung.trim() ? 1 : 0)
-    : bd.baiDocThanhTieng.filter((b) => b.tieuDe.trim() && b.noiDung.trim()).length;
+    : laCauHoi
+      ? bd.baiDocThanhTieng.filter((b) => b.cauHoi?.trim() && b.traLoi?.trim()).length
+      : bd.baiDocThanhTieng.filter((b) => b.tieuDe.trim() && b.noiDung.trim()).length;
   const soCan = laDocHieu ? 1 : 4;
   const pa = phuongAnTheoTheLoai(hieu.theLoai);
 
@@ -205,7 +232,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
     </>
   );
 
-  const tieuDe = laDocHieu ? 'Bài đọc hiểu' : 'Bài đọc thành tiếng';
+  const tieuDe = laDocHieu ? 'Bài đọc hiểu' : laCauHoi ? 'Câu hỏi đọc thành tiếng' : 'Bài đọc thành tiếng';
   return (
     <div className={`the-tke p-6 space-y-4 ${laDocHieu && !soXong && !dangTai ? 'border-2 border-blue-500' : ''}`}>
       <button type="button" className="w-full flex flex-wrap items-center justify-between gap-2 text-left" onClick={() => setMo((x) => !x)} aria-expanded={mo}>
@@ -214,7 +241,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
         </span>
         <span className="flex items-center gap-2 text-sm text-slate-600">
           {dangTai ? <Loader2 className="w-4 h-4 animate-spin" /> : soXong === soCan && !trung ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : null}
-          {dangTai ? 'Đang tải…' : laDocHieu ? (soXong ? 'Đã có bài' : 'Chưa có bài') : `Đã có ${soXong}/4 bài`}
+          {dangTai ? 'Đang tải…' : laDocHieu ? (soXong ? 'Đã có bài' : 'Chưa có bài') : laCauHoi ? `Đã có câu hỏi ${soXong}/4 bài` : `Đã có ${soXong}/4 bài`}
           {luu === 'dang' && ' · đang lưu…'}{luu === 'xong' && ' · đã lưu'}{luu === 'loi' && <span className="text-red-700"> · chưa lưu được</span>}
           {mo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </span>
@@ -224,12 +251,40 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
         <div className="space-y-4">
           {laDocHieu
             ? <p className="text-sm text-slate-600">Chọn bài từ Kho bài đọc, tải file (.docx, .txt) hoặc dán chữ vào ô Nội dung. Thể loại bài quyết định phần đọc hiểu của ma trận bên dưới: truyện, miêu tả, thơ, kịch dùng phần Văn bản văn học; văn bản thông tin dùng phần Văn bản thông tin. App tự lưu.</p>
-            : <p className="text-sm text-slate-600">4 bài đọc thành tiếng{dsChuDiem.length ? ` (chủ điểm: ${dsChuDiem.join('; ')})` : ''}. App tự lưu; bước 4 tự lấy bài, thầy cô chỉ soạn câu hỏi. Bài đọc hiểu chọn ở Phần 1.</p>}
+            : <p className="text-sm text-slate-600">4 bài đọc thành tiếng{dsChuDiem.length ? ` (chủ điểm: ${dsChuDiem.join('; ')})` : ''}. App tự lưu. Chọn xong sang mục Câu hỏi để soạn câu hỏi cho từng bài (có AI tạo giúp). Bài đọc hiểu chọn ở Phần 1.</p>}
           {tuDe && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Đây là bài đọc trong đề đang soạn. Sửa ở đây thì đề ở bước 4 đổi theo.</div>}
           {loi && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{loi}</div>}
           {trung && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex items-center gap-2"><TriangleAlert className="w-4 h-4" /> Bài đọc thành tiếng đang trùng bài đọc hiểu. Thầy cô chọn bài khác.</div>}
 
-          {laDocHieu ? (
+          {laCauHoi ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="nut-tke text-sm" disabled={dangAI || !bd.baiDocThanhTieng.some((b) => b.noiDung.trim())} onClick={() => void taoCauHoiAI()}>
+                  {dangAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} {dangAI ? 'AI đang soạn câu hỏi…' : 'AI tạo câu hỏi cho bài còn trống'}
+                </button>
+                <button type="button" className={nutPhu} disabled={dangAI} onClick={() => void taoCauHoiAI(true)}>AI soạn lại tất cả</button>
+                <span className="text-xs text-slate-500">AI chỉ gợi ý; thầy cô sửa trực tiếp trong ô. App tự lưu.</span>
+              </div>
+              {loiAI && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{loiAI}</div>}
+              {!bd.baiDocThanhTieng.some((b) => b.noiDung.trim()) && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Chưa có bài đọc thành tiếng. Chọn bài ở mục "Chọn bài" trước.</div>}
+              {bd.baiDocThanhTieng.map((b, i) => (
+                <div key={i} className="border-t border-slate-100 pt-3 space-y-2 first:border-0 first:pt-0">
+                  <details>
+                    <summary className="cursor-pointer text-sm"><b>Bài {i + 1}: {b.tieuDe || '(chưa chọn bài)'}</b> · {nhanTieng(demTieng(b.noiDung))}</summary>
+                    <p className="mt-1 whitespace-pre-line text-slate-800" style={{ fontFamily: "'Times New Roman', serif", fontSize: '13pt' }}>{b.noiDung}</p>
+                  </details>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="text-xs text-slate-500">Câu hỏi (hỏi chi tiết có trong đoạn)
+                      <input aria-label={`Câu hỏi bài đọc ${i + 1}`} className={`${o} mt-0.5 ${b.cauHoi?.trim() ? '' : 'border-amber-400 bg-amber-50'}`} value={b.cauHoi ?? ''} onChange={(e) => suaTT(i, { cauHoi: e.target.value })} />
+                    </label>
+                    <label className="text-xs text-slate-500">Đáp án
+                      <input aria-label={`Đáp án bài đọc ${i + 1}`} className={`${o} mt-0.5 ${b.traLoi?.trim() ? '' : 'border-amber-400 bg-amber-50'}`} value={b.traLoi ?? ''} onChange={(e) => suaTT(i, { traLoi: e.target.value })} />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : laDocHieu ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 {chonTuKho(khoHieu, (b) => { suaHieu(tuKho(b)); setBaoFile(null); }, 'Chọn bài đọc hiểu từ kho')}

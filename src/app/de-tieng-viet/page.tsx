@@ -133,7 +133,15 @@ function TrangDeTiengViet() {
           </div>
         </div>
       )}
-      {muc === 'p2-cau-hoi' && <TaoDeView key={khoa} nhung={nhung('thanhTieng')} />}
+      {muc === 'p2-cau-hoi' && (
+        <div key={khoa} className="space-y-4">
+          <ChonBaiDoc ky={ky as KyKiemTraBaiDoc} tenKy={tenKy} phan="thanhTieng" cheDoTT="cauHoi" />
+          <div className="flex justify-between">
+            <Link href={lienKet('p2-chon-bai')} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-50">Đổi bài đọc</Link>
+            <Link href={lienKet('p3-kieu-bai')} className="nut-tke text-sm">Tiếp theo: Phần 3 – Viết <ArrowRight className="w-4 h-4" /></Link>
+          </div>
+        </div>
+      )}
 
       {muc === 'p3-kieu-bai' && <MaTranView key={khoa} nhung={nhung('viet')} baiDocHieuNgoai={bdHieu} />}
       {muc === 'p3-dac-ta' && <DacTaView key={khoa} nhung={nhung('viet')} />}

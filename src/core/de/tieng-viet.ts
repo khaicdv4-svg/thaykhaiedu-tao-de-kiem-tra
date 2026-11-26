@@ -18,6 +18,9 @@ export interface BaiDocDe {
   theLoai?: TheLoaiBaiDoc | null;
   /** Chủ điểm của bài (từ kho hoặc app tự nhận). */
   chuDiem?: string | null;
+  /** Bài đọc thành tiếng chọn ở Phần 2: câu hỏi, đáp án soạn ngay ở đó. */
+  cauHoi?: string;
+  traLoi?: string;
 }
 
 const THE_LOAI_HOP_LE: TheLoaiBaiDoc[] = ['TRUYEN', 'MIEU_TA', 'THO', 'VAN_BAN_THONG_TIN', 'KICH', 'KHAC'];
@@ -106,6 +109,8 @@ function lamSachBai(v: unknown): BaiDocDe {
     khoId: typeof o.khoId === 'string' && o.khoId ? o.khoId.slice(0, 64) : null,
     theLoai: THE_LOAI_HOP_LE.includes(o.theLoai as TheLoaiBaiDoc) ? (o.theLoai as TheLoaiBaiDoc) : null,
     chuDiem: typeof o.chuDiem === 'string' && o.chuDiem.trim() ? o.chuDiem.slice(0, 200) : null,
+    ...(typeof o.cauHoi === 'string' ? { cauHoi: o.cauHoi.slice(0, 1000) } : {}),
+    ...(typeof o.traLoi === 'string' ? { traLoi: o.traLoi.slice(0, 2000) } : {}),
   };
 }
 
@@ -129,7 +134,7 @@ export const baiDocChonCoGi = (c: BaiDocChon | null | undefined): c is BaiDocCho
 /** Lấy phần bài đọc của một đề (để bước 1 hiện bài đã có trong đề cũ khi chưa chọn ở bước 1). */
 export function baiDocChonTuDe(tv: NoiDungTiengViet | undefined): BaiDocChon | null {
   if (!tv) return null;
-  const bo = (b: BaiDocDe): BaiDocDe => ({ tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, khoId: b.khoId ?? null, theLoai: b.theLoai ?? null, chuDiem: b.chuDiem ?? null });
+  const bo = (b: BaiDocDe): BaiDocDe => ({ tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, khoId: b.khoId ?? null, theLoai: b.theLoai ?? null, chuDiem: b.chuDiem ?? null, ...('cauHoi' in b ? { cauHoi: (b as BaiDocThanhTieng).cauHoi, traLoi: (b as BaiDocThanhTieng).traLoi } : {}) });
   const c = lamSachBaiDocChon({ baiDocHieu: bo(tv.baiDocHieu), baiDocThanhTieng: tv.baiDocThanhTieng.map(bo) });
   return baiDocChonCoGi(c) ? c : null;
 }
@@ -149,9 +154,16 @@ export function apBaiDocChon(tv: NoiDungTiengViet | undefined, chon: BaiDocChon)
   const thanhTieng = Array.from({ length: SO_BAI_THANH_TIENG }, (_, i): BaiDocThanhTieng => {
     const cu = goc.baiDocThanhTieng[i] ?? { ...bai(), cauHoi: '', traLoi: '' };
     const moi = chon.baiDocThanhTieng[i] ?? bai();
-    if (giongBai(cu, moi)) return cu;
+    // Câu hỏi, đáp án soạn ở Phần 2 (lưu cùng bài đọc) được ưu tiên
+    const hoi = moi.cauHoi?.trim() ? moi.cauHoi : undefined;
+    const dap = moi.traLoi?.trim() ? moi.traLoi : undefined;
+    if (giongBai(cu, moi)) {
+      if ((hoi === undefined || hoi === cu.cauHoi) && (dap === undefined || dap === cu.traLoi)) return cu;
+      doi.push(`câu hỏi bài đọc thành tiếng ${i + 1}`);
+      return { ...cu, cauHoi: hoi ?? cu.cauHoi, traLoi: dap ?? cu.traLoi };
+    }
     doi.push(`bài đọc thành tiếng ${i + 1}`);
-    return { ...moi, cauHoi: '', traLoi: '' };
+    return { ...moi, cauHoi: hoi ?? '', traLoi: dap ?? '' };
   });
   return { tv: { baiDocHieu: hieu, baiDocThanhTieng: thanhTieng }, doi };
 }

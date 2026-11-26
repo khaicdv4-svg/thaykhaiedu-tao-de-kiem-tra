@@ -119,3 +119,22 @@ describe('Trang đề Tiếng Việt 3 phần', () => {
     expect(laMucTV('x')).toBe(false);
   });
 });
+
+import { docCauHoiDocTieng } from '../src/core/de/cau-hoi-doc-tieng';
+
+describe('Câu hỏi đọc thành tiếng soạn ở Phần 2', () => {
+  const bai = (t: string) => ({ tieuDe: t, noiDung: `${t} nội dung`, tacGia: 'TG', nguon: 'N', khoId: null });
+  it('câu hỏi lưu cùng bài đọc được đưa vào đề, bài không đổi vẫn nhận câu hỏi mới', () => {
+    const chon = { baiDocHieu: bai('H'), baiDocThanhTieng: [bai('A'), bai('B'), bai('C'), bai('D')] };
+    const lan1 = apBaiDocChon(undefined, chon).tv;
+    const coHoi = { ...chon, baiDocThanhTieng: chon.baiDocThanhTieng.map((b, i) => ({ ...b, cauHoi: `Hỏi ${i}`, traLoi: `Đáp ${i}` })) };
+    const lan2 = apBaiDocChon(lan1, coHoi);
+    expect(lan2.doi).toHaveLength(4);
+    expect(lan2.tv.baiDocThanhTieng[2]).toMatchObject({ tieuDe: 'C', cauHoi: 'Hỏi 2', traLoi: 'Đáp 2' });
+    expect(apBaiDocChon(lan2.tv, coHoi).doi).toEqual([]);
+  });
+  it('đọc kết quả AI, thiếu thì để trống', () => {
+    expect(docCauHoiDocTieng('Đây: [{"cauHoi":"Ai?","traLoi":"Bé"}]', 2)).toEqual([{ cauHoi: 'Ai?', traLoi: 'Bé' }, { cauHoi: '', traLoi: '' }]);
+    expect(docCauHoiDocTieng('không có json', 1)).toEqual([{ cauHoi: '', traLoi: '' }]);
+  });
+});

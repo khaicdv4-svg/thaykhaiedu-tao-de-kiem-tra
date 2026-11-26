@@ -21,6 +21,16 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 12,
+    ngay: '2026-11-26',
+    tieuDe: 'Phần 2 Đọc thành tiếng: tạo câu hỏi dùng được ngay',
+    noiDung: [
+      'Mục Câu hỏi của Phần 2 không còn phải chờ bản đặc tả. Mỗi bài có ô câu hỏi, đáp án, app tự lưu.',
+      'Nút "AI tạo câu hỏi cho bài còn trống" (và "AI soạn lại tất cả"): mỗi bài một câu hỏi ngắn về chi tiết trong đoạn, kèm đáp án. Thầy cô sửa trực tiếp trong ô.',
+      'Đổi bài đọc thì câu hỏi của bài đó được xóa để soạn lại. Câu hỏi tự vào đề khi Hoàn chỉnh đề.',
+    ],
+  },
+  {
     so: 11,
     ngay: '2026-11-26',
     tieuDe: 'Sửa nút "Lưu và sang Soạn câu hỏi" ở bản đặc tả',
