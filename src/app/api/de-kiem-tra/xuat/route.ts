@@ -1,8 +1,8 @@
+import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import { NextRequest, NextResponse } from 'next/server';
 import { Packer } from 'docx';
 import { layDe, layDeTheoId, layDacTaCuaDe } from '@/lib/repositories/ma-tran-dac-ta.repository';
 import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from '@/core/de/xuat-word';
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { ghepDauBaiTheoMau } from '@/core/mau-de/ghep-mau';
 import { fileMauDangDung } from '@/lib/repositories/mau-de.repository';
 import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     const ky = de?.ky ?? sp.get('ky') ?? '';
     if (!de) return loi('Chưa có đề để xuất, hoặc bạn không có quyền xem đề này. Hãy lưu đề ở bước 4 trước.', 404);
 
-    const tenMon = (MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === mon)?.mon ?? mon).toUpperCase();
+    const tenMon = tenMonKT(mon).toUpperCase();
     const namHoc = (sp.get('namHoc') ?? '2026 - 2027').slice(0, 20);
     const coMau = sp.get('mau') !== '0';
     const phut = Math.min(120, Math.max(5, Number(sp.get('phut')) || 35));

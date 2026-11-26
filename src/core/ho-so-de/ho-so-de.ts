@@ -6,7 +6,7 @@
  * Hàm thuần + vài hàm đọc ghi trình duyệt, gọi được an toàn khi không có window.
  */
 
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
+import { laMonKiemTra, tenMon } from '@/core/ho-so-de/mon-ky';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 
 export interface HoSoDe {
@@ -18,10 +18,10 @@ export const KHOA_LUU_HO_SO = 'tke.hoSoDe';
 /** Sự kiện báo hồ sơ vừa đổi, để thanh 5 bước và menu cập nhật đường dẫn */
 export const SU_KIEN_HO_SO = 'tke-ho-so-de';
 
-export const monHopLe = (m: string | null | undefined): m is string => !!m && MAU_MA_TRAN_CHUNG.some((x) => x.ma_mon === m);
+export const monHopLe = (m: string | null | undefined): m is string => laMonKiemTra(m);
 export const kyHopLe = (k: string | null | undefined): k is KyDung => !!k && DANH_SACH_KY.some((x) => x.ma === k);
 
-export const tenMonHoSo = (m: string) => MAU_MA_TRAN_CHUNG.find((x) => x.ma_mon === m)?.mon ?? m;
+export const tenMonHoSo = (m: string) => tenMon(m);
 export const tenKyHoSo = (k: string) => DANH_SACH_KY.find((x) => x.ma === k)?.ten ?? k;
 
 /** Đọc ?mon=&ky= từ chuỗi truy vấn. Thiếu hoặc sai thì trả null. */

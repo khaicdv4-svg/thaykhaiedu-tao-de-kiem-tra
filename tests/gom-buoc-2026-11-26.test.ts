@@ -1,0 +1,86 @@
+import { describe, it, expect } from 'vitest';
+import { chonHopLe, kyTheoMon, lamSachKiemTraThem, monTheoKhoi } from '../src/core/ho-so-de/mon-ky';
+import { apBaiDocChon, baiDocChonCoGi, baiDocChonRong, baiDocChonTuDe, lamSachBaiDocChon, taoNoiDungTiengVietRong } from '../src/core/de/tieng-viet';
+import { lamSachBoNao } from '../src/core/bo-nao/bo-nao';
+import { monHopLe } from '../src/core/ho-so-de/ho-so-de';
+
+const ma = (k: number) => monTheoKhoi(k).map((m) => m.ma);
+
+describe('Môn, kì kiểm tra theo khối (Thông tư 27)', () => {
+  it('lớp 1, 2 chỉ Toán, Tiếng Việt; lớp 3 thêm Tin học, Công nghệ; lớp 4, 5 đủ 6 môn', () => {
+    expect(ma(1)).toEqual(['TOAN', 'TIENG_VIET']);
+    expect(ma(2)).toEqual(['TOAN', 'TIENG_VIET']);
+    expect(ma(3)).toEqual(['TOAN', 'TIENG_VIET', 'TIN_HOC', 'CONG_NGHE']);
+    expect(ma(4)).toEqual(['TOAN', 'TIENG_VIET', 'KHOA_HOC', 'LS_DL', 'TIN_HOC', 'CONG_NGHE']);
+    expect(ma(5)).toEqual(ma(4));
+    expect(ma(4)).not.toContain('TIENG_ANH');
+  });
+
+  it('giữa kì chỉ có Toán, Tiếng Việt lớp 4, 5', () => {
+    expect(kyTheoMon(4, 'TOAN')).toEqual(['GIUA_HK1', 'CUOI_HK1', 'GIUA_HK2', 'CUOI_NAM']);
+    expect(kyTheoMon(5, 'TIENG_VIET')).toEqual(['GIUA_HK1', 'CUOI_HK1', 'GIUA_HK2', 'CUOI_NAM']);
+    expect(kyTheoMon(4, 'KHOA_HOC')).toEqual(['CUOI_HK1', 'CUOI_NAM']);
+    expect(kyTheoMon(3, 'TOAN')).toEqual(['CUOI_HK1', 'CUOI_NAM']);
+    expect(kyTheoMon(2, 'KHOA_HOC')).toEqual([]);
+  });
+
+  it('tổ bật thêm ở Bộ não thì hiện thêm môn, kì', () => {
+    const them = [{ mon: 'KHOA_HOC', ky: 'GIUA_HK2' as const }, { mon: 'TIN_HOC', ky: 'CUOI_HK1' as const }];
+    expect(kyTheoMon(4, 'KHOA_HOC', them)).toEqual(['CUOI_HK1', 'GIUA_HK2', 'CUOI_NAM']);
+    expect(ma(2)).not.toContain('TIN_HOC');
+    expect(monTheoKhoi(2, them).map((m) => m.ma)).toContain('TIN_HOC');
+  });
+
+  it('môn, kì không hợp lệ ở khối mới thì chuyển về lựa chọn gần nhất', () => {
+    expect(chonHopLe(2, 'KHOA_HOC', 'CUOI_HK1')).toEqual({ mon: 'TOAN', ky: 'CUOI_HK1' });
+    expect(chonHopLe(4, 'LS_DL', 'GIUA_HK1')).toEqual({ mon: 'LS_DL', ky: 'CUOI_HK1' });
+    expect(chonHopLe(4, 'TOAN', 'GIUA_HK2')).toEqual({ mon: 'TOAN', ky: 'GIUA_HK2' });
+  });
+
+  it('làm sạch danh sách kiểm tra thêm và Bộ não giữ lại', () => {
+    expect(lamSachKiemTraThem([{ mon: 'X', ky: 'CUOI_HK1' }, { mon: 'TOAN', ky: 'SAI' }, { mon: 'KHOA_HOC', ky: 'GIUA_HK1' }, { mon: 'KHOA_HOC', ky: 'GIUA_HK1' }]))
+      .toEqual([{ mon: 'KHOA_HOC', ky: 'GIUA_HK1' }]);
+    expect(lamSachBoNao({ kiemTraThem: [{ mon: 'LS_DL', ky: 'GIUA_HK2' }] }).kiemTraThem).toEqual([{ mon: 'LS_DL', ky: 'GIUA_HK2' }]);
+    expect(lamSachBoNao({}).kiemTraThem).toBeUndefined();
+  });
+
+  it('Tin học là môn hợp lệ của hồ sơ đề', () => {
+    expect(monHopLe('TIN_HOC')).toBe(true);
+    expect(monHopLe('TIENG_ANH')).toBe(false);
+  });
+});
+
+describe('Bài đọc Tiếng Việt chọn ở bước 1', () => {
+  const bai = (t: string, nd = `${t} nội dung`) => ({ tieuDe: t, noiDung: nd, tacGia: 'Tác giả', nguon: 'Nguồn: sách', khoId: null });
+  const chon = () => ({ baiDocHieu: bai('Hiểu'), baiDocThanhTieng: [bai('A'), bai('B'), bai('C'), bai('D')] });
+
+  it('làm sạch luôn ra đúng 1 bài đọc hiểu và 4 bài đọc thành tiếng', () => {
+    const c = lamSachBaiDocChon({ baiDocThanhTieng: [bai('A')] });
+    expect(c.baiDocThanhTieng).toHaveLength(4);
+    expect(c.baiDocThanhTieng[1].tieuDe).toBe('');
+    expect(baiDocChonCoGi(baiDocChonRong())).toBe(false);
+    expect(baiDocChonCoGi(c)).toBe(true);
+  });
+
+  it('đưa vào đề: bài mới thì câu hỏi trống; bài không đổi giữ câu hỏi, đáp án', () => {
+    const lan1 = apBaiDocChon(taoNoiDungTiengVietRong(), chon());
+    expect(lan1.doi).toHaveLength(5);
+    const daSoan = { ...lan1.tv, baiDocThanhTieng: lan1.tv.baiDocThanhTieng.map((b, i) => ({ ...b, cauHoi: `Hỏi ${i}`, traLoi: `Đáp ${i}` })) };
+    // Không đổi gì: giữ nguyên
+    expect(apBaiDocChon(daSoan, chon()).doi).toEqual([]);
+    // Đổi bài 2: chỉ bài 2 mất câu hỏi
+    const c2 = chon();
+    c2.baiDocThanhTieng[1] = bai('B mới');
+    const lan2 = apBaiDocChon(daSoan, c2);
+    expect(lan2.doi).toEqual(['bài đọc thành tiếng 2']);
+    expect(lan2.tv.baiDocThanhTieng[0].cauHoi).toBe('Hỏi 0');
+    expect(lan2.tv.baiDocThanhTieng[1]).toMatchObject({ tieuDe: 'B mới', cauHoi: '', traLoi: '' });
+  });
+
+  it('đề cũ đã có bài đọc thì bước 1 lấy lại được, không có thì trả null', () => {
+    const tv = apBaiDocChon(undefined, chon()).tv;
+    expect(baiDocChonTuDe(tv)?.baiDocThanhTieng[3].tieuDe).toBe('D');
+    expect(baiDocChonTuDe(taoNoiDungTiengVietRong())).toBeNull();
+    expect(baiDocChonTuDe(undefined)).toBeNull();
+  });
+});

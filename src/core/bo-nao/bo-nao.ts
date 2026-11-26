@@ -5,6 +5,7 @@
  */
 
 import type { KyKiemTraBaiDoc, TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { lamSachKiemTraThem, type KiemTraThem } from '@/core/ho-so-de/mon-ky';
 
 export interface QuyDinhMotKy {
   ky: KyKiemTraBaiDoc;
@@ -27,6 +28,8 @@ export interface BoNao {
    * Mã môn → (khóa bài → tên mạch). Đặc tả cũ chưa có thì để trống.
    */
   baiMach?: Record<string, Record<string, string>>;
+  /** Môn, kì tổ kiểm tra thêm ngoài quy định Thông tư 27 (ví dụ Khoa học giữa HKII). Hiện thêm trong ô chọn ở bước 1. */
+  kiemTraThem?: KiemTraThem[];
 }
 
 export const DUNG_SAI_MAC_DINH = { thanhTieng: 5, docHieu: 10 } as const;
@@ -64,6 +67,8 @@ export function lamSachBoNao(v: unknown): BoNao {
   }
   const bm = lamSachBaiMach(o.baiMach);
   if (Object.keys(bm).length) kq.baiMach = bm;
+  const them = lamSachKiemTraThem(o.kiemTraThem);
+  if (them.length) kq.kiemTraThem = them;
   return kq;
 }
 

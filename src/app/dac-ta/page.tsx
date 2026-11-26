@@ -7,12 +7,13 @@
  * Thầy điền bài học, tuần, trang SGK cho từng câu. Ứng dụng không tự đoán: chỉ gợi ý khi khớp Kho chương trình.
  */
 
+import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, ListChecks, Loader2, Lock, RefreshCw, Save, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, ListChecks, Loader2, Lock, RefreshCw, Save } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, khoangTuanTheoKy, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import {
   dienLaiTuPpct,
@@ -85,6 +86,7 @@ export default function DacTaPage() {
   const [dangGui, setDangGui] = useState(false);
   // Ma trận riêng, đặc tả là của chính người đăng nhập: bấm Lưu là tự kiểm tra và dùng ngay
   const tuXacNhan = true;
+  const router = useRouter();
   const [tiet, setTiet] = useState<Tiet[]>([]);
   const [mucLuc, setMucLuc] = useState<MucLucSgk[]>([]);
   const [yccdKho, setYccdKho] = useState<Yccd[]>([]);
@@ -275,8 +277,9 @@ export default function DacTaPage() {
     return kq;
   };
 
-  const gui = async (hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN', imLang = false) => {
-    if (!mtrBan || !dacTa) return;
+  /** Trả về true khi đặc tả đã lưu và dùng được (đã xác nhận). */
+  const gui = async (hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN', imLang = false): Promise<boolean> => {
+    if (!mtrBan || !dacTa) return false;
     if (hanhDong === 'LUU') kiemTra();
     const banGui = dacTa;
     if (imLang) setDangTuLuu(true); else setDangGui(true);
@@ -287,18 +290,25 @@ export default function DacTaPage() {
     });
     setDangGui(false);
     setDangTuLuu(false);
-    if (!r.ok) { if (imLang) return; setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa ${hanhDong === 'XAC_NHAN' ? 'xác nhận' : 'lưu'} được: ${r.j.error}`); return; }
+    if (!r.ok) { if (imLang) return false; setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa ${hanhDong === 'XAC_NHAN' ? 'xác nhận' : 'lưu'} được: ${r.j.error}`); return false; }
     // Trong lúc gửi mà thầy cô sửa tiếp thì vẫn còn thay đổi chưa lưu
     if (dacTaRef.current === banGui) setChuaLuu(false);
-    if (hanhDong === 'LUU_NHAP') { if (!imLang) setThongBao('Đã lưu bản nháp đặc tả lên hệ thống. '); return; }
+    if (hanhDong === 'LUU_NHAP') { if (!imLang) setThongBao('Đã lưu bản nháp đặc tả lên hệ thống. '); return false; }
     if (hanhDong === 'LUU' && !r.j.daXacNhan) {
       if (r.j.ban?.trangThai) setTrangThai(r.j.ban.trangThai);
       setThongBao(r.j.loiXacNhan ? `Đã lưu bản nháp. Chưa dùng được vì còn lỗi: ${r.j.loiXacNhan}. Sửa xong bấm Lưu lại.` : 'Đã lưu bản nháp đặc tả lên hệ thống.');
-      return;
+      window.setTimeout(() => document.getElementById('ket-qua-dac-ta')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      return false;
     }
     setTrangThai('DA_XAC_NHAN');
     setPhienBanXacNhan(r.j.ban?.phienBan ?? null);
     setThongBao(r.j.taoPhienBanMoi === false ? `Nội dung không đổi so với phiên bản ${r.j.ban?.phienBan}, giữ nguyên phiên bản đó.` : `Đã xác nhận đặc tả, phiên bản ${r.j.ban?.phienBan}. Bước tiếp theo: tạo đề.`);
+    return true;
+  };
+
+  /** Nút chính: lưu (app tự kiểm tra); dùng được thì sang bước 4 luôn. */
+  const luuVaSang = async () => {
+    if (await gui('LUU')) router.push(`/tao-de?mon=${maMon}&ky=${ky}`);
   };
 
   // Tự lưu bản nháp 2 giây sau lần sửa cuối, để bước 4 biết đặc tả đang được sửa và không tạo đề theo bản cũ
@@ -318,12 +328,13 @@ export default function DacTaPage() {
     window.setTimeout(() => { if (cuonToiCau(khoa)) daMoCau.current = true; }, 300);
   }, [dacTa, dangTai]);
 
+  // Xem bản đặc tả: kiểm tra luôn, lỗi (nếu có) hiện ngay dưới bảng
   const xemTruoc = () => {
-    const kq = kiemTra();
-    if (kq?.hopLe) setCheDo('xem');
+    kiemTra();
+    setCheDo('xem');
   };
 
-  const tenMon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? maMon;
+  const tenMon = tenMonKT(maMon);
   const nhan = NHAN_TRANG_THAI[trangThai];
   const tongDiem = useMemo(() => Math.round((dacTa?.dong.reduce((s, r) => s + r.diem, 0) ?? 0) * 100) / 100, [dacTa]);
   // Hiển thị theo thứ tự câu trong đề (không gom theo bài) để thầy rà từ câu 1 đến hết.
@@ -403,8 +414,18 @@ export default function DacTaPage() {
               />
               <span className="text-xs text-slate-500">Bài dạy sau tuần này là chưa học.</span>
             </label>
-            {!daXacNhan && cheDo === 'sua' && <button type="button" className={nutPhu} disabled={dangGhep} onClick={dienLai}>{dangGhep ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {dangGhep ? 'Đang tự điền bài…' : 'Tự điền bài, tuần, trang'}</button>}
+            {!daXacNhan && cheDo === 'sua' && <button type="button" className={nutPhu} disabled={dangGhep} onClick={dienLai}>{dangGhep ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {dangGhep ? 'Đang tự điền bài…' : 'Điền lại bài, tuần, trang'}</button>}
             {phienBanXacNhan !== null && <span className="text-emerald-700">Đã có phiên bản xác nhận: {phienBanXacNhan}</span>}
+          </div>
+
+          <div className="the-tke p-2 flex flex-wrap items-center gap-2" role="tablist" aria-label="Chế độ đặc tả">
+            {([['sua', 'Sửa đặc tả', ListChecks], ['xem', 'Xem bản đặc tả', Eye]] as const).map(([k, t, Icon]) => (
+              <button key={k} type="button" role="tab" aria-selected={cheDo === k} onClick={() => { if (k === 'xem') xemTruoc(); else setCheDo('sua'); }}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${cheDo === k ? 'text-white bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow' : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'}`}>
+                <Icon className="w-4 h-4" /> {t}
+              </button>
+            ))}
+            <span className="text-xs text-slate-500 px-2">{cheDo === 'sua' ? 'Điền, sửa từng câu. App tự lưu nháp.' : 'Xem cả bảng như bản in.'}{dangTuLuu ? ' Đang tự lưu…' : ''}</span>
           </div>
 
           {cheDo === 'sua' ? (
@@ -510,45 +531,35 @@ export default function DacTaPage() {
             </div>
           )}
 
-          {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra đặc tả" /></div>}
+          {ketQua && <div id="ket-qua-dac-ta" className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra đặc tả" /></div>}
 
-          {cheDo === 'xem' && !daXacNhan && (
+          {!tuXacNhan && cheDo === 'xem' && !daXacNhan && (
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={daXemTruoc} onChange={(e) => setDaXemTruoc(e.target.checked)} />
               Tôi đã xem kĩ bản đặc tả ở trên.
             </label>
           )}
 
-          {(() => {
-            const lyDo = chungMoiHon ? 'Ma trận chung của tổ vừa đổi. Xác nhận lại ma trận riêng ở bước 2 trước.'
-              : !daXacNhan ? (trangThai === 'CO_LOI' ? 'Đặc tả còn lỗi. Sửa các lỗi ở trên rồi bấm Lưu.' : 'Đặc tả có thay đổi chưa dùng. Bấm Lưu để app kiểm tra; không lỗi thì sang được bước 4.')
-                : chuaLuu ? 'Đang lưu thay đổi…' : null;
-            return lyDo ? (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-amber-900">
-                <span className="flex items-center gap-2"><Lock className="w-4 h-4 shrink-0" /> Chưa sang bước 4 được. {lyDo}{dangTuLuu ? ' (đang tự lưu bản nháp…)' : ''}</span>
-                <button type="button" className={nutChinh} disabled title={lyDo}>Tiếp theo: Tạo đề <ArrowRight className="w-4 h-4" /></button>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-emerald-900">
-                <span>Đặc tả đã lưu và dùng được (phiên bản {phienBanXacNhan}). Vẫn sửa được bất kì ô nào; sửa xong bấm Lưu lại, đề ở bước 4 sẽ theo bản mới.</span>
-                <Link href={`/tao-de?mon=${maMon}&ky=${ky}`} className={nutChinh}>Tiếp theo: Tạo đề <ArrowRight className="w-4 h-4" /></Link>
-              </div>
-            );
-          })()}
+          {daXacNhan && !chuaLuu ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-emerald-900">
+              <span>Đặc tả đã lưu và dùng được (phiên bản {phienBanXacNhan}). Vẫn sửa được bất kì ô nào; sửa xong bấm Lưu lại, đề ở bước 4 sẽ theo bản mới.</span>
+              <Link href={`/tao-de?mon=${maMon}&ky=${ky}`} className={nutChinh}>Tiếp theo: Tạo đề <ArrowRight className="w-4 h-4" /></Link>
+            </div>
+          ) : (
+            <div className={`rounded-xl border p-4 flex flex-wrap items-center justify-between gap-3 text-sm ${chungMoiHon || trangThai === 'CO_LOI' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-slate-200 bg-white text-slate-700'}`}>
+              <span className="flex items-center gap-2">
+                {chungMoiHon ? <><Lock className="w-4 h-4 shrink-0" /> Ma trận chung của tổ vừa đổi. Lưu lại ma trận riêng ở bước 2 trước.</>
+                  : trangThai === 'CO_LOI' ? 'Đặc tả còn lỗi (xem kết quả kiểm tra ở trên). Sửa xong bấm lại nút bên phải.'
+                    : 'Xong thì bấm nút bên phải: app tự kiểm tra, không lỗi thì lưu và sang bước 4.'}
+              </span>
+              {!tuXacNhan
+                ? <button type="button" className={nutChinh} disabled={!daXemTruoc || dangGui || !!chungMoiHon} onClick={() => void gui('XAC_NHAN')}>{dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Xác nhận đặc tả</button>
+                : <button type="button" className={nutChinh} disabled={dangGui || !!chungMoiHon} onClick={() => void luuVaSang()}>{dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu và sang Tạo đề <ArrowRight className="w-4 h-4" /></button>}
+            </div>
+          )}
 
           <div className="flex flex-wrap justify-between gap-2">
-            {cheDo === 'xem'
-              ? <button type="button" className={nutPhu} onClick={() => setCheDo('sua')}><ArrowLeft className="w-4 h-4" /> Chỉnh sửa đặc tả</button>
-              : <Link href={`/matrices?mon=${maMon}&ky=${ky}`} className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về ma trận</Link>}
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className={tuXacNhan ? nutChinh : nutPhu} disabled={dangGui || daXacNhan} onClick={() => void gui(tuXacNhan ? 'LUU' : 'LUU_NHAP')} title={tuXacNhan ? 'Lưu, app tự kiểm tra; không có lỗi thì dùng ngay cho bước tạo đề' : undefined}>{dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {tuXacNhan ? (daXacNhan ? 'Đã lưu' : 'Lưu') : 'Lưu bản nháp'}</button>
-              <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>
-              {cheDo === 'sua'
-                ? <button type="button" className={nutChinh} onClick={xemTruoc}><Eye className="w-4 h-4" /> Xem trước đặc tả</button>
-                : !tuXacNhan && <button type="button" className={nutChinh} disabled={!daXemTruoc || daXacNhan || dangGui || !!chungMoiHon} onClick={() => void gui('XAC_NHAN')}>
-                    {dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {daXacNhan ? 'Đã xác nhận' : 'Xác nhận đặc tả'}
-                  </button>}
-            </div>
+            <Link href={`/matrices?mon=${maMon}&ky=${ky}`} className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về ma trận</Link>
           </div>
         </>
       )}

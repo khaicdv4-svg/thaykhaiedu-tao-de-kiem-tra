@@ -6,6 +6,7 @@
  * Mức, hình thức, dạng câu, điểm lấy từ đặc tả, không sửa ở đây. Ứng dụng không tự bịa đề hay đáp án.
  */
 
+import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Download, Eye, FilePlus2, ImagePlus, Lock, PenLine, Square, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
@@ -18,9 +19,8 @@ import { VietLaiCauAI } from '@/components/de/VietLaiCauAI';
 import { goiYTuNganHang, type GoiYMotCau } from '@/core/de/goi-y-ngan-hang';
 import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
 import { svgSangHinh, xuLyAnhDe } from '@/core/utils/anh-de';
-import { taoNoiDungTiengVietRong, type NoiDungTiengViet } from '@/core/de/tieng-viet';
+import { apBaiDocChon, baiDocChonCoGi, taoNoiDungTiengVietRong, type BaiDocChon, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { ChuPhanSo } from '@/components/de/ChuPhanSo';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
@@ -124,6 +124,11 @@ export default function TaoDePage() {
   const [goiY, setGoiY] = useState<Record<string, { dang?: boolean; text?: string; canh?: string }>>({});
   type KetQuaSach = { dang?: 'soan' | 'doi'; loi?: string; thieu?: string[]; trang?: string; soan?: { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string }; doi?: { trongPhamVi: string; khopSach: string; dapAnDung: string; chepNguyenSach: string; nhanXet: string[]; goiY: string } };
   const [sach, setSach] = useState<Record<string, KetQuaSach>>({});
+  // Bài đọc Tiếng Việt chọn ở bước 1 (null: chưa chọn ở bước 1, đề giữ bài đang có)
+  const [baiDocChon, setBaiDocChon] = useState<BaiDocChon | null>(null);
+  // Tự lưu bản nháp như bước 3
+  const [dangTuLuu, setDangTuLuu] = useState(false);
+  const [loiTuLuu, setLoiTuLuu] = useState(false);
 
   useEffect(() => {
     try {
@@ -145,10 +150,15 @@ export default function TaoDePage() {
     setDacTaBan(null);
     setDacTaDangSua(null);
     setDaSua(false);
-    const [dt, d] = await Promise.all([
+    setBaiDocChon(null);
+    const [dt, d, bdc] = await Promise.all([
       goiJson<{ moiNhat: BanDacTaApi | null; banNhap: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
       goiJson<{ de: BanDeApi | null; dacTaDaCat?: boolean }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
+      maMon === 'TIENG_VIET'
+        ? goiJson<{ baiDoc: BaiDocChon | null; tuDe?: boolean }>(`/api/bai-doc-chon?ky=${ky}`)
+        : Promise.resolve({ ok: false, status: 0, j: { baiDoc: null } as { baiDoc: BaiDocChon | null; tuDe?: boolean; error?: string } }),
     ]);
+    if (bdc.ok && !bdc.j.tuDe && baiDocChonCoGi(bdc.j.baiDoc)) setBaiDocChon(bdc.j.baiDoc);
     if (!dt.ok) { setLoiTai(dt.j.error ?? 'Không đọc được bản đặc tả.'); setDangTai(false); return; }
     const moiNhat = dt.j.moiNhat;
     setDacTaBan(moiNhat);
@@ -186,6 +196,29 @@ export default function TaoDePage() {
   }, [maMon, ky]);
 
   useEffect(() => { void nap(); }, [nap]);
+
+  // Bài đọc chọn ở bước 1 tự vào đề (bước sau theo bước trước). Bài đổi chữ thì câu hỏi đọc thành tiếng của bài đó để trống.
+  useEffect(() => {
+    if (!de || dangTai || !baiDocChon || maMon !== 'TIENG_VIET') return;
+    const kq = apBaiDocChon(de.tiengViet, baiDocChon);
+    if (!kq.doi.length) return;
+    setDe({ ...de, tiengViet: kq.tv });
+    setDaSua(true);
+    setThongBao((t) => `${t ? `${t} ` : ''}Đã lấy bài đọc chọn ở bước 1 (${kq.doi.join(', ')}). Bài đọc hiểu đổi thì thầy cô xem lại các câu đọc hiểu.`);
+  }, [de, dangTai, baiDocChon, maMon]);
+
+  // Tự lưu bản nháp 3 giây sau lần sửa cuối (đề đang khóa ở các bước duyệt thì không tự lưu)
+  useEffect(() => {
+    if (!daSua || !de || !dacTaBan || dangTai || dangGui || dacTaDangSua || GHI_CHU_KHOA[trangThai]) return;
+    const t = window.setTimeout(() => { void gui('BAN_NHAP', de, true); }, 3000);
+    return () => window.clearTimeout(t);
+  }, [daSua, de, dacTaBan, dangTai, dangGui, dacTaDangSua, trangThai]);
+
+  // Mở Xem đề là tự kiểm tra cả đề (không đổi trạng thái đề)
+  useEffect(() => {
+    if (cheDo !== 'xem' || !de || !dacTaBan) return;
+    setKetQua(kiemDinhDe(dacTaBan.duLieu, de, { phienBanDacTaMoiNhat: dacTaBan.phienBan ?? undefined }));
+  }, [cheDo, dacTaBan]);
   deRef.current = de;
 
   // Mở từ màn Xem đề hoặc địa chỉ có ?cau=: chuyển sang soạn và cuộn tới đúng câu
@@ -465,18 +498,21 @@ export default function TaoDePage() {
     return kq;
   };
 
-  const gui = async (tt: TrangThaiDe, deGui: DeKiemTra | null = de): Promise<boolean> => {
+  const gui = async (tt: TrangThaiDe, deGui: DeKiemTra | null = de, imLang = false): Promise<boolean> => {
     if (!dacTaBan || !deGui) return false;
-    setDangGui(true);
+    if (imLang) setDangTuLuu(true); else setDangGui(true);
     const r = await goiJson<{ ban?: BanDeApi; kiemDinh?: KetQuaKiemDinhDe }>('/api/de-kiem-tra', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mon: maMon, ky, dacTaId: dacTaBan.id, de: deGui, trangThai: tt }),
     });
     setDangGui(false);
-    if (!r.ok) { setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa lưu được: ${r.j.error}`); return false; }
+    setDangTuLuu(false);
+    if (!r.ok) { if (imLang) { setLoiTuLuu(true); return false; } setThongBao(r.status === 403 ? `Chưa lưu được: ${r.j.error ?? 'tài khoản này chỉ được xem.'}` : `Chưa lưu được: ${r.j.error}`); return false; }
     if (r.j.ban) { setTrangThai(r.j.ban.trangThai); setDeId(r.j.ban.id); }
     if (deRef.current === deGui || tt === 'SAN_SANG_DUYET') setDaSua(false);
+    setLoiTuLuu(false);
+    if (imLang) return true;
     if (r.j.kiemDinh) setKetQua(r.j.kiemDinh);
     setThongBao(tt === 'SAN_SANG_DUYET' ? 'Đã gửi đề đi thẩm định. Theo dõi nhận xét và các bước duyệt ở Kho đề.' : 'Đã lưu đề lên hệ thống. Đề của thầy/cô chỉ mình thầy/cô xem, đến khi chia sẻ hoặc gửi thẩm định.');
     return true;
@@ -512,7 +548,7 @@ export default function TaoDePage() {
     setDangXuat(false);
   };
 
-  const tenMon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? maMon;
+  const tenMon = tenMonKT(maMon);
   const nhan = NHAN_TRANG_THAI[trangThai];
   const tienDo = useMemo(() => (de ? tienDoDe(de) : { xong: 0, tong: 0 }), [de]);
   const nhom = useMemo(() => {
@@ -655,7 +691,7 @@ export default function TaoDePage() {
             </div>
           )}
 
-          {de.tiengViet && <BaiDocTiengViet ky={ky as KyKiemTraBaiDoc} gia={de.tiengViet} onDoi={suaTiengViet} />}
+          {de.tiengViet && <BaiDocTiengViet ky={ky as KyKiemTraBaiDoc} gia={de.tiengViet} onDoi={suaTiengViet} hrefDoiBai={`/test-builder?mon=${maMon}&ky=${ky}`} />}
 
           <div className="space-y-4">
             {nhom.map(([ten, cauNhom]) => (
@@ -890,7 +926,7 @@ export default function TaoDePage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" className={nutChinh} onClick={() => { setCheDo('xem'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Eye className="w-4 h-4" /> Xem đề để kiểm tra và xuất Word</button>
+            <button type="button" className={nutChinh} onClick={() => { setCheDo('xem'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><Eye className="w-4 h-4" /> Xem đề và hoàn tất</button>
           </div>
           </>)}
 
@@ -922,36 +958,45 @@ export default function TaoDePage() {
             </div>
           )}
 
-          {cheDo === 'xem' && <div className="the-tke p-4 flex flex-wrap items-end gap-3 text-sm">
-            <label className="flex-1 min-w-60">
-              <span className="block text-slate-600 mb-1">Tên trường (in ở đầu đề)</span>
-              <input aria-label="Tên trường" className={o} value={truong} onChange={(e) => setTruong(e.target.value)} />
-            </label>
-            <label>
-              <span className="block text-slate-600 mb-1">Năm học</span>
-              <input aria-label="Năm học" className={`${o} w-32`} value={namHoc} onChange={(e) => setNamHoc(e.target.value)} />
-            </label>
-            <label>
-              <span className="block text-slate-600 mb-1">Thời gian (phút)</span>
-              <input aria-label="Thời gian làm bài" type="number" min={5} max={120} className={`${o} w-28`} value={phut} onChange={(e) => setPhut(Number(e.target.value) || 35)} />
-            </label>
-            <button type="button" className={nutChinh} disabled={dangXuat || dangGui} onClick={() => void xuatWord(false)}>
-              {dangXuat || dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Xuất Word (đề + hướng dẫn chấm)
-            </button>
-            <button type="button" className={nutPhu} disabled={dangXuat || dangGui} onClick={() => void xuatWord(true)}>
-              <Download className="w-4 h-4" /> Xuất bộ hồ sơ
-            </button>
-            <span className="w-full text-xs text-slate-500">File Word xuất đúng bản đang xem{daSua ? '; app sẽ lưu các thay đổi trước khi xuất' : ''}.</span>
+          {cheDo === 'xem' && <div className="the-tke p-4 space-y-3 text-sm">
+            <h2 className="font-semibold text-slate-900">Hoàn tất</h2>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex-1 min-w-60">
+                <span className="block text-slate-600 mb-1">Tên trường (in ở đầu đề)</span>
+                <input aria-label="Tên trường" className={o} value={truong} onChange={(e) => setTruong(e.target.value)} />
+              </label>
+              <label>
+                <span className="block text-slate-600 mb-1">Năm học</span>
+                <input aria-label="Năm học" className={`${o} w-32`} value={namHoc} onChange={(e) => setNamHoc(e.target.value)} />
+              </label>
+              <label>
+                <span className="block text-slate-600 mb-1">Thời gian (phút)</span>
+                <input aria-label="Thời gian làm bài" type="number" min={5} max={120} className={`${o} w-28`} value={phut} onChange={(e) => setPhut(Number(e.target.value) || 35)} />
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={nutPhu} disabled={dangXuat || dangGui} onClick={() => void xuatWord(false)}>
+                {dangXuat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Xuất Word (đề + hướng dẫn chấm)
+              </button>
+              <button type="button" className={nutPhu} disabled={dangXuat || dangGui} onClick={() => void xuatWord(true)}>
+                <Download className="w-4 h-4" /> Xuất bộ hồ sơ
+              </button>
+              {!GHI_CHU_KHOA[trangThai] && (
+                <button type="button" className={nutChinh} disabled={dangGui} onClick={() => { const kq = kiemTra(); if (kq?.hopLe) void gui('SAN_SANG_DUYET'); }}>
+                  {dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Gửi duyệt
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">File Word xuất đúng bản đang xem{daSua ? '; app lưu các thay đổi trước khi xuất' : ''}. Gửi duyệt: app kiểm tra lại cả đề, còn lỗi thì chưa gửi.</p>
           </div>}
 
-          <div className="flex flex-wrap justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Link href={`/dac-ta?mon=${maMon}&ky=${ky}`} className={nutPhu}><ArrowLeft className="w-4 h-4" /> Về đặc tả</Link>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} disabled={dangGui} onClick={() => void gui('BAN_NHAP')}><Save className="w-4 h-4" /> Lưu bản nháp</button>
-              <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra đề</button>
-              <button type="button" className={nutChinh} disabled={dangGui} onClick={() => { const kq = kiemTra(); if (kq?.hopLe) void gui('SAN_SANG_DUYET'); }}>
-                {dangGui ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Chuyển sang duyệt
-              </button>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className={loiTuLuu ? 'text-red-700' : 'text-slate-500'}>
+                {dangTuLuu || dangGui ? 'Đang lưu…' : loiTuLuu ? 'Chưa tự lưu được, bấm Lưu.' : daSua ? 'Có thay đổi, app sẽ tự lưu.' : 'Đã lưu.'}
+              </span>
+              <button type="button" className={nutPhu} disabled={dangGui} onClick={() => void gui('BAN_NHAP')}><Save className="w-4 h-4" /> Lưu</button>
             </div>
           </div>
         </>

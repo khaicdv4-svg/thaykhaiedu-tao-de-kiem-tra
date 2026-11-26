@@ -9,7 +9,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChuPhanSo } from '@/components/de/ChuPhanSo';
 import { Loader2, Sparkles } from 'lucide-react';
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
+import { MON_KIEM_TRA } from '@/core/ho-so-de/mon-ky';
 import { VietLaiCauAI } from './VietLaiCauAI';
 import type { NoiDungCau } from '@/core/de/de';
 
@@ -95,7 +95,7 @@ export function SoanHangLoatAI({ onDaLuu }: { onDaLuu: () => void }) {
       <div className="grid gap-2 sm:grid-cols-2">
         <label>Môn
           <select aria-label="Môn" className={`${o} w-full mt-0.5`} value={mon} onChange={(e) => setMon(e.target.value)}>
-            {MAU_MA_TRAN_CHUNG.filter((m, i, a) => a.findIndex((x) => x.ma_mon === m.ma_mon) === i).map((m) => <option key={m.ma_mon} value={m.ma_mon}>{m.mon}</option>)}
+            {MON_KIEM_TRA.map((m) => <option key={m.ma} value={m.ma}>{m.ten}</option>)}
           </select>
         </label>
         <label>Yêu cầu cần đạt

@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { BadgeCheck, Loader2, Search, Trash2 } from 'lucide-react';
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
+import { MON_KIEM_TRA, tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import type { NoiDungCau } from '@/core/de/de';
 import { VietLaiCauAI } from './VietLaiCauAI';
 
@@ -83,7 +83,7 @@ export function NganHangCauHoi({ mon: monCoDinh, muc: mucMacDinh, hinhThuc: htMa
         {!monCoDinh && (
           <select aria-label="Môn" className={o} value={mon} onChange={(e) => setMon(e.target.value)}>
             <option value="">Tất cả môn</option>
-            {MAU_MA_TRAN_CHUNG.filter((m, i, a) => a.findIndex((x) => x.ma_mon === m.ma_mon) === i).map((m) => <option key={m.ma_mon} value={m.ma_mon}>{m.mon}</option>)}
+            {MON_KIEM_TRA.map((m) => <option key={m.ma} value={m.ma}>{m.ten}</option>)}
           </select>
         )}
         <select aria-label="Mức" className={o} value={muc} onChange={(e) => setMuc(e.target.value)}>
@@ -113,7 +113,7 @@ export function NganHangCauHoi({ mon: monCoDinh, muc: mucMacDinh, hinhThuc: htMa
           return (
             <li key={c.id} className="py-3 space-y-1.5">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                <span className="font-semibold text-slate-700">{MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === c.maMon)?.mon ?? c.maMon}</span>
+                <span className="font-semibold text-slate-700">{tenMonKT(c.maMon)}</span>
                 <span>Mức {c.muc} · {c.hinhThuc === 'TN' ? 'Trắc nghiệm' : 'Tự luận'}{c.dang ? ` · ${TEN_DANG[c.dang] ?? c.dang}` : ''}{c.diemGoiY != null ? ` · ${String(c.diemGoiY).replace('.', ',')} điểm` : ''}</span>
                 {c.daKiemDinh && <span className="inline-flex items-center gap-1 text-emerald-700"><BadgeCheck className="w-3.5 h-3.5" /> Đã kiểm định</span>}
                 {(c.noiDung.hinh ?? []).some((h) => h.anh) && <span>Có hình</span>}

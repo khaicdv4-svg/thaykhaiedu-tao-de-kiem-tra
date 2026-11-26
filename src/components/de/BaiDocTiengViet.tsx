@@ -3,9 +3,11 @@
 /**
  * Khung nhập bài đọc cho đề Tiếng Việt: một bài đọc hiểu và bốn bài đọc thành tiếng (mỗi bài một câu hỏi, một đáp án).
  * Có thể chọn bài đã duyệt trong Kho bài đọc hoặc tự nhập. Đếm tiếng ngay khi nhập, báo khi lệch quy định.
+ * Có hrefDoiBai (bước 4): bài đọc chọn ở bước 1 nên chỉ hiện để xem; ở đây chỉ soạn câu hỏi, đáp án đọc thành tiếng.
  */
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { demTieng, type BaiDocDe, type BaiDocThanhTieng, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import { khoangDoDai, type KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 
@@ -17,13 +19,27 @@ interface Props {
   ky: KyKiemTraBaiDoc;
   gia: NoiDungTiengViet;
   onDoi: (g: NoiDungTiengViet) => void;
+  /** Đường dẫn sang bước 1 để đổi bài. Có thì khóa phần bài đọc, chỉ cho soạn câu hỏi. */
+  hrefDoiBai?: string;
 }
 
-export function BaiDocTiengViet({ ky, gia, onDoi }: Props) {
+function XemBai({ b, ten, tieng }: { b: BaiDocDe; ten: string; tieng: React.ReactNode }) {
+  if (!b.tieuDe.trim() && !b.noiDung.trim()) return <p className="text-sm text-amber-800">Chưa chọn {ten}.</p>;
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer text-slate-800"><b>{b.tieuDe || '(chưa có tên)'}</b>{b.tacGia ? ` – ${b.tacGia}` : ''} · {tieng}{!b.tacGia.trim() || !b.nguon.trim() ? <span className="text-red-700"> · thiếu tác giả hoặc nguồn</span> : null}</summary>
+      <p className="mt-1 whitespace-pre-line text-slate-700" style={{ fontFamily: "'Times New Roman', serif", fontSize: '13pt' }}>{b.noiDung}</p>
+      {b.nguon && <p className="text-xs text-slate-500">{b.nguon}</p>}
+    </details>
+  );
+}
+
+export function BaiDocTiengViet({ ky, gia, onDoi, hrefDoiBai }: Props) {
   const [kho, setKho] = useState<BaiTrongKho[]>([]);
   const [loiKho, setLoiKho] = useState<string | null>(null);
 
   useEffect(() => {
+    if (hrefDoiBai) return;
     let huy = false;
     (async () => {
       try {
@@ -37,7 +53,7 @@ export function BaiDocTiengViet({ ky, gia, onDoi }: Props) {
       }
     })();
     return () => { huy = true; };
-  }, [ky]);
+  }, [ky, hrefDoiBai]);
 
   const khoDocHieu = kho.filter((b) => b.loai === 'DOC_HIEU');
   const khoThanhTieng = kho.filter((b) => b.loai === 'DOC_THANH_TIENG');
@@ -59,6 +75,31 @@ export function BaiDocTiengViet({ ky, gia, onDoi }: Props) {
     const ok = n >= kh.min - kh.dungSai && n <= kh.max + kh.dungSai;
     return <span className={ok ? 'text-emerald-700' : n ? 'text-red-700' : 'text-slate-500'}>{n} tiếng (quy định {kh.min}–{kh.max}, lệch tối đa ±{kh.dungSai})</span>;
   };
+
+  if (hrefDoiBai) {
+    return (
+      <div className="the-tke p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-slate-900">Bài đọc (chọn ở bước 1)</h2>
+          <Link href={hrefDoiBai} className="text-sm text-indigo-700 underline">Đổi bài đọc ở bước 1</Link>
+        </div>
+        <div className="space-y-1">
+          <div className="text-xs font-medium text-slate-500">Bài đọc hiểu</div>
+          <XemBai b={gia.baiDocHieu} ten="bài đọc hiểu" tieng={`${demTieng(gia.baiDocHieu.noiDung)} tiếng`} />
+        </div>
+        {gia.baiDocThanhTieng.map((b, i) => (
+          <div key={i} className="border-t border-slate-100 pt-3 space-y-2">
+            <div className="text-xs font-medium text-slate-500">Bài đọc thành tiếng {i + 1}</div>
+            <XemBai b={b} ten={`bài đọc thành tiếng ${i + 1}`} tieng={nhanTieng(demTieng(b.noiDung))} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label className="text-xs text-slate-500">Câu hỏi (hỏi chi tiết có trong đoạn)<input aria-label={`Câu hỏi bài đọc ${i + 1}`} className={`${o} mt-0.5 ${b.cauHoi.trim() ? '' : 'border-amber-400 bg-amber-50'}`} value={b.cauHoi} onChange={(e) => suaTT(i, { cauHoi: e.target.value })} /></label>
+              <label className="text-xs text-slate-500">Đáp án<input aria-label={`Đáp án bài đọc ${i + 1}`} className={`${o} mt-0.5 ${b.traLoi.trim() ? '' : 'border-amber-400 bg-amber-50'}`} value={b.traLoi} onChange={(e) => suaTT(i, { traLoi: e.target.value })} /></label>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

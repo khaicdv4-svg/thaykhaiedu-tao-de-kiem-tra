@@ -5,13 +5,16 @@
  * rồi chọn: tiếp tục phần đang làm dở, hoặc tạo mới theo ma trận chung hiện tại của tổ (bộ cũ được cất vào lịch sử).
  * Chọn luôn cách lập ma trận riêng (ma trận chung của tổ / dựng từ chương trình) để bước 2 mở thẳng trang lập ma trận.
  * Khung Lịch sử: xem mọi bản ma trận riêng, đặc tả của mình và xóa bản không cần.
+ * Môn, kì lọc theo khối (Thông tư 27) cộng phần tổ bật thêm ở Bộ não. Môn Tiếng Việt: chọn bài đọc ngay ở đây.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, BookOpenText, CheckCircle2, CircleDashed, FilePlus2, Loader2, TriangleAlert } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CircleDashed, FilePlus2, Loader2, TriangleAlert } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
+import { chonHopLe, kyTheoMon, monTheoKhoi, tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
+import { ChonBaiDoc } from '@/components/de/ChonBaiDoc';
+import { useBoNaoDaTai } from '@/lib/hooks/useBoNao';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, type CachLap } from '@/core/ho-so-de/ho-so-de';
 import { LichSuBan } from '@/components/ho-so-de/LichSuBan';
@@ -34,6 +37,9 @@ async function lay<T>(url: string): Promise<T | null> {
 
 export default function TestBuilderPage() {
   const { khoiLamViec } = useAuth();
+  const { boNao, daTai: daTaiBoNao } = useBoNaoDaTai();
+  const them = useMemo(() => boNao?.kiemTraThem ?? [], [boNao]);
+  const dsMon = useMemo(() => monTheoKhoi(khoiLamViec, them), [khoiLamViec, them]);
   const [maMon, setMaMon] = useState('TOAN');
   const [ky, setKy] = useState<KyDung>('CUOI_HK1');
   const [tt, setTt] = useState<TrangThaiBuoc | null>(null);
@@ -54,6 +60,14 @@ export default function TestBuilderPage() {
 
   // Chọn môn, kì ở đây là chọn hồ sơ đề cho cả 5 bước
   useEffect(() => { if (daDocHoSo) luuHoSoDe({ mon: maMon, ky }); }, [daDocHoSo, maMon, ky]);
+  // Môn, kì không có ở khối đang làm việc thì chuyển về lựa chọn hợp lệ gần nhất
+  useEffect(() => {
+    if (!daDocHoSo || !daTaiBoNao) return;
+    const h = chonHopLe(khoiLamViec, maMon, ky, them);
+    if (h.mon !== maMon) setMaMon(h.mon);
+    if (h.ky !== ky) setKy(h.ky);
+  }, [daDocHoSo, daTaiBoNao, khoiLamViec, maMon, ky, them]);
+  const dsKy = useMemo(() => kyTheoMon(khoiLamViec, maMon, them), [khoiLamViec, maMon, them]);
   // Cách lập nhớ theo từng môn, kì
   useEffect(() => { if (daDocHoSo) setCachLap(docCachLap(maMon, ky)); }, [daDocHoSo, maMon, ky]);
   const chonCachLap = (c: CachLap) => { setCachLap(c); luuCachLap(maMon, ky, c); };
@@ -73,7 +87,7 @@ export default function TestBuilderPage() {
     return () => { huy = true; };
   }, [maMon, ky, lanDoc]);
 
-  const tenMon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? maMon;
+  const tenMon = tenMonKT(maMon);
   const tenKy = DANH_SACH_KY.find((k) => k.ma === ky)?.ten ?? ky;
   const q = `mon=${maMon}&ky=${ky}`;
 
@@ -138,10 +152,10 @@ export default function TestBuilderPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select aria-label="Môn" className={`${o} min-w-44`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
-            {MAU_MA_TRAN_CHUNG.map((m) => <option key={m.ma_mon} value={m.ma_mon}>{m.mon}</option>)}
+            {dsMon.map((m) => <option key={m.ma} value={m.ma}>{m.ten}</option>)}
           </select>
           <select aria-label="Kì kiểm tra" className={`${o} min-w-44`} value={ky} onChange={(e) => setKy(e.target.value as KyDung)}>
-            {DANH_SACH_KY.map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
+            {DANH_SACH_KY.filter((k) => dsKy.includes(k.ma)).map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
           </select>
           <span className="text-sm text-slate-500">Lớp {khoiLamViec} · {tenMon} · {tenKy}</span>
         </div>
@@ -160,6 +174,8 @@ export default function TestBuilderPage() {
           </div>
         </div>
       </div>
+
+      {maMon === 'TIENG_VIET' && daDocHoSo && <ChonBaiDoc ky={ky} tenKy={tenKy} />}
 
       <div className="the-tke p-6 space-y-3">
         <h2 className="font-semibold text-slate-900">Bộ đề của thầy cô: {tenMon}, {tenKy}</h2>
@@ -211,15 +227,6 @@ export default function TestBuilderPage() {
 
       {daDocHoSo && <LichSuBan maMon={maMon} ky={ky} tenMonKy={`${tenMon}, ${tenKy}`} onDaXoa={() => setLanDoc((x) => x + 1)} />}
 
-      {maMon === 'TIENG_VIET' && (
-        <div className="the-tke p-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="font-semibold text-slate-900 flex items-center gap-2"><BookOpenText className="w-5 h-5 text-blue-600" /> Bài đọc cho đề Tiếng Việt</div>
-            <p className="text-sm text-slate-600">Chọn bài đọc thành tiếng và đọc hiểu đã duyệt, đúng chủ đề và số tiếng.</p>
-          </div>
-          <Link href="/test-builder/bai-doc" className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700">Chọn bài đọc</Link>
-        </div>
-      )}
 
       <p className="text-xs text-slate-500">Muốn sửa đề đã duyệt hoặc xem các phiên bản cũ, thầy vào <Link href="/tests" className="text-blue-700 underline">Bước 5: Duyệt đề &amp; kho đề</Link>.</p>
     </div>

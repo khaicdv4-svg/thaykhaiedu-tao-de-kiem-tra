@@ -4,6 +4,7 @@
  * ThayKhaiEdu - Bộ não chuyên môn của tổ (chỉ tổ trưởng sửa).
  * 1. Tải ma trận chung (Word) → app đọc ra độ dài, tốc độ, chủ điểm → tổ trưởng xem và xác nhận.
  * 2. Quy định riêng của tổ: viết tay hoặc tải file chữ; AI đọc khi tìm bài, cắt đoạn.
+ * 3. Môn, kì kiểm tra thêm ngoài quy định Thông tư 27 (hiện thêm trong ô chọn ở bước 1).
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,6 +13,8 @@ import { useAuth } from '@/core/contexts/AuthContext';
 import { boNaoTrong, type BoNao, type QuyDinhMotKy } from '@/core/bo-nao/bo-nao';
 import { docMaTranChung } from '@/core/bo-nao/doc-ma-tran';
 import { docChuTuDocx } from '@/core/utils/docx-text';
+import { MON_KIEM_TRA, kyQuyDinh } from '@/core/ho-so-de/mon-ky';
+import { DANH_SACH_KY as DS_KY_DE, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
@@ -62,7 +65,7 @@ function BangMotKy({ q, sua }: { q: QuyDinhMotKy; sua?: (q: QuyDinhMotKy) => voi
 }
 
 export default function BoNaoPage() {
-  const { activeRole } = useAuth();
+  const { activeRole, khoiLamViec } = useAuth();
   const duocSua = VAI_TRO_SUA.includes(activeRole as string);
   const [bn, setBn] = useState<BoNao>(boNaoTrong());
   const [dangTai, setDangTai] = useState(true);
@@ -210,9 +213,43 @@ export default function BoNaoPage() {
         </div>
       </section>
 
+      <section className="the-tke p-5 space-y-3">
+        <h2 className="text-base font-semibold text-slate-900">3. Môn, kì kiểm tra của Lớp {khoiLamViec}</h2>
+        <p className="text-sm text-slate-600">Ô đã tích sẵn và mờ là kì kiểm tra theo Thông tư 27. Tổ có kiểm tra thêm thì tích thêm, bấm Lưu; ô chọn môn, kì ở bước 1 sẽ hiện thêm.</p>
+        <div className="overflow-x-auto">
+          <table className="text-sm border-collapse">
+            <thead>
+              <tr><th className="border border-slate-200 px-3 py-1.5 text-left">Môn</th>{DS_KY_DE.map((k) => <th key={k.ma} className="border border-slate-200 px-3 py-1.5 font-medium">{k.ten}</th>)}</tr>
+            </thead>
+            <tbody>
+              {MON_KIEM_TRA.map((m) => {
+                const quyDinh = kyQuyDinh(khoiLamViec, m.ma);
+                return (
+                  <tr key={m.ma}>
+                    <td className="border border-slate-200 px-3 py-1.5">{m.ten}</td>
+                    {DS_KY_DE.map((k) => {
+                      const coSan = quyDinh.includes(k.ma);
+                      const them = (bn.kiemTraThem ?? []).some((t) => t.mon === m.ma && t.ky === k.ma);
+                      const doi = (chon: boolean) => setBn({ ...bn, kiemTraThem: chon
+                        ? [...(bn.kiemTraThem ?? []), { mon: m.ma, ky: k.ma as KyDung }]
+                        : (bn.kiemTraThem ?? []).filter((t) => !(t.mon === m.ma && t.ky === k.ma)) });
+                      return (
+                        <td key={k.ma} className="border border-slate-200 px-3 py-1.5 text-center">
+                          <input type="checkbox" aria-label={`${m.ten} ${k.ten}`} checked={coSan || them} disabled={coSan || !duocSua} onChange={(e) => doi(e.target.checked)} />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <div className="flex justify-end">
         <button type="button" disabled={!duocSua || dangLuu} onClick={() => luu(bn, 'Đã lưu Bộ não chuyên môn.')} className={nutChinh}>
-          {dangLuu ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu dung sai và quy định riêng
+          {dangLuu ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu dung sai, quy định riêng, môn và kì
         </button>
       </div>
     </div>

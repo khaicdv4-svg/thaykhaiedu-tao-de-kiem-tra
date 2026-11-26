@@ -12,9 +12,10 @@
  * Tài khoản khác, hoặc khi chưa kết nối được, chỉ lưu bản nháp trên trình duyệt (localStorage).
  */
 
+import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, Loader2, Plus, RotateCcw, Save, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, Loader2, Plus, RotateCcw, Save, X } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import {
   apDungSuaCau,
@@ -43,7 +44,7 @@ import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, tenKyHoSo, tenMonHoSo } from '@/core/ho-so-de/ho-so-de';
 import { useAuth } from '@/core/contexts/AuthContext';
 
-const BUOC = ['Lập ma trận riêng', 'Xem trước, lưu'] as const;
+const BUOC = ['Lập ma trận riêng', 'Xem trước và lưu'] as const;
 
 const NHAN_TRANG_THAI: Record<TrangThaiMaTran, { ten: string; mau: string }> = {
   BAN_NHAP: { ten: 'Bản nháp', mau: 'bg-slate-100 text-slate-700 border-slate-200' },
@@ -233,7 +234,7 @@ export default function MatricesPage() {
   }, [cachLap, maMon, kyDung]);
   const khungDaLuu = useMemo(() => (cachLap === 'CHUONG_TRINH' && maMon && typeof window !== 'undefined' ? docKhungDung(maMon, kyDung) : null), [cachLap, maMon, kyDung, khungDung]);
   const khungDungHienTai = laKhungDung(mtc);
-  const tenMonDangChon = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon)?.mon ?? '';
+  const tenMonDangChon = (maMon ? tenMonKT(maMon) : '');
   const kqChung = useMemo(() => (mtc ? kiemDinhMaTranChung(mtc) : null), [mtc]);
   // Ma trận chung của tổ dùng được: mở thẳng trang lập ma trận riêng, không qua trang chuẩn bị
   useEffect(() => {
@@ -573,7 +574,7 @@ export default function MatricesPage() {
                         ? <>Chưa dùng được ma trận chung{khoMtc.tenFile ? <> <b>{khoMtc.tenFile}</b></> : null}: {khoMtc.loi}</>
                         : <>Tổ chưa có ma trận chung đã xác nhận cho môn và kì này. Tổ trưởng tải file ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>, hoặc về Bước 1 chọn &quot;Dựng từ chương trình&quot;.</>}
                     </div>
-                    {kyDung === 'CUOI_HK1' && !dungMauCo && (
+                    {kyDung === 'CUOI_HK1' && khoiLamViec === 4 && !dungMauCo && (
                       <button type="button" className={nutPhu} onClick={() => setDungMauCo(true)}>Tạm dùng mẫu Cuối HKI có sẵn trong app</button>
                     )}
                   </div>
@@ -790,28 +791,31 @@ export default function MatricesPage() {
                   ? <span key={b.ma} className={Math.abs(t - b.tong_diem) > 0.001 ? 'font-semibold text-red-700' : ''}>{b.ten}: {fmtDiem(t)}/{fmtDiem(b.tong_diem)} điểm. </span>
                   : null;
               })}
-              Bấm Kiểm tra để soát tổng điểm, thứ tự câu, tỉ lệ mức.
+              Bấm Xem trước và lưu để app soát tổng điểm, thứ tự câu, tỉ lệ mức.
             </div>
           )}
 
-          {ketQua && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra ma trận riêng" /></div>}
+          {ketQua && <div id="ket-qua-ma-tran" className="the-tke p-6"><ValidationPanel ketQua={ketQua} tieuDe="Kết quả kiểm tra ma trận riêng" /></div>}
 
           <div className="flex flex-wrap justify-between gap-2">
             {khungDungHienTai
               ? <button type="button" className={nutPhu} onClick={() => { setBuoc(0); setDangDung(true); }}><ArrowLeft className="w-4 h-4" /> Dựng lại khung</button>
               : <Link href="/test-builder" className={nutPhu}><ArrowLeft className="w-4 h-4" /> Bước 1. Thiết lập</Link>}
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void (tuXacNhan ? luuTuDong() : luuNhap())} title={tuXacNhan ? 'Lưu, app tự kiểm tra; không có lỗi thì dùng ngay và cập nhật đặc tả' : undefined}>{dangLuuHeThong ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {tuXacNhan ? 'Lưu' : 'Lưu bản nháp'}</button>
-              <button type="button" className={nutPhu} onClick={kiemTra}><ShieldCheck className="w-4 h-4" /> Kiểm tra</button>
+              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void (tuXacNhan ? luuTuDong() : luuNhap())} title="Lưu giữa chừng. App tự kiểm tra; còn lỗi thì giữ bản nháp.">{dangLuuHeThong ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu</button>
               <button
                 type="button"
                 className={nutChinh}
+                disabled={dangLuuHeThong}
                 onClick={() => {
                   const kq = kiemTra();
-                  if (kq?.hopLe) setBuoc(3);
+                  if (!kq?.hopLe) { window.setTimeout(() => document.getElementById('ket-qua-ma-tran')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); return; }
+                  setBuoc(3);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  if (tuXacNhan) void luuTuDong();
                 }}
               >
-                <Eye className="w-4 h-4" /> Xem trước ma trận
+                <Eye className="w-4 h-4" /> Xem trước và lưu
               </button>
             </div>
           </div>
@@ -825,22 +829,27 @@ export default function MatricesPage() {
             <MatrixPreview maTran={banTrinhBay} />
           </div>
           {ketQua && !ketQua.hopLe && <div className="the-tke p-6"><ValidationPanel ketQua={ketQua} /></div>}
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={daXemTruoc} onChange={(e) => setDaXemTruoc(e.target.checked)} />
-            Tôi đã xem kĩ ma trận riêng ở trên.
-          </label>
+          {!tuXacNhan && (
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={daXemTruoc} onChange={(e) => setDaXemTruoc(e.target.checked)} />
+              Tôi đã xem kĩ ma trận riêng ở trên.
+            </label>
+          )}
           <div className="flex flex-wrap justify-between gap-2">
             <button type="button" className={nutPhu} onClick={() => setBuoc(2)}><ArrowLeft className="w-4 h-4" /> Chỉnh sửa ma trận</button>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={nutPhu} disabled={dangLuuHeThong} onClick={() => void (tuXacNhan ? luuTuDong() : luuNhap())} title={tuXacNhan ? 'Lưu, app tự kiểm tra; không có lỗi thì dùng ngay và cập nhật đặc tả' : undefined}>{dangLuuHeThong ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {tuXacNhan ? 'Lưu' : 'Lưu bản nháp'}</button>
-              {mtr.trang_thai === 'DA_XAC_NHAN' && phienBanXacNhan !== null ? (
+              {dangLuuHeThong ? (
+                <span className="inline-flex items-center gap-2 text-sm text-slate-600"><Loader2 className="w-4 h-4 animate-spin" /> Đang lưu…</span>
+              ) : mtr.trang_thai === 'DA_XAC_NHAN' && phienBanXacNhan !== null ? (
                 <Link href={`/dac-ta?mon=${mtc.ma_mon}&ky=${mtc.ky_kiem_tra}`} className={nutChinh}>
                   <ListChecks className="w-4 h-4" /> Sang bước 3: Đặc tả
                 </Link>
               ) : (
-                !tuXacNhan && <button type="button" className={nutChinh} disabled={!daXemTruoc || mtr.trang_thai === 'DA_XAC_NHAN' || dangLuuHeThong} onClick={() => void xacNhan()}>
-                  <CheckCircle2 className="w-4 h-4" /> {mtr.trang_thai === 'DA_XAC_NHAN' ? 'Đã xác nhận' : 'Xác nhận ma trận'}
-                </button>
+                tuXacNhan
+                  ? <button type="button" className={nutChinh} onClick={() => void luuTuDong()}><Save className="w-4 h-4" /> Lưu</button>
+                  : <button type="button" className={nutChinh} disabled={!daXemTruoc || mtr.trang_thai === 'DA_XAC_NHAN' || dangLuuHeThong} onClick={() => void xacNhan()}>
+                      <CheckCircle2 className="w-4 h-4" /> {mtr.trang_thai === 'DA_XAC_NHAN' ? 'Đã xác nhận' : 'Xác nhận ma trận'}
+                    </button>
               )}
             </div>
           </div>

@@ -12,18 +12,20 @@ describe('Giai đoạn 1 - Nền tảng & Giao diện (Platform & UI Tests)', ()
     expect(hrefs).toContain('/questions');
     expect(hrefs).toContain('/reading-passages');
     expect(hrefs).toContain('/test-builder');
-    expect(hrefs).toContain('/validation');
+    // Kiểm định đề đã gộp vào bước 5 (/tests) từ 26/11/2026
+    expect(hrefs).not.toContain('/validation');
     expect(hrefs).toContain('/tests');
     expect(hrefs).toContain('/settings');
 
-    // Teachers DO NOT have direct access to matrix management or template configuration
-    expect(hrefs).not.toContain('/matrices');
-    expect(hrefs).not.toContain('/dac-ta');
+    // Từ 22/11 mỗi giáo viên lập ma trận riêng, đặc tả, đề của mình: thấy đủ bước 2–4; không có mẫu đề, cài đặt AI
+    expect(hrefs).toContain('/matrices');
+    expect(hrefs).toContain('/dac-ta');
+    expect(hrefs).toContain('/tao-de');
     expect(hrefs).not.toContain('/templates');
     expect(hrefs).not.toContain('/ai-settings');
     expect(hrefs).toContain('/ma-tran-chung');
     expect(hrefs).toContain('/ma-tran-ca-nam');
-    expect(teacherNav.length).toBe(11);
+    expect(teacherNav.length).toBe(13);
   });
 
   it('correctly provides full specialized menu for GROUP_LEADER (Tổ trưởng)', () => {
@@ -39,15 +41,15 @@ describe('Giai đoạn 1 - Nền tảng & Giao diện (Platform & UI Tests)', ()
     expect(hrefs).toContain('/test-builder');
     expect(hrefs).toContain('/to-truong');
     expect(hrefs).not.toContain('/quan-tri');
-    expect(leaderNav.length).toBe(19);
+    expect(leaderNav.length).toBe(18);
   });
 
   it('correctly provides full menu for SCHOOL_ADMIN and SYSTEM_ADMIN', () => {
     const adminNav = getNavigationForRole('SCHOOL_ADMIN');
-    expect(adminNav.length).toBe(20);
+    expect(adminNav.length).toBe(19);
 
     const sysAdminNav = getNavigationForRole('SYSTEM_ADMIN');
-    expect(sysAdminNav.length).toBe(20);
+    expect(sysAdminNav.length).toBe(19);
   });
 
   it('nhóm Tổ trưởng và Quản trị chỉ hiện với đúng vai trò', () => {

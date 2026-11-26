@@ -6,14 +6,16 @@
  * hoặc Trả lại kèm lý do. Sửa đề đã duyệt thì đề quay về "Cần kiểm tra lại" và phải duyệt lại.
  * Quy trình nhiều cấp: gửi thẩm định → tổ trưởng/người được phân công thẩm định → tổ trưởng xác nhận → Ban giám hiệu phê duyệt → phát hành.
  * Ai được bấm nút nào do cơ sở dữ liệu quyết định; trang này chỉ hiện các nút máy chủ báo là được phép.
+ * Cuối trang: Kiểm định cả kho (gộp từ trang Kiểm định đề ngày 26/11/2026), mở ra mới rà.
  */
 
+import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ClipboardCheck, Download, Loader2, Pencil } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
+import { RaSoatKhoDe } from '@/components/de/RaSoatKhoDe';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
-import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY } from '@/core/matrix/dung-tu-chuong-trinh';
 import { kiemDinhDe, nhanCau, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
 import { demTieng } from '@/core/de/tieng-viet';
@@ -57,7 +59,7 @@ const TEN_VAI_TRO_SD = (v: string | null) => (!v ? '' : v.startsWith('UY_QUYEN')
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
 const fmtDiem = (x: number) => String(x).replace('.', ',');
-const tenMon = (ma: string) => MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === ma)?.mon ?? ma;
+const tenMon = (ma: string) => tenMonKT(ma);
 const tenKy = (ma: string) => DANH_SACH_KY.find((k) => k.ma === ma)?.ten ?? ma;
 const ngay = (iso: string | null) => (iso ? new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '');
 
@@ -73,6 +75,9 @@ const post = (url: string, body: unknown) => goiJson<object>(url, { method: 'POS
 
 export default function KhoDePage() {
   const [ds, setDs] = useState<DongKho[]>([]);
+  // Kiểm định cả kho: chỉ rà khi mở (hoặc vào thẳng /tests#kiem-dinh)
+  const [moKiemDinh, setMoKiemDinh] = useState(false);
+  useEffect(() => { if (window.location.hash === '#kiem-dinh') setMoKiemDinh(true); }, []);
   const [dangTai, setDangTai] = useState(true);
   const [loiTai, setLoiTai] = useState<string | null>(null);
   const [chonId, setChonId] = useState<string | null>(null);
@@ -411,6 +416,11 @@ export default function KhoDePage() {
           )}
         </div>
       )}
+
+      <details id="kiem-dinh" className="the-tke p-4" open={moKiemDinh} onToggle={(e) => setMoKiemDinh((e.currentTarget as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer font-semibold text-slate-900">Kiểm định cả kho: khớp đặc tả, tổng điểm, câu trùng giữa các đề</summary>
+        {moKiemDinh && <div className="mt-3"><RaSoatKhoDe /></div>}
+      </details>
     </div>
   );
 }

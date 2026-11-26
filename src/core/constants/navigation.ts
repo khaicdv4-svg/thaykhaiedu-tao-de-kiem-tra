@@ -63,7 +63,7 @@ export const NHOM_DIEU_HUONG: NhomDieuHuong[] = [
   { ma: 'chinh', ten: 'Tổng quan', moTa: '' },
   { ma: 'tao-de', ten: 'Tạo đề kiểm tra', moTa: 'Làm lần lượt 5 bước' },
   { ma: 'nguon', ten: 'Nguồn chuyên môn', moTa: 'Chương trình, ma trận của tổ' },
-  { ma: 'kho', ten: 'Kho và kiểm định', moTa: 'Câu hỏi, bài đọc, kiểm định đề' },
+  { ma: 'kho', ten: 'Kho', moTa: 'Câu hỏi, bài đọc' },
   { ma: 'to-truong', ten: 'Tổ trưởng', moTa: 'Việc của tổ trưởng, tổ phó', trangGom: '/to-truong', vaiTro: VAI_TRO_TO_TRUONG },
   { ma: 'quan-tri', ten: 'Quản trị', moTa: 'Trường, tài khoản, AI', trangGom: '/quan-tri', vaiTro: VAI_TRO_QUAN_TRI },
 ];
@@ -137,7 +137,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     iconName: 'Grid',
     icon: Grid,
     description: 'Bước 2: lập ma trận riêng từ ma trận chung của tổ, kiểm tra và xác nhận',
-    allowedRoles: ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
     id: 'dac-ta',
@@ -147,7 +147,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     iconName: 'ListChecks',
     icon: ListChecks,
     description: 'Bước 3: bản đặc tả từng câu (YCCĐ, mức, bài, tuần, trang SGK) kế thừa ma trận riêng đã xác nhận',
-    allowedRoles: ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
     id: 'tao-de',
@@ -157,7 +157,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     iconName: 'PenLine',
     icon: PenLine,
     description: 'Bước 4: soạn nội dung từng câu theo đặc tả đã xác nhận, kiểm tra đề và xuất Word',
-    allowedRoles: ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
+    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
     id: 'tests',
@@ -166,18 +166,8 @@ export const MAIN_NAVIGATION: NavItem[] = [
     href: '/tests',
     iconName: 'FolderKanban',
     icon: FolderKanban,
-    description: 'Quản lý vòng đời đề kiểm tra, kiểm tra chéo và phê duyệt',
+    description: 'Kho đề, thẩm định, phê duyệt và kiểm định cả kho (khớp đặc tả, tổng điểm, câu trùng)',
     allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN', 'SCHOOL_LEADERSHIP'],
-  },
-  {
-    id: 'validation',
-    nhom: 'kho',
-    title: 'Kiểm định đề',
-    href: '/validation',
-    iconName: 'ShieldCheck',
-    icon: ShieldCheck,
-    description: 'Kiểm tra độc lập độ phủ ma trận, tổng điểm và lỗi kỹ thuật',
-    allowedRoles: ['TEACHER', 'GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {
     id: 'questions',

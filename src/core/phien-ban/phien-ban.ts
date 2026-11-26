@@ -21,6 +21,18 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 6,
+    ngay: '2026-11-26',
+    tieuDe: 'Gọn bước làm đề: ít nút hơn, tự lưu, bài đọc chọn ở bước 1',
+    noiDung: [
+      'Bước 1: ô môn, kì theo khối đang làm (Thông tư 27). Lớp 1–3 không có giữa kì; Khoa học, Lịch sử và Địa lí, Tin học, Công nghệ chỉ kiểm tra cuối kì. Thêm môn Tin học. Tổ kiểm tra thêm thì tổ trưởng bật ở Bộ não chuyên môn, mục 3.',
+      'Môn Tiếng Việt: chọn bài đọc hiểu và 4 bài đọc thành tiếng ngay ở bước 1, app tự lưu. Bước 4 tự lấy bài, chỉ còn soạn câu hỏi.',
+      'Bước 2: một nút "Xem trước và lưu". Bước 3: tab Sửa / Xem và một nút "Lưu và sang Tạo đề". Bỏ ô "Tôi đã xem kĩ".',
+      'Bước 4: tự lưu nháp sau 3 giây. Mở "Xem đề" là app tự kiểm tra cả đề; khung Hoàn tất gồm Xuất Word, Xuất bộ hồ sơ, Gửi duyệt.',
+      'Kiểm định đề chuyển vào bước 5 (cuối trang Kho đề). Giáo viên thấy đủ bước 2, 3, 4 trên menu.',
+    ],
+  },
+  {
     so: 5,
     ngay: '2026-11-26',
     tieuDe: 'Đề Word vừa trang, không còn khoảng trống lớn cuối trang',
