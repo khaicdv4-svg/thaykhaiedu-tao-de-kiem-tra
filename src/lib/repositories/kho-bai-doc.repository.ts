@@ -9,6 +9,7 @@ import { kiemTraBaiDoc, type BaiDocCanKiem, type TrangThaiLink, type VanBanSgk }
 import { khoangDoDai, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { kiemTraBanChinh, tacGiaTheo } from '@/core/reading-passages/chinh-do-dai';
 import { dauVetBaiDoc } from '@/core/reading-passages/phan-tich';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
 export interface BaiDocNhapKho extends BaiDocCanKiem {
   nguonGoc: 'TAI_FILE' | 'AI_TIM' | 'NHAP_TAY';
@@ -103,6 +104,7 @@ export async function layDauVetBaiDaCo(): Promise<Set<string>> {
 
 /** Lưu các bài đã phân tích. Bài không còn lỗi → chờ duyệt; còn lỗi → bản nháp để sửa tiếp. */
 export async function luuVaoHangCho(dsGoc: BaiDocNhapKho[]): Promise<{ choDuyet: number; banNhap: number; boQuaTrung: number; ids: string[] }> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId } = await layNguoiDung();
   // Bài đã có trong kho (hoặc trùng nhau trong chính lần lưu này) thì bỏ qua
   const daCo = await layDauVetBaiDaCo();
@@ -132,7 +134,7 @@ export async function luuVaoHangCho(dsGoc: BaiDocNhapKho[]): Promise<{ choDuyet:
       literary_form: b.theLoai ?? null,
       theme: b.chuDiem ?? null,
       genre: b.theLoai ?? null,
-      grade: 4,
+      grade: KHOI,
       content: b.noiDung.trim(),
       word_count: kq.soTieng,
       target_word_count_min: kq.khoang?.min ?? null,
@@ -166,6 +168,7 @@ export async function danhSachHangCho(): Promise<BaiDocTrongKho[]> {
   const { data, error } = await supabase
     .from('reading_passages')
     .select('*')
+    .eq('grade', await layKhoiLamViec())
     .in('status', ['PENDING_REVIEW', 'DRAFT'])
     .not('reading_use', 'is', null)
     .order('created_at', { ascending: false });
@@ -176,7 +179,7 @@ export async function danhSachHangCho(): Promise<BaiDocTrongKho[]> {
 /** Bài đã duyệt dùng được cho đề (lọc theo loại, kì, chủ điểm, thể loại). */
 export async function danhSachDaDuyet(loc: { loai?: LoaiBaiDoc; ky?: KyKiemTraBaiDoc; chuDiem?: string; theLoai?: TheLoaiBaiDoc }) {
   const { supabase } = await layNguoiDung();
-  let q = supabase.from('reading_passages').select('*').eq('status', 'APPROVED');
+  let q = supabase.from('reading_passages').select('*').eq('status', 'APPROVED').eq('grade', await layKhoiLamViec());
   if (loc.loai) q = q.eq('reading_use', loc.loai);
   if (loc.ky) q = q.eq('assessment_period', loc.ky);
   if (loc.chuDiem) q = q.eq('theme', loc.chuDiem);

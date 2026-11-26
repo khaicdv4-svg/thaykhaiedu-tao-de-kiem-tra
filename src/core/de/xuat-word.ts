@@ -42,7 +42,11 @@ export interface ThongTinDe {
   /** Ví dụ "TIẾNG VIỆT (ĐỌC HIỂU)". */
   tenMon: string;
   thoiGianPhut: number;
+  /** Khối lớp của đề (khối đang làm việc); thiếu thì in lớp 4 như trước */
+  lop?: number;
 }
+
+const lopCua = (t: ThongTinDe) => t.lop ?? 4;
 
 const FONT = 'Times New Roman';
 const CO = 26; // 13 pt
@@ -118,12 +122,12 @@ function dauDe(t: ThongTinDe, tc: { tenMon?: string; phut?: number | null } = {}
           o2([
             doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
             doan('HỌ TÊN HS: ……………………………', { truoc: 60 }),
-            doan('LỚP: 4 ……………………………………', { truoc: 60 }),
+            doan(`LỚP: ${lopCua(t)} ……………………………………`, { truoc: 60 }),
             doan('NGÀY KIỂM TRA: …………………'),
           ], trai, khung),
           o2([
             doan([tr(t.tieuDeKy, { bold: true })], { align: AlignmentType.CENTER }),
-            doan([tr(`MÔN ${tenMon} - Lớp 4`, { bold: true })], { align: AlignmentType.CENTER }),
+            doan([tr(`MÔN ${tenMon} - Lớp ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER }),
             ...(phut ? [doan(`Thời gian: ${phut} phút`, { align: AlignmentType.CENTER })] : []),
             doan([tr('GV coi KT1            GV coi KT2            Số thứ tự')], { align: AlignmentType.CENTER, truoc: 60 }),
           ], phai, khung),
@@ -348,7 +352,7 @@ function bangDapAn(cau: CauDe[]): Table {
 function huongDanCham(t: ThongTinDe, de: DeKiemTra): (Table | Paragraph)[] {
   return [
     doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
-    doan([tr(`HƯỚNG DẪN CHẤM MÔN ${t.tenMon} - LỚP 4`, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`HƯỚNG DẪN CHẤM MÔN ${t.tenMon} - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(t.tieuDeKy, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
     bangDapAn(de.cau),
   ];
@@ -506,7 +510,7 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
   // 2. Tờ bài đọc hiểu (cỡ chữ 14)
   const toBaiDoc = [
     doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
-    doan([tr(`KIỂM TRA ${kyDay} - LỚP 4`, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`KIỂM TRA ${kyDay} - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`NĂM HỌC: ${namHoc}`, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
     new Paragraph({ children: [new TextRun({ text: 'Bài đọc hiểu:', font: FONT, size: CO_BAI_DOC, bold: true, underline: {} })], spacing: { line: DAN_DONG, after: 60 } }),
     ...khoiBaiDoc(tv.baiDocHieu, CO_BAI_DOC),
@@ -557,7 +561,7 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
   const bangHDCDocHieu = bangDapAn(cauDocHieu);
   const hdc = [
     doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
-    doan([tr('HƯỚNG DẪN CHẤM MÔN TIẾNG VIỆT - LỚP 4', { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`HƯỚNG DẪN CHẤM MÔN TIẾNG VIỆT - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`KTĐK ${kyDay} - NĂM HỌC ${namHoc}`, { bold: true })], { align: AlignmentType.CENTER, sau: 100 }),
     doan([tr('I. ĐỌC THÀNH TIẾNG: (2 điểm)', { bold: true })], { truoc: 60 }),
     doan(`* Học sinh đọc 1 đoạn văn ở 4 bài đọc đã cho từ ${kyTocDo.replace(' - ', ' – ')} tiếng.`),
@@ -582,7 +586,7 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
 
 export function dungTaiLieuTiengViet(t: ThongTinDe, deGoc: DeKiemTra): Document {
   const kyDay = TEN_KY_DAY[deGoc.ky_kiem_tra] ?? t.tieuDeKy;
-  return new Document({ ...TAI_LIEU, title: `Đề kiểm tra ${kyDay} - Tiếng Việt lớp 4`, sections: cacPhanTiengViet(t, deGoc) });
+  return new Document({ ...TAI_LIEU, title: `Đề kiểm tra ${kyDay} - Tiếng Việt lớp ${lopCua(t)}`, sections: cacPhanTiengViet(t, deGoc) });
 }
 
 // ---------------------------------------------------------------------------
@@ -604,7 +608,7 @@ function tieuDeBangRong(t: ThongTinDe, dacTa: DacTa, tieuDe: string): Paragraph[
   return [
     doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`${tieuDe} ${t.tieuDeKy.replace(/^KTĐK /, 'KIỂM TRA ĐỊNH KÌ ')}`, { bold: true })], { align: AlignmentType.CENTER }),
-    doan([tr(`MÔN: ${t.tenMon.toUpperCase()} - LỚP 4`, { bold: true })], { align: AlignmentType.CENTER, sau: 100 }),
+    doan([tr(`MÔN: ${t.tenMon.toUpperCase()} - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER, sau: 100 }),
   ];
 }
 

@@ -5,13 +5,14 @@ import {
   prepareSubjectIngestionPayload,
 } from '@/core/curriculum/ppct-hub-adapter';
 import { ProvenanceType } from '@/types/curriculum-source';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 
 const repo = new CurriculumSourceRepository();
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const grade = parseInt(searchParams.get('grade') || '4', 10);
+    const grade = await khoiHoacLamViec(searchParams.get('grade'));
     const academicYear = searchParams.get('academicYear') || '2026-2027';
 
     const sources = await repo.listSources(grade, academicYear);
@@ -29,9 +30,10 @@ export async function POST(req: NextRequest) {
       jsonContent,
       selectedSubjectIds,
       provenanceType = 'UNVERIFIED_PENDING',
-      grade = 4,
+      grade: gradeGui,
       academicYear = '2026-2027',
     } = body;
+    const grade = await khoiHoacLamViec(gradeGui);
 
     if (!jsonContent || !Array.isArray(selectedSubjectIds) || selectedSubjectIds.length === 0) {
       return NextResponse.json(

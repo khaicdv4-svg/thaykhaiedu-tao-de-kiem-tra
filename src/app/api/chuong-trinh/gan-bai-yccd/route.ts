@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dsYccd } from '@/lib/repositories/chuong-trinh.repository';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 import { HE_THONG_GAN_YCCD_THEO_BAI, docGanYccdTheoBai, loiNhacGanYccdTheoBai } from '@/core/matrix/dung-tu-chuong-trinh';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 
 export const maxDuration = 60;
 
@@ -11,7 +12,8 @@ export const maxDuration = 60;
  */
 export async function POST(req: NextRequest) {
   try {
-    const { mon, lop = 4, chuDe, bai } = (await req.json()) as { mon?: string; lop?: number; chuDe?: string; bai?: string[] };
+    const { mon, lop: lopGui, chuDe, bai } = (await req.json()) as { mon?: string; lop?: number; chuDe?: string; bai?: string[] };
+    const lop = await khoiHoacLamViec(lopGui);
     if (!mon || !chuDe || !Array.isArray(bai)) return NextResponse.json({ error: 'Thiếu môn, chủ đề hoặc danh sách bài.' }, { status: 400 });
     const ds = await dsYccd({ mon, lop, trangThai: 'DA_DUYET' });
     if (ds.length === 0) return NextResponse.json({ error: 'Kho chương trình chưa có YCCĐ đã duyệt cho môn này.' }, { status: 400 });

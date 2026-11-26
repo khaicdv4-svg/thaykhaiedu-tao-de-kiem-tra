@@ -5,6 +5,7 @@ import { docBaiMach, luuBaiMach } from '@/lib/repositories/bo-nao.repository';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 import { TEN_MON } from '@/core/chuong-trinh/mon';
 import { HE_THONG_GOI_Y_MACH, cacMachCuaMaTran, docGoiYMach, loiNhacGoiYMach } from '@/core/matrix/ti-le-tiet';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
 export const maxDuration = 60;
 
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams;
     const mon = sp.get('mon') ?? '';
     const ky = sp.get('ky') ?? '';
-    const lop = 4;
+    const lop = await layKhoiLamViec();
     const [mt, tiet, mucLuc, baiMach] = await Promise.all([
       maTranChungTuKho(mon, ky),
       dsTietPpct(mon, lop).then((x) => ({ ok: true as const, x }), (e) => ({ ok: false as const, loi: chuoiLoi(e) })),

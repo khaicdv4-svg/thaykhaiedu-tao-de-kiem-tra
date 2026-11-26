@@ -2,13 +2,14 @@
 
 /**
  * ThayKhaiEdu - Thanh "Hồ sơ đề" ở đầu các bước 2–5 và hook dùng chung.
- * Hiện Lớp 4 · môn · kì đang làm; muốn làm đề khác thì bấm "Đổi môn, kì" về bước 1.
+ * Hiện Lớp (khối đang làm việc) · môn · kì đang làm; muốn làm đề khác thì bấm "Đổi môn, kì" về bước 1.
  */
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FolderOpen, Loader2, RefreshCw } from 'lucide-react';
 import { SU_KIEN_HO_SO, docHoSoDe, ganHoSo, tenKyHoSo, tenMonHoSo, type HoSoDe } from '@/core/ho-so-de/ho-so-de';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 /** Hồ sơ đề hiện tại; cập nhật khi bước khác đổi hồ sơ (cùng tab hoặc tab khác). */
 export function useHoSoDe(): HoSoDe | null {
@@ -37,13 +38,14 @@ interface Props {
 }
 
 export function ThanhHoSoDe({ mon, ky, ghiChu, dangTai }: Props) {
+  const { khoiLamViec } = useAuth();
   return (
     <div className="the-tke px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
       <div className="flex items-center gap-3 min-w-0">
         <span className="p-2 rounded-lg bg-indigo-50 text-indigo-700 shrink-0"><FolderOpen className="w-5 h-5" /></span>
         <div className="min-w-0">
           <div className="text-xs font-medium text-slate-500">Hồ sơ đề đang làm</div>
-          <div className="font-bold text-slate-900">Lớp 4 · {tenMonHoSo(mon)} · {tenKyHoSo(ky)}</div>
+          <div className="font-bold text-slate-900">Lớp {khoiLamViec} · {tenMonHoSo(mon)} · {tenKyHoSo(ky)}</div>
         </div>
       </div>
       {ghiChu && <span className="text-sm text-slate-500">{ghiChu}</span>}

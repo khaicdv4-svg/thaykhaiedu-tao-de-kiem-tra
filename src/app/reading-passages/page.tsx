@@ -28,12 +28,14 @@ import { useBoNao } from '@/lib/hooks/useBoNao';
 import { CHU_DIEM_THEO_KY, DANH_SACH_KY, TEN_THE_LOAI, khoangDoDai, TEN_LOAI, type KyKiemTraBaiDoc, type LoaiBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { goiYCatDoan, type DoanCat } from '@/core/reading-passages/cat-doan';
 import { danhGiaDoDai, danhGiaTheoBai } from '@/core/reading-passages/do-dai';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const TEN_TRANG_THAI: Record<string, string> = { DRAFT: 'Nháp', PENDING_REVIEW: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Từ chối' };
 const TEN_KIEU_NGAT: Record<string, string> = { CUOI_CAU: 'ngắt cuối câu', CUOI_DONG: 'ngắt cuối dòng', DAU_PHAY: 'ngắt ở dấu phẩy', GIUA_CAU: 'ngắt giữa câu' };
 const TAT_CA_CHU_DIEM = Object.values(CHU_DIEM_THEO_KY).flat();
 
 export default function ReadingPassagesPage() {
+  const { khoiLamViec } = useAuth();
   const boNao = useBoNao();
   const [passages, setPassages] = useState<ReadingPassage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +111,7 @@ export default function ReadingPassagesPage() {
   const fetchPassages = async () => {
     setIsLoading(true);
     try {
-      let url = '/api/reading-passages?grade=4';
+      let url = `/api/reading-passages?grade=${khoiLamViec}`;
       if (selectedType !== 'ALL') url += `&passageType=${selectedType}`;
       if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
 
@@ -127,7 +129,7 @@ export default function ReadingPassagesPage() {
 
   useEffect(() => {
     fetchPassages();
-  }, [selectedType]);
+  }, [selectedType, khoiLamViec]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +162,7 @@ export default function ReadingPassagesPage() {
             <span>Kho Ngữ liệu Đọc Tiếng Việt Tiểu học</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Giai đoạn 2: Quản lý ngân hàng văn bản đọc thành tiếng và đọc hiểu độc lập cho Khối 4, kiểm soát dung sai số tiếng chuẩn Bộ
+            Giai đoạn 2: Quản lý ngân hàng văn bản đọc thành tiếng và đọc hiểu độc lập cho Khối {khoiLamViec}, kiểm soát dung sai số tiếng chuẩn Bộ
           </p>
         </div>
 

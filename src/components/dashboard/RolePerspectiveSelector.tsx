@@ -20,7 +20,7 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: typeof UserCheck; des
   },
   {
     role: 'GROUP_LEADER',
-    label: 'Tổ trưởng Khối 4',
+    label: 'Tổ trưởng',
     icon: Users,
     desc: 'Quản lý ma trận, phân công phản biện, duyệt đề tổ',
   },

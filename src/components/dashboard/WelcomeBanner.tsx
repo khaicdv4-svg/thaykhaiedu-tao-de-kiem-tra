@@ -28,7 +28,7 @@ const THE: { khoa: keyof SoLieu; ten: string; ghiChu: string; icon: typeof FileT
 ];
 
 const BUOC_GIAI_THICH = [
-  { so: 1, ten: 'Thiết lập', moTa: 'Chọn khối, môn và kì kiểm tra', href: '/test-builder' },
+  { so: 1, ten: 'Thiết lập', moTa: 'Chọn môn và kì kiểm tra của khối đang làm việc', href: '/test-builder' },
   { so: 2, ten: 'Ma trận riêng', moTa: 'Lấy từ ma trận chung của tổ, xem lại rồi xác nhận', href: '/matrices' },
   { so: 3, ten: 'Bản đặc tả', moTa: 'Mỗi câu một YCCĐ, mức độ, bài và tuần học', href: '/dac-ta' },
   { so: 4, ten: 'Soạn đề', moTa: 'Soạn câu theo đặc tả, kiểm tra và xuất Word', href: '/tao-de' },
@@ -45,21 +45,21 @@ async function dem(bang: string, loc?: (q: any) => any): Promise<number | null> 
 }
 
 export function WelcomeBanner() {
-  const { profile } = useAuth();
+  const { profile, khoiLamViec } = useAuth();
   const [so, setSo] = useState<SoLieu>({ deDaTao: null, baiDocDaDuyet: null, maTranDaXacNhan: null, monDaNhapPpct: null });
 
   useEffect(() => {
     let huy = false;
     Promise.all([
-      dem('tests'),
-      dem('reading_passages', (q) => q.eq('status', 'APPROVED')),
-      dem('tai_lieu_ma_tran', (q) => q.eq('loai', 'CHUNG').eq('trang_thai', 'DA_XAC_NHAN')),
-      dem('curriculum_sources'),
+      dem('de_kiem_tra', (q) => q.eq('khoi', khoiLamViec)),
+      dem('reading_passages', (q) => q.eq('status', 'APPROVED').eq('grade', khoiLamViec)),
+      dem('tai_lieu_ma_tran', (q) => q.eq('loai', 'CHUNG').eq('trang_thai', 'DA_XAC_NHAN').eq('khoi', khoiLamViec)),
+      dem('curriculum_sources', (q) => q.eq('grade', khoiLamViec)),
     ]).then(([a, b, c, d]) => {
       if (!huy) setSo({ deDaTao: a, baiDocDaDuyet: b, maTranDaXacNhan: c, monDaNhapPpct: d });
     });
     return () => { huy = true; };
-  }, []);
+  }, [khoiLamViec]);
 
   return (
     <div className="space-y-5">

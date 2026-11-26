@@ -41,6 +41,7 @@ import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
 import { DungTiengViet } from '@/components/matrices/DungTiengViet';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, tenKyHoSo, tenMonHoSo } from '@/core/ho-so-de/ho-so-de';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const BUOC = ['Lập ma trận riêng', 'Xem trước, lưu'] as const;
 
@@ -170,6 +171,7 @@ const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
 
 export default function MatricesPage() {
+  const { khoiLamViec } = useAuth();
   const [buoc, setBuoc] = useState(0);
   const [maMon, setMaMon] = useState<string | null>(null);
   const [mtr, setMtr] = useState<MaTranRieng | null>(null);
@@ -290,7 +292,7 @@ export default function MatricesPage() {
   }, [mtc]);
 
   // Khi chọn nguồn Chương trình: lấy YCCĐ đã duyệt của môn, lớp này trong Kho chương trình
-  const lopSo = mtc ? Number(mtc.lop.replace(/\D/g, '')) || 4 : 4;
+  const lopSo = khoiLamViec;
   const nguonCT = mtr?.nguon_yccd === 'CHUONG_TRINH';
   useEffect(() => {
     if (!mtc || !nguonCT) return;
@@ -503,7 +505,7 @@ export default function MatricesPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900">Ma trận đề kiểm tra</h1>
-            <p className="text-sm text-slate-600 mt-1">Lập ma trận riêng từ ma trận chung của tổ khối 4, kiểm tra rồi xác nhận trước khi sang bản đặc tả.</p>
+            <p className="text-sm text-slate-600 mt-1">Lập ma trận riêng từ ma trận chung của tổ khối {khoiLamViec}, kiểm tra rồi xác nhận trước khi sang bản đặc tả.</p>
           </div>
         </div>
         {trangThai && (
@@ -550,7 +552,7 @@ export default function MatricesPage() {
           ) : (
             <>
               <div className="text-sm text-slate-600">
-                Lớp 4 · <b>{tenMonHoSo(maMon)}</b> · <b>{tenKyHoSo(kyDung)}</b> · {cachLap === 'CHUONG_TRINH' ? 'Dựng từ chương trình' : 'Dùng ma trận chung của tổ'}
+                Lớp {khoiLamViec} · <b>{tenMonHoSo(maMon)}</b> · <b>{tenKyHoSo(kyDung)}</b> · {cachLap === 'CHUONG_TRINH' ? 'Dựng từ chương trình' : 'Dùng ma trận chung của tổ'}
                 {' '}(<Link href="/test-builder" className="text-blue-700 underline">đổi ở Bước 1</Link>)
               </div>
               {cachLap === 'MA_TRAN_CHUNG' && (

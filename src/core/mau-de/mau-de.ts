@@ -31,6 +31,11 @@ export const MA_SUBJECT_K4: Record<string, string> = {
   CONG_NGHE: 'subj-cn4',
 };
 
+/** Mã môn trong bảng subjects theo khối (subj-toan4 → subj-toan5 ở khối 5). */
+export function maSubjectTheoKhoi(maMon: string, khoi: number): string | undefined {
+  return MA_SUBJECT_K4[maMon]?.replace(/\d$/, String(khoi));
+}
+
 export const laOMau = (s: unknown): s is MaOMau => typeof s === 'string' && O_MAU.some((o) => o.ma === s);
 
 const chuan = (s: string) =>

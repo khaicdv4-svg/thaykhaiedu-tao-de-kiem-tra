@@ -6,9 +6,9 @@
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { docKhoiTuDocx, type KhoiVanBan } from '@/core/utils/docx-bang';
-import { MA_SUBJECT_K4, O_MAU, docThongSoDocx, doanVanTuChuDoc, laFileDocCu, laOMau, type MaOMau, type ThongSoTrang } from '@/core/mau-de/mau-de';
+import { O_MAU, maSubjectTheoKhoi, docThongSoDocx, doanVanTuChuDoc, laFileDocCu, laOMau, type MaOMau, type ThongSoTrang } from '@/core/mau-de/mau-de';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
-const KHOI = 4;
 const BUCKET = 'exam-templates';
 const KY_CHUNG = 'TAT_CA';
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -37,7 +37,7 @@ async function layNguoiDung() {
 
 const COT = 'id, name, version, validation_status, created_at, o:header_layout->>o, thong_so:header_layout->thong_so';
 
-const coBan = (supabase: Awaited<ReturnType<typeof layNguoiDung>>['supabase'], orgId: string) =>
+const coBan = (KHOI: number, supabase: Awaited<ReturnType<typeof layNguoiDung>>['supabase'], orgId: string) =>
   supabase
     .from('exam_templates')
     .select(COT)
@@ -61,8 +61,9 @@ function sangMau(r: any): MauDe | null {
 
 /** Mọi bản mẫu của trường (mới trước). */
 export async function danhSachMauDe(): Promise<MauDe[]> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, orgId } = await layNguoiDung();
-  const { data, error } = await coBan(supabase, orgId).order('version', { ascending: false });
+  const { data, error } = await coBan(KHOI, supabase, orgId).order('version', { ascending: false });
   if (error) throw new Error(`Không đọc được mẫu đề: ${error.message}`);
   return (data ?? []).map(sangMau).filter((m): m is MauDe => !!m);
 }
@@ -90,6 +91,7 @@ export async function fileMauDe(id: string): Promise<{ tenFile: string; noiDung:
  * Môn chưa có mẫu thì trả null. Mẫu là file .doc cũ thì kèm lí do (chỉ ghép được với .docx).
  */
 export async function fileMauDangDung(maMon: string): Promise<{ tenFile: string; noiDung: ArrayBuffer | null; lyDo?: string } | null> {
+  const KHOI = await layKhoiLamViec();
   const o = O_MAU.find((x) => x.maMon === maMon)?.ma;
   if (!o) return null;
   const { supabase, orgId } = await layNguoiDung();
@@ -118,6 +120,7 @@ export async function fileMauDangDung(maMon: string): Promise<{ tenFile: string;
  * vì máy chủ giới hạn dung lượng mỗi lần gửi), rồi báo lại đường dẫn để lưu.
  */
 export async function choTaiLenMauDe(o: string, tenFile: string): Promise<{ duongDan: string; token: string }> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải mẫu đề.');
   if (!laOMau(o)) throw new Error('Chưa chọn mẫu này dùng cho môn nào.');
@@ -138,6 +141,7 @@ async function chuTuFileDoc(noiDung: ArrayBuffer): Promise<string> {
 }
 
 export async function taiLenMauDe(o: string, tenFile: string, duongDan: string): Promise<MauDe> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải mẫu đề.');
   if (!laOMau(o)) throw new Error('Chưa chọn mẫu này dùng cho môn nào.');
@@ -170,19 +174,22 @@ export async function taiLenMauDe(o: string, tenFile: string, duongDan: string):
   }
   if (JSON.stringify(cauTruc).length > 1_500_000) cauTruc = cauTruc.slice(0, 400);
 
-  const { data: cu } = await coBan(supabase, orgId).eq('header_layout->>o', o).order('version', { ascending: false }).limit(1);
+  const { data: cu } = await coBan(KHOI, supabase, orgId).eq('header_layout->>o', o).order('version', { ascending: false }).limit(1);
   const phienBan = ((cu?.[0] as any)?.version ?? 0) + 1;
 
   const ten = O_MAU.find((x) => x.ma === o)!;
+  const maSubject = maSubjectTheoKhoi(ten.maMon, KHOI)!;
+  // Khối khác khối 4 có thể chưa có môn trong danh mục: thêm cho đủ (hàm chỉ nhận mã đúng dạng subj-…N)
+  if (KHOI !== 4) await supabase.rpc('dam_bao_mon_hoc', { p_id: maSubject, p_ten: `${ten.ten} ${KHOI}` });
   const { data, error } = await supabase
     .from('exam_templates')
     .insert({
       name: tenFile.slice(0, 250),
-      description: `Mẫu đề ${ten.ten} – Lớp 4`,
+      description: `Mẫu đề ${ten.ten} – Lớp ${KHOI}`,
       owner_id: user.id,
       organization_id: orgId,
       grade: KHOI,
-      subject_id: MA_SUBJECT_K4[ten.maMon],
+      subject_id: maSubject,
       assessment_period: KY_CHUNG,
       template_type: 'ORGANIZATION_TEMPLATE',
       scope: 'GROUP',

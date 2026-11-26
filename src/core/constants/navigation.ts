@@ -206,7 +206,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     href: '/templates',
     iconName: 'FileSpreadsheet',
     icon: FileSpreadsheet,
-    description: 'Quản lý mẫu in của tổ khối 4 và định dạng xuất bản Word/PDF',
+    description: 'Quản lý mẫu in của tổ và định dạng xuất bản Word/PDF',
     allowedRoles: ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'],
   },
   {

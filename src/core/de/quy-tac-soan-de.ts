@@ -37,12 +37,13 @@ export function quyTacToan(ky: Ky, muc: number, tuan?: number | null): string {
 }
 
 /** Khối quy tắc chung đưa vào lời nhắc của mỗi câu. */
-export function quyTacTheoMon(o: { maMon?: string | null; tenMon?: string; ky?: Ky; muc: number; tuan?: number | null }): string {
+export function quyTacTheoMon(o: { maMon?: string | null; tenMon?: string; ky?: Ky; muc: number; tuan?: number | null; khoi?: number }): string {
   const laToan = o.maMon === 'TOAN' || /^toán$/i.test(o.tenMon ?? '');
   const phan = [
     `MỨC ĐỘ: ${moTaMuc(o.muc)}`,
     'NGÔN NGỮ: câu ngắn, mỗi câu hỏi một việc, dùng lệnh quen thuộc của SGK; từ ngữ gần gũi học sinh miền Nam (trái thơm, bắp, đậu phộng, chén, ly…); không đánh đố.',
   ];
-  if (laToan) phan.push(quyTacToan(o.ky, o.muc, o.tuan));
+  // Quy tắc số liệu Toán theo kì là quy định riêng của tổ khối 4; khối khác chưa có thì không đưa vào
+  if (laToan && (o.khoi ?? 4) === 4) phan.push(quyTacToan(o.ky, o.muc, o.tuan));
   return phan.join('\n');
 }

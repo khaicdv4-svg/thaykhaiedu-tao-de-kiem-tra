@@ -7,6 +7,7 @@ import { goiAITheoViec, trangThaiViecAI } from './cai-dat-ai.repository';
 import { khoangTuanTheoKy, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { TEN_MON } from '@/core/chuong-trinh/mon';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 import {
   HE_THONG_GHEP_BAI,
   apDungGhepBai,
@@ -29,7 +30,8 @@ export interface KetQuaGhepBai {
   ghiChuAI?: string;
 }
 
-export async function ghepBaiTuDong(maMon: string, ky: string, d: DacTa, lop = 4): Promise<KetQuaGhepBai> {
+export async function ghepBaiTuDong(maMon: string, ky: string, d: DacTa, lopTruyen?: number): Promise<KetQuaGhepBai> {
+  const lop = lopTruyen ?? (await layKhoiLamViec());
   const can: CauCanGhep[] = d.dong.filter((r) => !r.baiHoc?.trim()).map((r) => ({ khoa: r.khoa, yccd: r.yccd, noiDung: r.noiDung, mach: r.mach }));
   if (!can.length) return { dacTa: d, soDong: 0, soAI: 0, soTuKhoa: 0 };
   const [tiet, mucLuc] = await Promise.all([dsTietPpct(maMon, lop), dsMucLucSgk(maMon, lop).catch(() => [])]);

@@ -22,6 +22,7 @@ import { PpctPdfTab } from '@/components/sources/PpctPdfTab';
 import { EmptySourcesState } from '@/components/sources/EmptySourcesState';
 import { PpctDaNhapView } from '@/components/sources/PpctDaNhapView';
 import { TrangThaiPpctHub } from '@/components/ppct-hub/TrangThaiPpctHub';
+import { useAuth } from '@/core/contexts/AuthContext';
 import {
   CurriculumSource,
   ValidationSummary,
@@ -40,7 +41,8 @@ export default function SourcesPage() {
   const [activeTab, setActiveTab] = useState<TabMode>('saved_sources');
   const [pipelineStep, setPipelineStep] = useState(1);
   const [academicYear, setAcademicYear] = useState('2026-2027');
-  const [grade, setGrade] = useState(4);
+  // Khối theo khối đang làm việc chọn ở Tổng quan; đổi ở đây cũng là đổi khối làm việc
+  const { khoiLamViec: grade, dsKhoi, doiKhoiLamViec } = useAuth();
 
   // Trạng thái nhập liệu PPCT HUB
   const [rawBackupJson, setRawBackupJson] = useState<PpctHubBackupFile | null>(null);
@@ -173,7 +175,7 @@ export default function SourcesPage() {
         body: JSON.stringify({
           // Chỉ định đọc file fixture trên server nếu client gửi cờ
           jsonContent: require('../../../docs/fixtures/thaykhaiedu_ppct_yccd_backup_20261104.json'),
-          grade: 4,
+          grade,
           academicYear: '2026-2027',
         }),
       });
@@ -301,14 +303,10 @@ export default function SourcesPage() {
           <span className="font-semibold text-slate-600 dark:text-slate-300 pl-2">Khối:</span>
           <select
             value={grade}
-            onChange={(e) => setGrade(Number(e.target.value))}
+            onChange={(e) => doiKhoiLamViec(Number(e.target.value))}
             className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border-none font-bold text-blue-600 dark:text-blue-400"
           >
-            <option value={4}>Lớp 4</option>
-            <option value={1} disabled>Lớp 1 (Chưa mở)</option>
-            <option value={2} disabled>Lớp 2 (Chưa mở)</option>
-            <option value={3} disabled>Lớp 3 (Chưa mở)</option>
-            <option value={5} disabled>Lớp 5 (Chưa mở)</option>
+            {dsKhoi.map((k) => <option key={k} value={k}>Lớp {k}</option>)}
           </select>
 
           <span className="font-semibold text-slate-600 dark:text-slate-300 pl-1">Năm học:</span>
@@ -404,7 +402,7 @@ export default function SourcesPage() {
                   <span>Bước 1 & 2: Chọn tệp sao lưu JSON từ app THAYKHAIEDU PPCT HUB</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Tệp sao lưu chuẩn schema 2.0 chứa toàn bộ cây chủ đề, bài học, tiết học và YCCĐ Khối 4
+                  Tệp sao lưu chuẩn schema 2.0 chứa toàn bộ cây chủ đề, bài học, tiết học và YCCĐ Khối {grade}
                 </p>
               </div>
 
@@ -442,7 +440,7 @@ export default function SourcesPage() {
             {isAnalyzing && (
               <div className="p-3.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
-                <span>Đang phân tích cấu trúc, lọc Khối 4 năm học 2026–2027 và chạy bộ kiểm tra 6 sai lệch...</span>
+                <span>Đang phân tích cấu trúc, lọc Khối {grade} năm học 2026–2027 và chạy bộ kiểm tra 6 sai lệch...</span>
               </div>
             )}
 

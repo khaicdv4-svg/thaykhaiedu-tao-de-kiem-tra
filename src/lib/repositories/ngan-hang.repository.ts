@@ -6,8 +6,8 @@
 import { createHash } from 'node:crypto';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import type { CauDe, NoiDungCau } from '@/core/de/de';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
-const KHOI = 4;
 const VAI_TRO_DUYET = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
 export interface CauNganHang {
@@ -53,6 +53,7 @@ const sang = (r: any, uid: string): CauNganHang => ({
 export interface BoLoc { mon?: string; muc?: number; hinhThuc?: string; dang?: string; q?: string; chiDaKiemDinh?: boolean }
 
 export async function danhSachNganHang(loc: BoLoc): Promise<{ cau: CauNganHang[]; duocDuyet: boolean }> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId, duocDuyet } = await layNguoiDung();
   let q = supabase.from('ngan_hang_cau_hoi').select('*').eq('organization_id', orgId).eq('khoi', KHOI);
   if (loc.mon) q = q.eq('ma_mon', loc.mon);
@@ -75,6 +76,7 @@ export async function danhSachNganHang(loc: BoLoc): Promise<{ cau: CauNganHang[]
 
 /** Lưu một câu vào ngân hàng. Câu giống hệt (đề bài + phương án) đã có thì báo lại, không lưu thêm. */
 export async function luuVaoNganHang(maMon: string, c: CauDe, chuDe: string): Promise<{ id: string; daCo: boolean }> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId } = await layNguoiDung();
   if (!c.deBai.trim()) throw new Error('Câu chưa có đề bài, chưa lưu được.');
   const noiDung: NoiDungCau = { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham, ghiChuHinh: c.ghiChuHinh, hinh: c.hinh ?? [] };

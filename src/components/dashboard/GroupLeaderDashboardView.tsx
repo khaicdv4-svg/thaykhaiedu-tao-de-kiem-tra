@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/core/contexts/AuthContext';
 import {
   Users,
   Grid,
@@ -32,6 +33,7 @@ interface TeacherItem {
 }
 
 export function GroupLeaderDashboardView() {
+  const { khoiLamViec } = useAuth();
   const [stats, setStats] = useState({
     totalGroupExams: 0,
     pendingApproval: 0,
@@ -90,7 +92,7 @@ export function GroupLeaderDashboardView() {
 
   const statCards = [
     {
-      title: 'Tổng đề Tổ Khối 4',
+      title: `Tổng đề Tổ Khối ${khoiLamViec}`,
       value: isLoading ? '...' : String(stats.totalGroupExams),
       subtitle: 'Cơ sở dữ liệu thật (0 nếu rỗng)',
       icon: FolderKanban,
@@ -158,7 +160,7 @@ export function GroupLeaderDashboardView() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <CardTitle>Hàng đợi thẩm định & Duyệt đề Tổ Khối 4</CardTitle>
+                <CardTitle>Hàng đợi thẩm định & Duyệt đề Tổ Khối {khoiLamViec}</CardTitle>
               </div>
               <Link href="/matrices">
                 <Button variant="outline" size="sm" icon={<Plus className="w-4 h-4" />}>
@@ -253,7 +255,7 @@ export function GroupLeaderDashboardView() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Grid className="w-4 h-4 text-indigo-600" />
-              <CardTitle>Khung kế hoạch Ma trận định kỳ Khối 4</CardTitle>
+              <CardTitle>Khung kế hoạch Ma trận định kỳ Khối {khoiLamViec}</CardTitle>
             </div>
             <Link
               href="/matrices"
@@ -264,7 +266,7 @@ export function GroupLeaderDashboardView() {
             </Link>
           </div>
           <CardDescription>
-            Các môn kiểm tra định kỳ Khối 4 theo quy định Thông tư 27 (Giai đoạn 3)
+            Các môn kiểm tra định kỳ Khối {khoiLamViec} theo quy định Thông tư 27 (Giai đoạn 3)
           </CardDescription>
         </CardHeader>
         <CardContent>

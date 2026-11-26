@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { docMucLuc } from '@/core/chuong-trinh/muc-luc-sgk';
 import { dsMucLucSgk, dsTietPpct, thayMucLucSgk } from '@/lib/repositories/chuong-trinh.repository';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 
-/** Mục lục SGK của một môn lớp 4: GET ?mon=TIENG_VIET&lop=4 */
+/** Mục lục SGK của một môn: GET ?mon=TIENG_VIET&lop=4 (không gửi lop thì lấy khối đang làm việc) */
 export async function GET(req: NextRequest) {
   try {
     const sp = new URL(req.url).searchParams;
     const mon = sp.get('mon');
-    const lop = Number(sp.get('lop') ?? 4);
+    const lop = await khoiHoacLamViec(sp.get('lop'));
     if (!mon) return NextResponse.json({ error: 'Thiếu môn.' }, { status: 400 });
     return NextResponse.json({ success: true, mucLuc: await dsMucLucSgk(mon, lop) });
   } catch (e) {
@@ -21,7 +22,8 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { mon, lop = 4, tap, chu } = (await req.json()) as { mon?: string; lop?: number; tap?: number; chu?: string };
+    const { mon, lop: lopGui, tap, chu } = (await req.json()) as { mon?: string; lop?: number; tap?: number; chu?: string };
+    const lop = await khoiHoacLamViec(lopGui);
     if (!mon || !tap || typeof chu !== 'string') return NextResponse.json({ error: 'Thiếu môn, tập hoặc nội dung mục lục.' }, { status: 400 });
     let tiet: { tuan: number | null; baiTen: string | null }[] = [];
     try { tiet = await dsTietPpct(mon, lop); } catch { /* môn chưa có PPCT thì chỉ bỏ qua đối chiếu */ }

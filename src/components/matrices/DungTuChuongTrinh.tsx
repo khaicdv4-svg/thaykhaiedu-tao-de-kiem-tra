@@ -21,6 +21,7 @@ import {
 } from '@/core/matrix/dung-tu-chuong-trinh';
 import type { YccdChuongTrinh } from '@/core/chuong-trinh/mon';
 import type { MaTranChung } from '@/types/matrix-template';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const khoaBai = (idNhom: string, bi: number) => `${idNhom}#${bi}`;
 const nutChinh = 'nut-tke text-sm';
@@ -74,6 +75,7 @@ export function DungTuChuongTrinh({
   onDung: (m: MaTranChung) => void;
   onQuayLai: () => void;
 }) {
+  const { khoiLamViec } = useAuth();
   const mau = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === maMon) ?? MAU_MA_TRAN_CHUNG[0];
   const goiY = mau.ti_le_muc_quy_dinh;
   const goiYHopLe = goiY && [goiY['1'], goiY['2'], goiY['3']].every((x) => Number.isInteger(x / 5) && x >= 0);
@@ -103,8 +105,8 @@ export function DungTuChuongTrinh({
     setYccd(null);
     setLoi(null);
     Promise.all([
-      fetch(`/api/chuong-trinh/ppct?mon=${maMon}&lop=4`).then((r) => r.json()),
-      fetch(`/api/chuong-trinh/yccd?mon=${maMon}&lop=4&trangThai=DA_DUYET`).then((r) => r.json()),
+      fetch(`/api/chuong-trinh/ppct?mon=${maMon}`).then((r) => r.json()),
+      fetch(`/api/chuong-trinh/yccd?mon=${maMon}&trangThai=DA_DUYET`).then((r) => r.json()),
     ])
       .then(([p, y]) => {
         if (huy) return;
@@ -157,7 +159,7 @@ export function DungTuChuongTrinh({
         const r = await fetch('/api/chuong-trinh/gan-bai-yccd', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mon: maMon, lop: 4, chuDe: n.chuDe, bai: chiSo.map((bi) => n.chiTiet[bi].ten) }),
+          body: JSON.stringify({ mon: maMon, chuDe: n.chuDe, bai: chiSo.map((bi) => n.chiTiet[bi].ten) }),
         });
         const j = (await r.json()) as { theoBai?: string[][]; error?: string };
         if (!r.ok || !j.theoBai) throw new Error(j.error ?? 'AI không trả kết quả.');
@@ -197,7 +199,7 @@ export function DungTuChuongTrinh({
     const kq = dungMaTranTuChuongTrinh({
       maMon,
       tenMon,
-      lop: mau.lop,
+      lop: `Lớp ${khoiLamViec}`,
       nam_hoc: mau.nam_hoc,
       ky,
       tieuDeKy: thongTinKy.tieuDe,
@@ -232,7 +234,7 @@ export function DungTuChuongTrinh({
         {khongCoPpct && <p className="text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 p-2">Chưa có phân phối chương trình của {tenMon}. Vào mục Phân phối chương trình để nhập.</p>}
         {khongCoYccd && (
           <p className="text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 p-2">
-            Kho chương trình chưa có YCCĐ đã duyệt cho {tenMon} lớp 4. Vào <a className="underline" href="/chuong-trinh">Kho chương trình GDPT 2018</a>, cho AI trích YCCĐ rồi duyệt.
+            Kho chương trình chưa có YCCĐ đã duyệt cho {tenMon} lớp {khoiLamViec}. Vào <a className="underline" href="/chuong-trinh">Kho chương trình GDPT 2018</a>, cho AI trích YCCĐ rồi duyệt.
           </p>
         )}
       </div>

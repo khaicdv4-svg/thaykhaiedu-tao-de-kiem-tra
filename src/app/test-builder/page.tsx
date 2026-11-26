@@ -15,6 +15,7 @@ import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, type CachLap } from '@/core/ho-so-de/ho-so-de';
 import { LichSuBan } from '@/components/ho-so-de/LichSuBan';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-base px-6 py-3';
@@ -32,6 +33,7 @@ async function lay<T>(url: string): Promise<T | null> {
 }
 
 export default function TestBuilderPage() {
+  const { khoiLamViec } = useAuth();
   const [maMon, setMaMon] = useState('TOAN');
   const [ky, setKy] = useState<KyDung>('CUOI_HK1');
   const [tt, setTt] = useState<TrangThaiBuoc | null>(null);
@@ -132,7 +134,7 @@ export default function TestBuilderPage() {
       <div className="the-tke p-6 space-y-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Bước 1. Thiết lập đề kiểm tra</h1>
-          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp 4. Mỗi thầy cô có bộ riêng, đi lần lượt: <b>Ma trận riêng</b> (chọn từ ma trận chung của tổ) <b>→ Đặc tả → Soạn đề → Duyệt</b>. Bấm Lưu ở mỗi bước là dùng ngay; bước sau tự đổi theo bước trước.</p>
+          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp {khoiLamViec} (đổi khối ở trang Tổng quan). Mỗi thầy cô có bộ riêng, đi lần lượt: <b>Ma trận riêng</b> (chọn từ ma trận chung của tổ) <b>→ Đặc tả → Soạn đề → Duyệt</b>. Bấm Lưu ở mỗi bước là dùng ngay; bước sau tự đổi theo bước trước.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select aria-label="Môn" className={`${o} min-w-44`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
@@ -141,7 +143,7 @@ export default function TestBuilderPage() {
           <select aria-label="Kì kiểm tra" className={`${o} min-w-44`} value={ky} onChange={(e) => setKy(e.target.value as KyDung)}>
             {DANH_SACH_KY.map((k) => <option key={k.ma} value={k.ma}>{k.ten}</option>)}
           </select>
-          <span className="text-sm text-slate-500">Lớp 4 · {tenMon} · {tenKy}</span>
+          <span className="text-sm text-slate-500">Lớp {khoiLamViec} · {tenMon} · {tenKy}</span>
         </div>
         <div>
           <div className="text-sm font-semibold text-slate-900 mb-1">Lập ma trận riêng từ</div>

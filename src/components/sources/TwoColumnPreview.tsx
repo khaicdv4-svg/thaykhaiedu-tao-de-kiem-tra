@@ -8,6 +8,7 @@ import {
   PROVENANCE_TYPE_MAP,
 } from '@/types/curriculum-source';
 import { BookOpen, Layers, Check, Database, ArrowRight } from 'lucide-react';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 interface TwoColumnPreviewProps {
   selectedSubjectId: string;
@@ -28,6 +29,7 @@ export function TwoColumnPreview({
   outcomes,
   provenanceType,
 }: TwoColumnPreviewProps) {
+  const { khoiLamViec } = useAuth();
   const [activeTab, setActiveTab] = useState<'lessons' | 'outcomes'>('lessons');
 
   const provConfig = PROVENANCE_TYPE_MAP[provenanceType] || PROVENANCE_TYPE_MAP.UNVERIFIED_PENDING;
@@ -178,7 +180,7 @@ export function TwoColumnPreview({
                         {les.title || les.name}
                       </span>
                       <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400">
-                        Khối 4 - 2026-2027
+                        Khối {khoiLamViec} - 2026-2027
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">

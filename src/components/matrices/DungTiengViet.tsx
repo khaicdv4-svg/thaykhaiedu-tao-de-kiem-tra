@@ -20,6 +20,7 @@ import { khoangDoDai, chuDiemCuaKy } from '@/core/reading-passages/quy-dinh';
 import { lamSachBoNao, type BoNao } from '@/core/bo-nao/bo-nao';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import type { MaTranChung } from '@/types/matrix-template';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 type TietApi = TietPpct & { tietTen: string | null };
 
@@ -36,6 +37,7 @@ export function DungTiengViet({
   onDung: (m: MaTranChung) => void;
   onQuayLai: () => void;
 }) {
+  const { khoiLamViec } = useAuth();
   const mau = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'TIENG_VIET') ?? MAU_MA_TRAN_CHUNG[0];
   const thongTinKy = DANH_SACH_KY.find((k) => k.ma === ky) ?? DANH_SACH_KY[1];
 
@@ -55,8 +57,8 @@ export function DungTiengViet({
     setYccd(null);
     setLoi(null);
     Promise.all([
-      fetch('/api/chuong-trinh/ppct?mon=TIENG_VIET&lop=4').then((r) => r.json()),
-      fetch('/api/chuong-trinh/yccd?mon=TIENG_VIET&lop=4&trangThai=DA_DUYET').then((r) => r.json()),
+      fetch('/api/chuong-trinh/ppct?mon=TIENG_VIET').then((r) => r.json()),
+      fetch('/api/chuong-trinh/yccd?mon=TIENG_VIET&trangThai=DA_DUYET').then((r) => r.json()),
       fetch('/api/bo-nao').then((r) => r.json()).catch(() => null),
     ])
       .then(([p, y, b]) => {
@@ -125,7 +127,7 @@ export function DungTiengViet({
         {khongCoPpct && <p className="text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 p-2">Chưa có phân phối chương trình của Tiếng Việt. Vào mục Phân phối chương trình để nhập.</p>}
         {khongCoYccd && (
           <p className="text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 p-2">
-            Kho chương trình chưa có YCCĐ đã duyệt cho Tiếng Việt lớp 4. Vào <a className="underline" href="/chuong-trinh">Kho chương trình GDPT 2018</a>, cho AI trích YCCĐ rồi duyệt.
+            Kho chương trình chưa có YCCĐ đã duyệt cho Tiếng Việt lớp {khoiLamViec}. Vào <a className="underline" href="/chuong-trinh">Kho chương trình GDPT 2018</a>, cho AI trích YCCĐ rồi duyệt.
           </p>
         )}
       </div>

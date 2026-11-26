@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { capNhatYccd, doiTrangThaiNhieu, dsYccd, themYccdTay, xoaYccd } from '@/lib/repositories/chuong-trinh.repository';
 import { DANH_SACH_MON, type TrangThaiYccd } from '@/core/chuong-trinh/mon';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 
 const loi = (err: unknown, ma = 400) => NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: ma });
 const TT = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI'];
@@ -8,7 +9,8 @@ const TT = ['CHO_DUYET', 'DA_DUYET', 'TU_CHOI'];
 export async function GET(req: NextRequest) {
   try {
     const p = req.nextUrl.searchParams;
-    const lop = Number(p.get('lop')) || undefined;
+    // Không gửi lop thì lấy khối đang làm việc; lop=0 để xem mọi lớp
+    const lop = p.get('lop') === '0' ? undefined : await khoiHoacLamViec(p.get('lop'));
     const tt = p.get('trangThai');
     const ds = await dsYccd({ mon: p.get('mon') || undefined, lop, trangThai: tt && TT.includes(tt) ? (tt as TrangThaiYccd) : undefined, taiLieuId: p.get('taiLieuId') || undefined });
     return NextResponse.json({ success: true, yccd: ds });
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
   try {
     const b = (await req.json()) as { mon?: string; lop?: number; mach?: string; chuDe?: string; bai?: string; noiDung?: string };
     if (!DANH_SACH_MON.some((m) => m.ma === b.mon)) return loi('Chưa chọn môn.');
-    if (!b.lop || b.lop < 1 || b.lop > 5) return loi('Chưa chọn lớp.');
+    b.lop = await khoiHoacLamViec(b.lop);
     if (!b.noiDung?.trim()) return loi('Chưa nhập nội dung YCCĐ.');
     return NextResponse.json({ success: true, yccd: await themYccdTay({ mon: b.mon!, lop: b.lop, mach: b.mach, chuDe: b.chuDe, bai: b.bai, noiDung: b.noiDung }) });
   } catch (err) {

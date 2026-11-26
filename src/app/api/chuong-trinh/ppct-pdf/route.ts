@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 import { HE_THONG_DOC_PPCT, loaiDongPpct, loiNhacDocPpct } from '@/core/chuong-trinh/ppct-tu-pdf';
 import { getSubjectDisplayName } from '@/core/curriculum/ppct-hub-adapter';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 
 export const maxDuration = 120;
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (!tt.daCauHinh) return NextResponse.json({ error: `Chưa dùng được AI: ${tt.lyDo ?? 'chưa cấu hình'}` }, { status: 503 });
     const kq = await goiAITheoViec('DOC_TEP', {
       heThong: HE_THONG_DOC_PPCT,
-      noiDung: loiNhacDocPpct({ mon, lop: 4, nguon: laAnh ? 'anh' : 'chu', phan: b.phan, stt: b.stt, tong: b.tong }),
+      noiDung: loiNhacDocPpct({ mon, lop: await khoiHoacLamViec(b.subjectId.match(/(\d)$/)?.[1]), nguon: laAnh ? 'anh' : 'chu', phan: b.phan, stt: b.stt, tong: b.tong }),
       anh: laAnh ? [{ loai: 'image/jpeg', base64: b.anh! }] : undefined,
       toiDaToken: 6000,
       timWeb: false,

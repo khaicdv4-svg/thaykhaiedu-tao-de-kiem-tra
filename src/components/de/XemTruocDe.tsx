@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { AlertTriangle, ListChecks, Pencil } from 'lucide-react';
 import { ChuPhanSo as PS } from '@/components/de/ChuPhanSo';
 import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const fmt = (x: number) => String(x).replace('.', ',');
 const dong = (t: string) => t.split(/\n+/).filter((x) => x.trim());
@@ -129,6 +130,7 @@ function ThanhSuaCau({ c, cc }: { c: CauDe; cc: CongCuSuaCau }) {
 }
 
 export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem trước' }: { de: DeKiemTra; truong: string; tenMon: string; phut: number; congCu?: CongCuSuaCau; tieuDe?: string }) {
+  const { khoiLamViec } = useAuth();
   const [tab, setTab] = useState<'de' | 'dap-an'>('de');
   const cau = [...de.cau].sort((a, b) => (/^\d+$/.test(a.cau) ? Number(a.cau) : 1e9) - (/^\d+$/.test(b.cau) ? Number(b.cau) : 1e9));
   const tong = Math.round(cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
@@ -144,7 +146,7 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
       <div className="mx-auto max-w-[820px] border border-slate-300 bg-white p-6 text-black text-[17px] overflow-x-auto" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
         <div className="text-center mb-3">
           <div className="font-bold">{truong}</div>
-          <div className="font-bold">{tab === 'de' ? `ĐỀ KIỂM TRA MÔN ${tenMon.toUpperCase()} - Lớp 4` : `HƯỚNG DẪN CHẤM MÔN ${tenMon.toUpperCase()} - LỚP 4`}</div>
+          <div className="font-bold">{tab === 'de' ? `ĐỀ KIỂM TRA MÔN ${tenMon.toUpperCase()} - Lớp ${khoiLamViec}` : `HƯỚNG DẪN CHẤM MÔN ${tenMon.toUpperCase()} - LỚP ${khoiLamViec}`}</div>
           {tab === 'de' && <div>Thời gian: {phut} phút</div>}
         </div>
         {tab === 'de' ? (

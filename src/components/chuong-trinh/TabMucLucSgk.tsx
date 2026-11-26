@@ -10,14 +10,15 @@ import { CheckCircle2, Download, FileUp, Loader2, ScanText, TriangleAlert } from
 import { CSV_MAU, canhBaoNhamTap, docMucLuc, type TietDoiChieu } from '@/core/chuong-trinh/muc-luc-sgk';
 import { DANH_SACH_MON } from '@/core/chuong-trinh/mon';
 import { moPdfLamAnh, type PdfAnh } from '@/core/utils/pdf-anh';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 const MON_CO_PPCT = ['TOAN', 'TIENG_VIET', 'KHOA_HOC', 'LS_DL', 'CONG_NGHE', 'DAO_DUC', 'HDTN'];
-const LOP = 4;
 
 export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
+  const { khoiLamViec } = useAuth();
   const [mon, setMon] = useState('TIENG_VIET');
   const [tap, setTap] = useState(1);
   const [chu, setChu] = useState('');
@@ -35,7 +36,7 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
 
   const napTongQuan = useCallback(async () => {
     const kq = await Promise.all(MON_CO_PPCT.map(async (m) => {
-      const r = await fetch(`/api/chuong-trinh/sgk-muc-luc?mon=${m}&lop=${LOP}`).then((x) => x.json()).catch(() => ({}));
+      const r = await fetch(`/api/chuong-trinh/sgk-muc-luc?mon=${m}`).then((x) => x.json()).catch(() => ({}));
       const ds: { tap: number; tuan: number | null }[] = Array.isArray(r.mucLuc) ? r.mucLuc : [];
       const theoTap: Record<number, TomTat> = {};
       for (const tp of [1, 2]) {
@@ -51,8 +52,8 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
 
   const nap = useCallback(async () => {
     const [pp, ml] = await Promise.all([
-      fetch(`/api/chuong-trinh/ppct?mon=${mon}&lop=${LOP}`).then((r) => r.json()).catch(() => ({})),
-      fetch(`/api/chuong-trinh/sgk-muc-luc?mon=${mon}&lop=${LOP}`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/chuong-trinh/ppct?mon=${mon}`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/chuong-trinh/sgk-muc-luc?mon=${mon}`).then((r) => r.json()).catch(() => ({})),
     ]);
     setTiet(Array.isArray(pp.tiet) ? pp.tiet : []);
     setDaLuu(Array.isArray(ml.mucLuc) ? ml.mucLuc : []);
@@ -105,7 +106,7 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
   const luu = async () => {
     setDangLuu(true); setTb(null); setHoiLai(false);
     try {
-      const r = await fetch('/api/chuong-trinh/sgk-muc-luc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon, lop: LOP, tap, chu }) });
+      const r = await fetch('/api/chuong-trinh/sgk-muc-luc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon, tap, chu }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setTb({ loai: 'loi', text: j.error ?? `Lỗi ${r.status}` }); return; }
       setTb({ loai: 'ok', text: `Đã lưu ${j.soDong} dòng mục lục ${TEN(mon)} tập ${tap}. Bản đặc tả sẽ tự điền trang SGK khi thầy chọn bài.` });
@@ -117,7 +118,7 @@ export function TabMucLucSgk({ duocSua }: { duocSua: boolean }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
-        <div className="text-sm font-semibold text-slate-900">Tình trạng mục lục đã nạp (lớp 4)</div>
+        <div className="text-sm font-semibold text-slate-900">Tình trạng mục lục đã nạp (lớp {khoiLamViec})</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead><tr className="bg-slate-50 text-left"><th className="border border-slate-200 px-2 py-1.5">Môn</th><th className="border border-slate-200 px-2 py-1.5">Tập một</th><th className="border border-slate-200 px-2 py-1.5">Tập hai</th></tr></thead>

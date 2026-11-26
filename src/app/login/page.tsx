@@ -74,7 +74,7 @@ function LoginForm() {
             ThayKhaiEdu
           </h1>
           <p className="text-sm font-bold chu-tke mt-1">
-            Xưởng sản xuất đề kiểm tra AI – Khối 4
+            Xưởng sản xuất đề kiểm tra AI – Tiểu học
           </p>
           <p className="text-xs text-slate-500 mt-1">
             Trường Tiểu học Trần Văn Ơn, Quận 1, TP.HCM

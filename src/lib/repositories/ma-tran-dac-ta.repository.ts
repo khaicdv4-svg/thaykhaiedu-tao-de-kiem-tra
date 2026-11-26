@@ -15,8 +15,8 @@ import { kiemDinhDacTa, type DacTa, type TrangThaiDacTa } from '@/core/dac-ta/da
 import { TRANG_THAI_NHAP, kiemDinhDe, saoChepDeSangKyMoi, type DeKiemTra, type KetQuaKiemDinhDe, type TrangThaiDe } from '@/core/de/de';
 import type { KyKiemTra, MaTranChung, MaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 import { tinhDanhSachHoSo, type DongHoSoDe, type HangBuoc } from '@/core/ho-so-de/danh-sach';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
-const KHOI = 4;
 const VAI_TRO_GHI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const DANH_SACH_KY: KyKiemTra[] = ['GIUA_HK1', 'CUOI_HK1', 'GIUA_HK2', 'CUOI_NAM'];
 
@@ -40,11 +40,12 @@ function canQuyenGhi(role: string, chu: string, uid: string) {
 }
 
 /** Lọc bộ của một người cho một môn, kì (chưa cất vào lịch sử). */
-const cuaNguoi = (q: any, orgId: string, maMon: string, ky: string, chu: string) =>
+const cuaNguoi = (KHOI: number, q: any, orgId: string, maMon: string, ky: string, chu: string) =>
   q.eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('chu_so_huu', chu).is('cat_luc', null);
 
 /** Số phiên bản tiếp theo của một người (tính cả bản đã cất, vì số phiên bản không được trùng). */
 async function phienBanTiep(supabase: any, bang: 'ma_tran_rieng' | 'dac_ta', orgId: string, maMon: string, ky: string, chu: string): Promise<number> {
+  const KHOI = await layKhoiLamViec();
   const { data } = await supabase.from(bang).select('phien_ban').eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('chu_so_huu', chu).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
   return ((data?.[0]?.phien_ban as number | undefined) ?? 0) + 1;
 }
@@ -88,6 +89,7 @@ const sangMtr = (r: any): BanMaTranRieng => ({
 
 /** Ma trận chung của tổ (kho ma trận) được xác nhận bản mới hơn sau khi ma trận riêng đã xác nhận → cần kiểm tra lại. */
 async function timMaTranChungMoiHon(supabase: any, orgId: string, maMon: string, ky: string, xacNhanRieng: string | undefined) {
+  const KHOI = await layKhoiLamViec();
   if (!xacNhanRieng) return null;
   const { data: kho } = await supabase
     .from('tai_lieu_ma_tran')
@@ -104,9 +106,10 @@ async function timMaTranChungMoiHon(supabase: any, orgId: string, maMon: string,
 
 /** Bản nháp và phiên bản đã xác nhận mới nhất, kèm danh sách các phiên bản (không kèm nội dung). */
 export async function layMaTranRieng(maMon: string, ky: string, chuSoHuu?: string) {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, orgId, user } = await layNguoiDung();
-  const loc = (q: any) => cuaNguoi(q, orgId, maMon, ky, chuSoHuu ?? user.id);
+  const loc = (q: any) => cuaNguoi(KHOI, q, orgId, maMon, ky, chuSoHuu ?? user.id);
   const { data: nhap, error: e1 } = await loc(supabase.from('ma_tran_rieng').select(COT_MTR)).eq('la_ban_nhap', true).maybeSingle();
   if (e1) throw new Error(`Không đọc được ma trận riêng: ${e1.message}`);
   const { data: moiNhat, error: e2 } = await loc(supabase.from('ma_tran_rieng').select(COT_MTR)).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
@@ -136,6 +139,7 @@ function kiemCauTruc(d: DuLieuMaTranRieng, maMon: string, ky: string) {
 }
 
 export async function luuNhapMaTranRieng(maMon: string, ky: string, d: DuLieuMaTranRieng, chuSoHuu?: string): Promise<BanMaTranRieng> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId, role } = await layNguoiDung();
   const chu = chuSoHuu ?? user.id;
@@ -145,7 +149,7 @@ export async function luuNhapMaTranRieng(maMon: string, ky: string, d: DuLieuMaT
   const hang = {
     du_lieu: d, trang_thai: trangThai, phien_ban_ma_tran_chung: d.ma_tran_chung.phien_ban_mau, updated_by: user.id,
   };
-  const { data: cu } = await cuaNguoi(supabase.from('ma_tran_rieng').select('id'), orgId, maMon, ky, chu).eq('la_ban_nhap', true).maybeSingle();
+  const { data: cu } = await cuaNguoi(KHOI, supabase.from('ma_tran_rieng').select('id'), orgId, maMon, ky, chu).eq('la_ban_nhap', true).maybeSingle();
   const { data, error } = cu
     ? await supabase.from('ma_tran_rieng').update(hang).eq('id', cu.id).select(COT_MTR).single()
     : await supabase.from('ma_tran_rieng').insert({ ...hang, organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, la_ban_nhap: true, chu_so_huu: chu, created_by: user.id }).select(COT_MTR).single();
@@ -155,6 +159,7 @@ export async function luuNhapMaTranRieng(maMon: string, ky: string, d: DuLieuMaT
 
 /** Xác nhận: chạy lại kiểm định, rồi tạo phiên bản mới (hoặc giữ phiên bản cũ nếu nội dung không đổi). */
 export async function xacNhanMaTranRieng(maMon: string, ky: string, d: DuLieuMaTranRieng, chuSoHuu?: string): Promise<{ ban: BanMaTranRieng; taoPhienBanMoi: boolean }> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId, role } = await layNguoiDung();
   const chu = chuSoHuu ?? user.id;
@@ -165,7 +170,7 @@ export async function xacNhanMaTranRieng(maMon: string, ky: string, d: DuLieuMaT
   if (!kqChung.hopLe) throw new Error(`Ma trận chung chưa hợp lệ: ${kqChung.loi[0]}`);
   let yccdCT: string[] | undefined;
   if (d.ma_tran_rieng.nguon_yccd === 'CHUONG_TRINH') {
-    const lop = Number(d.ma_tran_chung.lop.replace(/\D/g, '')) || 4;
+    const lop = Number(d.ma_tran_chung.lop.replace(/\D/g, '')) || KHOI;
     yccdCT = (await dsYccd({ mon: maMon, lop, trangThai: 'DA_DUYET' })).map((y) => y.noiDung);
   }
   const kq = kiemDinhMaTranRieng(d.ma_tran_chung, d.ma_tran_rieng, yccdCT);
@@ -174,7 +179,7 @@ export async function xacNhanMaTranRieng(maMon: string, ky: string, d: DuLieuMaT
   const mtrXacNhan: MaTranRieng = { ...d.ma_tran_rieng, trang_thai: 'DA_XAC_NHAN', cap_nhat_luc: new Date().toISOString() };
   const duLieu: DuLieuMaTranRieng = { ma_tran_chung: d.ma_tran_chung, ma_tran_rieng: mtrXacNhan };
 
-  const loc = (q: any) => cuaNguoi(q, orgId, maMon, ky, chu);
+  const loc = (q: any) => cuaNguoi(KHOI, q, orgId, maMon, ky, chu);
   const { data: moiNhat } = await loc(supabase.from('ma_tran_rieng').select(COT_MTR)).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
   const cu = moiNhat?.[0] as any;
   const giongCu = !!cu && noiDungMaTran((cu.du_lieu as DuLieuMaTranRieng).ma_tran_rieng) === noiDungMaTran(mtrXacNhan)
@@ -221,9 +226,10 @@ const sangDt = (r: any): BanDacTa => ({
 });
 
 export async function layDacTa(maMon: string, ky: string, chuSoHuu?: string) {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, orgId, user } = await layNguoiDung();
-  const loc = (q: any) => cuaNguoi(q, orgId, maMon, ky, chuSoHuu ?? user.id);
+  const loc = (q: any) => cuaNguoi(KHOI, q, orgId, maMon, ky, chuSoHuu ?? user.id);
   const { data: nhap, error: e1 } = await loc(supabase.from('dac_ta').select(COT_DT)).eq('la_ban_nhap', true).maybeSingle();
   if (e1) throw loiDacTa('Không đọc được bản đặc tả', e1.message);
   const { data: moiNhat, error: e2 } = await loc(supabase.from('dac_ta').select(COT_DT)).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
@@ -232,7 +238,8 @@ export async function layDacTa(maMon: string, ky: string, chuSoHuu?: string) {
 }
 
 async function layMaTranRiengDeKeThua(supabase: any, orgId: string, maMon: string, ky: string, id: string, chu: string) {
-  const { data, error } = await cuaNguoi(supabase.from('ma_tran_rieng').select(COT_MTR), orgId, maMon, ky, chu).eq('la_ban_nhap', false).order('phien_ban', { ascending: false });
+  const KHOI = await layKhoiLamViec();
+  const { data, error } = await cuaNguoi(KHOI, supabase.from('ma_tran_rieng').select(COT_MTR), orgId, maMon, ky, chu).eq('la_ban_nhap', false).order('phien_ban', { ascending: false });
   if (error) throw new Error(`Không đọc được ma trận riêng: ${error.message}`);
   const ds = ((data ?? []) as any[]).map(sangMtr);
   const moiNhat = ds[0];
@@ -243,6 +250,7 @@ async function layMaTranRiengDeKeThua(supabase: any, orgId: string, maMon: strin
 }
 
 export async function luuNhapDacTa(maMon: string, ky: string, maTranRiengId: string, dacTa: DacTa, trangThai: TrangThaiDacTa, chuSoHuu?: string): Promise<BanDacTa> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId, role } = await layNguoiDung();
   const chu = chuSoHuu ?? user.id;
@@ -252,7 +260,7 @@ export async function luuNhapDacTa(maMon: string, ky: string, maTranRiengId: str
   const { chon } = await layMaTranRiengDeKeThua(supabase, orgId, maMon, ky, maTranRiengId, chu);
   if (chon.phienBan !== dacTa.phien_ban_ma_tran_rieng) throw new Error('Số phiên bản ma trận riêng ghi trong đặc tả không đúng.');
   const hang = { du_lieu: dacTa, trang_thai: trangThai, ma_tran_rieng_id: maTranRiengId, phien_ban_ma_tran_rieng: dacTa.phien_ban_ma_tran_rieng, updated_by: user.id };
-  const { data: cu } = await cuaNguoi(supabase.from('dac_ta').select('id'), orgId, maMon, ky, chu).eq('la_ban_nhap', true).maybeSingle();
+  const { data: cu } = await cuaNguoi(KHOI, supabase.from('dac_ta').select('id'), orgId, maMon, ky, chu).eq('la_ban_nhap', true).maybeSingle();
   const { data, error } = cu
     ? await supabase.from('dac_ta').update(hang).eq('id', cu.id).select(COT_DT).single()
     : await supabase.from('dac_ta').insert({ ...hang, organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, la_ban_nhap: true, chu_so_huu: chu, created_by: user.id }).select(COT_DT).single();
@@ -262,6 +270,7 @@ export async function luuNhapDacTa(maMon: string, ky: string, maTranRiengId: str
 
 /** Xác nhận đặc tả: kiểm định lại với đúng phiên bản ma trận riêng đã chọn, và phải là phiên bản mới nhất. */
 export async function xacNhanDacTa(maMon: string, ky: string, maTranRiengId: string, dacTa: DacTa, chuSoHuu?: string): Promise<{ ban: BanDacTa; taoPhienBanMoi: boolean }> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId, role } = await layNguoiDung();
   const chu = chuSoHuu ?? user.id;
@@ -274,7 +283,7 @@ export async function xacNhanDacTa(maMon: string, ky: string, maTranRiengId: str
   const kq = kiemDinhDacTa(chon.duLieu.ma_tran_chung, chon.duLieu.ma_tran_rieng, dacTa, { phienBanMaTranRiengMoiNhat: moiNhat.phienBan ?? undefined });
   if (!kq.hopLe) throw new Error(`Đặc tả còn lỗi, chưa xác nhận được: ${kq.loi[0]}`);
 
-  const loc = (q: any) => cuaNguoi(q, orgId, maMon, ky, chu);
+  const loc = (q: any) => cuaNguoi(KHOI, q, orgId, maMon, ky, chu);
   const { data: moiNhatDt } = await loc(supabase.from('dac_ta').select(COT_DT)).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
   const cu = moiNhatDt?.[0] as any;
   const giongCu = !!cu && cu.ma_tran_rieng_id === maTranRiengId && JSON.stringify(cu.du_lieu) === JSON.stringify(dacTa);
@@ -291,7 +300,7 @@ export async function xacNhanDacTa(maMon: string, ky: string, maTranRiengId: str
     ban = sangDt(data);
   }
   // Bản nháp cũng chuyển sang "đã xác nhận" (trigger chỉ chặn đổi loại bản, không chặn đổi trạng thái của nháp)
-  const { data: nhap } = await cuaNguoi(supabase.from('dac_ta').select('id'), orgId, maMon, ky, chu).eq('la_ban_nhap', true).maybeSingle();
+  const { data: nhap } = await cuaNguoi(KHOI, supabase.from('dac_ta').select('id'), orgId, maMon, ky, chu).eq('la_ban_nhap', true).maybeSingle();
   const hangNhap = { du_lieu: dacTa, trang_thai: 'DA_XAC_NHAN', ma_tran_rieng_id: maTranRiengId, phien_ban_ma_tran_rieng: dacTa.phien_ban_ma_tran_rieng, updated_by: user.id };
   if (nhap) await supabase.from('dac_ta').update(hangNhap).eq('id', nhap.id);
   else await supabase.from('dac_ta').insert({ ...hangNhap, organization_id: orgId, khoi: KHOI, ma_mon: maMon, ky_kiem_tra: ky, la_ban_nhap: true, chu_so_huu: chu, created_by: user.id });
@@ -346,6 +355,7 @@ async function hanhDongCuaDe(supabase: any, id: string): Promise<string[]> {
 
 /** Đề của chính người đăng nhập cho môn, kì (nếu có). */
 export async function layDe(maMon: string, ky: string): Promise<{ de: BanDe | null; dacTaDaCat?: boolean }> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId } = await layNguoiDung();
   const { data, error } = await supabase.from('de_kiem_tra').select(COT_DE).eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('created_by', user.id).maybeSingle();
@@ -361,11 +371,12 @@ export async function layDe(maMon: string, ky: string): Promise<{ de: BanDe | nu
  * Không xóa gì; đề đã duyệt vẫn ở kho đề. Lần làm tới bắt đầu từ ma trận chung hiện tại của tổ.
  */
 export async function batDauLai(maMon: string, ky: string): Promise<{ maTran: number; dacTa: number }> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId } = await layNguoiDung();
   const luc = new Date().toISOString();
   const cat = async (bang: 'ma_tran_rieng' | 'dac_ta') => {
-    const { data, error } = await cuaNguoi(supabase.from(bang).update({ cat_luc: luc }), orgId, maMon, ky, user.id).select('id');
+    const { data, error } = await cuaNguoi(KHOI, supabase.from(bang).update({ cat_luc: luc }), orgId, maMon, ky, user.id).select('id');
     if (error) throw new Error(`Không cất được bản cũ: ${error.message}`);
     return data?.length ?? 0;
   };
@@ -396,6 +407,7 @@ const TT_DE_XOA_DUOC = ['BAN_NHAP', 'CAN_KIEM_TRA', 'CO_LOI', 'CAN_KIEM_TRA_LAI'
 
 /** Mọi bản ma trận riêng, đặc tả của chính mình cho một môn, kì (kể cả bản đã cất), mới nhất trước. */
 export async function dsBanCuaToi(maMon: string, ky: string): Promise<DongBanCuaToi[]> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId } = await layNguoiDung();
   const loc = (q: any) => q.eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('chu_so_huu', user.id);
@@ -482,12 +494,13 @@ export async function layDacTaCuaDe(maMon: string, ky: string, dacTaId: string):
  * chuSoHuu: khi lưu đề thì bắt buộc là đặc tả của chính người soạn.
  */
 async function layDacTaDeKeThua(supabase: any, orgId: string, maMon: string, ky: string, id: string, chuSoHuu?: string) {
+  const KHOI = await layKhoiLamViec();
   const { data: r, error } = await supabase.from('dac_ta').select(`${COT_DT}, chu_so_huu`).eq('organization_id', orgId).eq('khoi', KHOI).eq('ma_mon', maMon).eq('ky_kiem_tra', ky).eq('la_ban_nhap', false).eq('id', id).maybeSingle();
   if (error) throw loiDacTa('Không đọc được đặc tả', error.message);
   if (!r) throw new Error('Không tìm thấy phiên bản đặc tả mà đề kế thừa.');
   if (chuSoHuu && r.chu_so_huu !== chuSoHuu) throw new Error('Đề phải soạn theo đặc tả của chính thầy cô. Hãy làm ma trận riêng, đặc tả của mình ở bước 2, 3.');
   const chon = sangDt(r);
-  const { data: ds } = await cuaNguoi(supabase.from('dac_ta').select(COT_DT), orgId, maMon, ky, r.chu_so_huu).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
+  const { data: ds } = await cuaNguoi(KHOI, supabase.from('dac_ta').select(COT_DT), orgId, maMon, ky, r.chu_so_huu).eq('la_ban_nhap', false).order('phien_ban', { ascending: false }).limit(1);
   const moiNhat = ds?.[0] ? sangDt(ds[0]) : chon;
   return { chon, moiNhat };
 }
@@ -499,6 +512,7 @@ const TT_SUA_DUOC = ['BAN_NHAP', 'CAN_KIEM_TRA', 'CO_LOI', 'CAN_KIEM_TRA_LAI', '
  * Gửi thẩm định đi qua hàm quy trình của cơ sở dữ liệu. Sửa đề đang thẩm định thì thu hồi về nháp trước; sửa đề đã duyệt thì tạo phiên bản mới.
  */
 export async function luuDe(maMon: string, ky: string, dacTaId: string, de: DeKiemTra, trangThai: TrangThaiDe): Promise<{ ban: BanDe; kiemDinh: KetQuaKiemDinhDe }> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, ky);
   const { supabase, user, orgId } = await layNguoiDung();
   if (de.ma_mon !== maMon || de.ky_kiem_tra !== ky) throw new Error('Đề không đúng môn hoặc kì đã chọn.');
@@ -573,6 +587,7 @@ const TT_XOA_DUOC = ['BAN_NHAP', 'CAN_KIEM_TRA', 'CO_LOI', 'CAN_KIEM_TRA_LAI', '
 
 /** Danh sách đề người đăng nhập được xem (cơ sở dữ liệu lọc) kèm các thao tác được phép. */
 export async function danhSachDe(): Promise<DongKhoDe[]> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId, vaiTro } = await layNguoiDung();
   const { data, error } = await supabase.from('de_kiem_tra').select('id, ma_de, ma_mon, ky_kiem_tra, trang_thai, pham_vi_xem, phien_ban_dac_ta, updated_at, duyet_luc, created_by').eq('organization_id', orgId).eq('khoi', KHOI).order('updated_at', { ascending: false });
   if (error) throw loiDe('Không đọc được kho đề', error.message);
@@ -719,6 +734,7 @@ export async function dsChiaSe(deId: string): Promise<{ nguoi: string; ten: stri
  * và người dùng chưa có đề ở kì đó (không ghi đè). Kết quả là bản nháp để rà lại; đề nguồn giữ nguyên.
  */
 export async function saoChepDe(maMon: string, kyNguon: string, kyDich: string): Promise<{ ban: BanDe; daChep: number; trong: number }> {
+  const KHOI = await layKhoiLamViec();
   kiemMonKy(maMon, kyNguon);
   kiemMonKy(maMon, kyDich);
   if (kyNguon === kyDich) throw new Error('Kì đích phải khác kì của đề nguồn.');
@@ -750,6 +766,7 @@ export async function xoaDe(id: string): Promise<void> {
 
 /** Hồ sơ đề (môn × kì) đã có ma trận riêng, đặc tả hoặc đề của chính mình, kèm bước làm tiếp. */
 export async function danhSachHoSoDe(): Promise<DongHoSoDe[]> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId } = await layNguoiDung();
   const loc = (bang: string, cot: string) => supabase.from(bang).select(cot).eq('organization_id', orgId).eq('khoi', KHOI);
   const [mtr, dt, de] = await Promise.all([

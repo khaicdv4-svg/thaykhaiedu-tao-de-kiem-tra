@@ -131,6 +131,8 @@ export interface CauChoAI {
   maMon?: string | null;
   ky?: string | null;
   tuan?: number | null;
+  /** Khối lớp của đề; thiếu thì coi là khối 4 */
+  khoi?: number;
 }
 
 /** Câu có từ hai ý trở lên: nhắc AI soạn đủ ý, chia điểm, ý ứng với YCCĐ nào. */
@@ -161,12 +163,13 @@ function moTaDangBai(c: CauChoAI): string {
 
 function mota(c: CauChoAI): string {
   const lc = c.luaChon?.some((x) => x.trim()) ? `\nPhương án/ý: ${c.luaChon.map((x, i) => `${'ABCD'[i] ?? i + 1}. ${x}`).join(' | ')}` : '';
-  return `Môn ${c.tenMon} lớp 4. Câu ${c.hinhThuc === 'TL' ? 'tự luận' : 'trắc nghiệm'}${c.dang ? ` (dạng ${c.dang})` : ''}, mức ${c.muc}, ${String(c.diem).replace('.', ',')} điểm.
+  const khoi = c.khoi ?? 4;
+  return `Môn ${c.tenMon} lớp ${khoi}. Câu ${c.hinhThuc === 'TL' ? 'tự luận' : 'trắc nghiệm'}${c.dang ? ` (dạng ${c.dang})` : ''}, mức ${c.muc}, ${String(c.diem).replace('.', ',')} điểm.
 Yêu cầu cần đạt: ${c.yccd || '(chưa ghi)'}
 Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaDangBai(c)}${moTaYNho(c)}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYÊU CẦU RIÊNG CỦA GIÁO VIÊN CHO CÂU NÀY (bắt buộc theo đúng dạng bài này; YCCĐ rộng hơn thì chỉ soạn phần khớp yêu cầu, không đổi sang dạng khác): ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}
 
-QUY TẮC CỦA TỔ KHỐI 4 (bắt buộc tuân theo):
-${quyTacTheoMon({ maMon: c.maMon, tenMon: c.tenMon, ky: c.ky, muc: c.muc, tuan: c.tuan })}`;
+QUY TẮC CỦA TỔ KHỐI ${khoi} (bắt buộc tuân theo):
+${quyTacTheoMon({ maMon: c.maMon, tenMon: c.tenMon, ky: c.ky, muc: c.muc, tuan: c.tuan, khoi })}`;
 }
 
 export function loiNhacSoanCau(c: CauChoAI, ngu: Pick<NguCanhSach, 'sgk' | 'sgv'>): string {

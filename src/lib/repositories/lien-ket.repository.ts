@@ -12,6 +12,7 @@ import { dienLaiTuPpct, dungLaiDacTa, taoGoiYTheoYccd, type DacTa, type TrangTha
 import { maTranChungTuKho } from './kho-ma-tran.repository';
 import { dsMucLucSgk, dsTietPpct, dsYccd } from './chuong-trinh.repository';
 import { ghepBaiTuDong } from './ghep-bai.repository';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 import {
   layDacTa,
   layMaTranRieng,
@@ -95,7 +96,7 @@ export async function capNhatSauMaTranRieng(maMon: string, ky: string, chu?: str
   const kq = dungLaiDacTa(mtc, mtr, mtrBan.phienBan, goc.duLieu);
   let dacTa: DacTa = kq.dacTa;
   try {
-    const lop = Number(mtc.lop.replace(/\D/g, '')) || 4;
+    const lop = Number(mtc.lop.replace(/\D/g, '')) || (await layKhoiLamViec());
     const [tiet, yccd, mucLuc] = await Promise.all([
       dsTietPpct(maMon, lop),
       dsYccd({ mon: maMon, lop, trangThai: 'DA_DUYET' }),

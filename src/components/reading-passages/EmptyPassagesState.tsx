@@ -1,11 +1,13 @@
 import React from 'react';
 import { FileText, Plus, BookOpen } from 'lucide-react';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 interface EmptyPassagesStateProps {
   onAddNew: () => void;
 }
 
 export function EmptyPassagesState({ onAddNew }: EmptyPassagesStateProps) {
+  const { khoiLamViec } = useAuth();
   return (
     <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center bg-white dark:bg-slate-900 shadow-xs max-w-2xl mx-auto my-8 space-y-5">
       <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900 flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400">
@@ -17,7 +19,7 @@ export function EmptyPassagesState({ onAddNew }: EmptyPassagesStateProps) {
           Chưa có ngữ liệu Tiếng Việt
         </div>
         <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-          Kho văn bản Đọc Tiếng Việt Khối 4 hiện đang trống
+          Kho văn bản Đọc Tiếng Việt Khối {khoiLamViec} hiện đang trống
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-lg mx-auto">
           Ngữ liệu đọc là kho văn bản độc lập dùng cho đề kiểm tra định kỳ môn Tiếng Việt, giúp tránh lặp lại bài đọc trong SGK và đảm bảo tính khách quan trong đánh giá năng lực học sinh.

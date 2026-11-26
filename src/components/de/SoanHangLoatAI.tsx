@@ -42,7 +42,7 @@ export function SoanHangLoatAI({ onDaLuu }: { onDaLuu: () => void }) {
   useEffect(() => {
     if (!mo) return;
     setYccdId(''); setDs([]);
-    void fetch(`/api/chuong-trinh/yccd?mon=${mon}&lop=4&trangThai=DA_DUYET`).then((r) => r.json()).then((j) => setDs(j.yccd ?? [])).catch(() => setDs([]));
+    void fetch(`/api/chuong-trinh/yccd?mon=${mon}&trangThai=DA_DUYET`).then((r) => r.json()).then((j) => setDs(j.yccd ?? [])).catch(() => setDs([]));
   }, [mon, mo]);
 
   useEffect(() => { if (yccd?.bai) setBaiHoc(yccd.bai); }, [yccd]);

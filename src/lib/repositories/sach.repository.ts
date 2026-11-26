@@ -93,12 +93,13 @@ async function trangCuaSach(supabase: any, sachId: string, tuPdf?: number, denPd
 }
 
 /** Mã môn của Xưởng → mã môn trong kho SGK chung (chỉ những cuốn đã nạp). */
-const MON_KHO_CHUNG: Record<string, string> = { TOAN: 'subj-toan4' };
+const MON_KHO_CHUNG: Record<string, string> = { TOAN: 'subj-toan' };
 
 /** Chữ SGK theo bài từ kho SGK chung (bảng sgk_sections). Lỗi hoặc không có thì trả mảng rỗng, không làm hỏng luồng chính. */
 async function baiSgkKhoChung(supabase: any, mon: string, lop: number, tap: number, tu: number, den: number): Promise<BaiSgkChu[]> {
-  const subject = MON_KHO_CHUNG[mon];
-  if (!subject) return [];
+  const goc = MON_KHO_CHUNG[mon];
+  if (!goc) return [];
+  const subject = `${goc}${lop}`;
   const { data: sach } = await supabase.from('sgk_books').select('id').eq('subject_id', subject).eq('grade', lop).eq('volume', tap).limit(1);
   const bookId = (sach as { id: string }[] | null)?.[0]?.id;
   if (!bookId) return [];

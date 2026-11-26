@@ -211,8 +211,11 @@ function TabTaiLieu({ duocSua, chuyenSangYccd }: { duocSua: boolean; chuyenSangY
 }
 
 function TabYccd({ duocSua }: { duocSua: boolean }) {
+  const { khoiLamViec } = useAuth();
   const [mon, setMon] = useState('TOAN');
-  const [lop, setLop] = useState('4');
+  const [lop, setLop] = useState(String(khoiLamViec));
+  // Mặc định theo khối đang làm việc (chọn ở Tổng quan)
+  useEffect(() => { setLop(String(khoiLamViec)); }, [khoiLamViec]);
   const [tt, setTt] = useState<TrangThaiYccd>('CHO_DUYET');
   const [ds, setDs] = useState<YccdChuongTrinh[]>([]);
   const [dangTai, setDangTai] = useState(false);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 import {
   extractAndFilterPpctHubData,
   validatePpctDiscrepancies,
@@ -7,7 +8,8 @@ import {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { jsonContent, grade = 4, academicYear = '2026-2027' } = body;
+    const { jsonContent, grade: gradeGui, academicYear = '2026-2027' } = body;
+    const grade = await khoiHoacLamViec(gradeGui);
 
     if (!jsonContent) {
       return NextResponse.json(

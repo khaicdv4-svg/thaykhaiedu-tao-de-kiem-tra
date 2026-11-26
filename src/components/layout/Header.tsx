@@ -35,7 +35,7 @@ export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
   // Trang chủ đã có banner lớn mang tên xưởng nên thanh trên không nhắc lại
   const laTrangChu = usePathname() === '/dashboard';
   const dataMode = getAppDataMode();
-  const { profile, activeRole, signOut } = useAuth();
+  const { profile, activeRole, signOut, khoiLamViec } = useAuth();
   const [tuKhoa, setTuKhoa] = useState('');
   const [moGoiY, setMoGoiY] = useState(false);
   const oTim = useRef<HTMLInputElement>(null);
@@ -154,6 +154,14 @@ export function Header({ onToggleMobileNav, isMobileOpen }: HeaderProps) {
 
         {/* Phải: trạng thái, thông báo, tài khoản */}
         <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">
+          {/* Khối đang làm việc: bấm để về Tổng quan đổi khối */}
+          <Link
+            href="/dashboard#chon-khoi"
+            title="Khối lớp đang làm việc. Bấm để đổi ở trang Tổng quan."
+            className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs sm:text-sm font-bold text-indigo-800 hover:bg-indigo-100 whitespace-nowrap"
+          >
+            Lớp {khoiLamViec}
+          </Link>
           {/* Kết nối kho chung PPCT HUB */}
           {dataMode === 'REAL_DATA' && <span className="hidden 2xl:inline-flex"><HuyHieuPpctHub /></span>}
 

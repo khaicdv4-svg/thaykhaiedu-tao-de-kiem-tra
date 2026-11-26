@@ -11,8 +11,8 @@ import { soSanhMaTran, tomTatThayDoi } from '@/core/kho-ma-tran/so-sanh';
 import { docMaTranChungTuBang } from '@/core/kho-ma-tran/doc-ma-tran-chung';
 import type { KyKiemTra, MaTranChung } from '@/types/matrix-template';
 import { kiemDinhMaTranChung } from '@/core/matrix/matrix-template';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
-const KHOI = 4;
 const VAI_TRO_TAI = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 const VAI_TRO_XAC_NHAN = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 export const SO_KY_TU_TOI_DA = 500_000;
@@ -102,6 +102,7 @@ export function kiemTraFileTaiLen(f: FileTaiLen): string | null {
 
 /** Danh sách file của một loại (không kèm nội dung, chỉ số ký tự). */
 export async function danhSachTaiLieu(loai: LoaiMaTranTo): Promise<TaiLieuMaTran[]> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, orgId } = await layNguoiDung();
   const { data, error } = await supabase
     .from('tai_lieu_ma_tran')
@@ -150,6 +151,7 @@ function loiMaTranChung(cauTruc: KhoiVanBan[] | null, maMon: string, ky: string,
 }
 
 export async function luuNhieuFile(ds: FileTaiLen[]): Promise<KetQuaLuuFile[]> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId, role } = await layNguoiDung();
   if (!VAI_TRO_TAI.includes(role)) throw new Error('Chỉ tổ trưởng, tổ phó hoặc quản trị mới được tải ma trận lên.');
   if (ds.length === 0) return [];
@@ -237,6 +239,7 @@ export async function xacNhanTaiLieu(id: string): Promise<{ loai: LoaiMaTranTo; 
 
 /** Tạo thông báo "ma trận đã cập nhật" kèm tóm tắt những gì thay đổi so với bản đã xác nhận trước đó. */
 async function baoMaTranCapNhat(supabase: Awaited<ReturnType<typeof layNguoiDung>>['supabase'], userId: string, orgId: string, id: string): Promise<void> {
+  const KHOI = await layKhoiLamViec();
   const { data: moi } = await supabase
     .from('tai_lieu_ma_tran')
     .select('loai, ma_mon, ky_kiem_tra, phien_ban, ten_file, noi_dung, ghi_chu')
@@ -304,6 +307,7 @@ export interface MaTranChungTuKho {
  * Bước 2 lập ma trận riêng dùng kết quả này thay cho mẫu viết sẵn trong mã.
  */
 export async function maTranChungTuKho(maMon: string, ky: string): Promise<MaTranChungTuKho> {
+  const KHOI = await layKhoiLamViec();
   const { supabase, orgId } = await layNguoiDung();
   if (!DANH_SACH_KY_MA_TRAN.some((k) => k.ma === ky)) throw new Error('Kì kiểm tra không hợp lệ.');
   const tenMon = DANH_SACH_MON.find((m) => m.ma === maMon)?.ten;
@@ -336,6 +340,6 @@ export async function maTranChungTuKho(maMon: string, ky: string): Promise<MaTra
   if (!Array.isArray(ban.cau_truc) || ban.cau_truc.length === 0) {
     return { ...goc, mtc: null, canhBao: [], loi: 'File này chưa có dạng bảng. Vào Ma trận chung, bấm "Chọn lại thư mục để hiện dạng bảng" rồi thử lại.' };
   }
-  const kq = docMaTranChungTuBang(ban.cau_truc as KhoiVanBan[], { maMon, tenMon, ky: ky as KyKiemTra, phienBan: ban.phien_ban as number });
+  const kq = docMaTranChungTuBang(ban.cau_truc as KhoiVanBan[], { maMon, tenMon, ky: ky as KyKiemTra, phienBan: ban.phien_ban as number, lop: `Lớp ${KHOI}` });
   return { ...goc, ...kq };
 }

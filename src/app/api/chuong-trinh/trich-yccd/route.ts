@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { layTaiLieuDayDu, luuYccdTrich } from '@/lib/repositories/chuong-trinh.repository';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 import { HE_THONG_TRICH_YCCD, TOI_DA_PHAN, chiaPhan, docYccdAI, kiemTraTrich, loiNhacTrichYccd } from '@/core/chuong-trinh/trich-yccd';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 
 export const maxDuration = 120;
 
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     const { taiLieuId, lop, phan = 0 } = (await req.json()) as { taiLieuId?: string; lop?: number; phan?: number };
     if (!taiLieuId) return NextResponse.json({ error: 'Thiếu tài liệu.' }, { status: 400 });
     const tl = await layTaiLieuDayDu(taiLieuId);
-    const lopTrich = tl.lop ?? lop;
+    const lopTrich = tl.lop ?? (await khoiHoacLamViec(lop));
     if (!lopTrich || lopTrich < 1 || lopTrich > 5) return NextResponse.json({ error: 'Chọn lớp cần trích YCCĐ.' }, { status: 400 });
     if (!tl.noiDung.trim()) return NextResponse.json({ error: 'Tài liệu chưa có chữ (link chưa đọc được). Thầy dán chữ hoặc tải file lên.' }, { status: 400 });
     const cacPhan = chiaPhan(tl.noiDung);

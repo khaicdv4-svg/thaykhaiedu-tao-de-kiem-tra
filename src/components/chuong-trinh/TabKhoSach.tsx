@@ -11,16 +11,17 @@ import { BookOpen, Loader2, ScanText, Trash2, Upload } from 'lucide-react';
 import { DANH_SACH_MON, TEN_MON } from '@/core/chuong-trinh/mon';
 import { moPdfDocChu, type PdfDocChu } from '@/core/utils/doc-tep';
 import { moPdfLamAnh, type PdfAnh } from '@/core/utils/pdf-anh';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50';
-const LOP = 4;
 const TOI_DA_TRANG_PDF = 400;
 
 interface Sach { id: string; mon: string; loai: 'SGK' | 'SGV'; tap: number; tenFile: string; soTrangPdf: number; trangDauPdf: number; soTrangCoChu: number; soTrangAiDoc: number }
 
 export function TabKhoSach({ duocSua }: { duocSua: boolean }) {
+  const { khoiLamViec } = useAuth();
   const [ds, setDs] = useState<Sach[]>([]);
   const [mon, setMon] = useState('TOAN');
   const [loai, setLoai] = useState<'SGK' | 'SGV'>('SGK');
@@ -35,7 +36,7 @@ export function TabKhoSach({ duocSua }: { duocSua: boolean }) {
   const [den, setDen] = useState('');
 
   const nap = useCallback(async () => {
-    const r = await fetch(`/api/chuong-trinh/sach?lop=${LOP}`).then((x) => x.json()).catch(() => ({}));
+    const r = await fetch('/api/chuong-trinh/sach').then((x) => x.json()).catch(() => ({}));
     if (r.error) setTb({ loai: 'loi', text: r.error });
     setDs(Array.isArray(r.sach) ? r.sach : []);
   }, []);
@@ -62,7 +63,7 @@ export function TabKhoSach({ duocSua }: { duocSua: boolean }) {
       setTienDo('Đang mở file…');
       const doc: PdfDocChu = await moPdfDocChu(tep.buf);
       if (doc.soTrang > TOI_DA_TRANG_PDF) throw new Error(`File có ${doc.soTrang} trang, vượt giới hạn ${TOI_DA_TRANG_PDF} trang. Thầy tách file rồi tải từng phần.`);
-      const tr = await fetch('/api/chuong-trinh/sach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon, lop: LOP, loai, tap, tenFile: tep.ten, soTrangPdf: doc.soTrang, trangDauPdf: Math.max(1, Number(trangDau) || 1) }) }).then((x) => x.json());
+      const tr = await fetch('/api/chuong-trinh/sach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mon, loai, tap, tenFile: tep.ten, soTrangPdf: doc.soTrang, trangDauPdf: Math.max(1, Number(trangDau) || 1) }) }).then((x) => x.json());
       if (tr.error) throw new Error(tr.error);
       let nhom: { trang: number; chu: string }[] = [];
       let coChu = 0;
@@ -128,7 +129,7 @@ export function TabKhoSach({ duocSua }: { duocSua: boolean }) {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        <p className="font-semibold">Kho sách giáo khoa và sách giáo viên lớp 4</p>
+        <p className="font-semibold">Kho sách giáo khoa và sách giáo viên lớp {khoiLamViec}</p>
         <p className="mt-1">Thầy tải file PDF lên một lần. Ứng dụng chỉ giữ chữ của từng trang để AI tìm đúng bài, đúng trang trong bản đặc tả khi soạn câu và đối chiếu. Sách là của trường, chỉ dùng nội bộ; AI không chép nguyên bài tập trong sách vào đề.</p>
       </div>
 

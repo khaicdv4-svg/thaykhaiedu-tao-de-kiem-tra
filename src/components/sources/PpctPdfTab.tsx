@@ -4,24 +4,31 @@
  * Nhập PPCT từ PDF: PDF có chữ thì đọc chữ, PDF ảnh quét thì AI đọc ảnh các trang thầy chọn.
  * AI chép thành bảng, code kiểm tra, thầy xem rồi mới lưu (thay lịch tiết cũ của môn đó).
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, FileUp, Loader2, TriangleAlert } from 'lucide-react';
 import { docBangPpct, taoBackupHub } from '@/core/chuong-trinh/ppct-tu-pdf';
 import { chiaPhan } from '@/core/chuong-trinh/trich-yccd';
 import { docBangTuTep, docChuTuPdf } from '@/core/utils/doc-tep';
 import { moPdfLamAnh, type PdfAnh } from '@/core/utils/pdf-anh';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 const o = 'rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white';
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50';
-const MON = [
-  ['subj-toan4', 'Toán 4'], ['subj-tv4', 'Tiếng Việt 4'], ['subj-kh4', 'Khoa học 4'], ['subj-lsdl4', 'Lịch sử và Địa lí 4'],
-  ['subj-cn4', 'Công nghệ 4'], ['subj-dd4', 'Đạo đức 4'], ['subj-hdtn4', 'Hoạt động trải nghiệm 4'],
+/** Môn theo khối đang làm việc (mã PPCT HUB dạng subj-toan4, subj-toan5…) */
+const MON_GOC = [
+  ['subj-toan', 'Toán'], ['subj-tv', 'Tiếng Việt'], ['subj-kh', 'Khoa học'], ['subj-lsdl', 'Lịch sử và Địa lí'],
+  ['subj-cn', 'Công nghệ'], ['subj-dd', 'Đạo đức'], ['subj-hdtn', 'Hoạt động trải nghiệm'],
 ] as const;
+const monTheoKhoi = (k: number) => MON_GOC.map(([ma, ten]) => [`${ma}${k}`, `${ten} ${k}`] as const);
 const NAM_HOC = '2026-2027';
 
 export function PpctPdfTab({ loai = 'pdf' }: { loai?: 'pdf' | 'bang' }) {
-  const [mon, setMon] = useState<string>('subj-toan4');
+  const { khoiLamViec } = useAuth();
+  const MON = useMemo(() => monTheoKhoi(khoiLamViec), [khoiLamViec]);
+  const [mon, setMon] = useState<string>(`subj-toan${khoiLamViec}`);
+  // Đổi khối thì giữ môn, đổi số lớp ở cuối mã
+  useEffect(() => { setMon((m) => m.replace(/\d$/, String(khoiLamViec))); }, [khoiLamViec]);
   const [tep, setTep] = useState<{ ten: string; chu: string | null; buf: ArrayBuffer } | null>(null);
   const [anhDoc, setAnhDoc] = useState<PdfAnh | null>(null);
   const [tu, setTu] = useState('');
@@ -91,7 +98,7 @@ export function PpctPdfTab({ loai = 'pdf' }: { loai?: 'pdf' | 'bang' }) {
     setDangLuu(true); setTb(null);
     try {
       const hub = taoBackupHub(kq.dong, mon, 4, NAM_HOC);
-      const r = await fetch('/api/curriculum-sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonContent: hub, selectedSubjectIds: [mon], provenanceType: 'UNVERIFIED_PENDING', grade: 4, academicYear: NAM_HOC }) });
+      const r = await fetch('/api/curriculum-sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonContent: hub, selectedSubjectIds: [mon], provenanceType: 'UNVERIFIED_PENDING', academicYear: NAM_HOC }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { setTb({ loai: 'loi', text: j.error ?? `Lỗi ${r.status}` }); return; }
       setTb({ loai: 'ok', text: `Đã lưu ${kq.tongTiet} tiết. Môn này đã được thay lịch tiết mới; xem lại ở thẻ Kho nguồn đã lưu.` });

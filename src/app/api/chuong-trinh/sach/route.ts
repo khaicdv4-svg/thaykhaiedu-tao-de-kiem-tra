@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dsSach, taoSach, xoaSach } from '@/lib/repositories/sach.repository';
 import { TEN_MON } from '@/core/chuong-trinh/mon';
+import { khoiHoacLamViec } from '@/lib/khoi-lam-viec.server';
 
 const loi = (e: unknown) => {
   const m = e instanceof Error ? e.message : String(e);
   return NextResponse.json({ error: m }, { status: /Chỉ tổ trưởng|Cần đăng nhập|Chưa cấu hình/.test(m) ? 403 : 400 });
 };
 
-/** Danh sách sách đã tải lên của lớp: GET ?lop=4 */
+/** Danh sách sách đã tải lên của lớp: GET ?lop=4 (không gửi thì lấy khối đang làm việc) */
 export async function GET(req: NextRequest) {
   try {
-    return NextResponse.json({ success: true, sach: await dsSach(Number(req.nextUrl.searchParams.get('lop') ?? 4)) });
+    return NextResponse.json({ success: true, sach: await dsSach(await khoiHoacLamViec(req.nextUrl.searchParams.get('lop'))) });
   } catch (e) { return loi(e); }
 }
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   try {
     const b = (await req.json()) as { mon?: string; lop?: number; loai?: 'SGK' | 'SGV'; tap?: number; tenFile?: string; soTrangPdf?: number; trangDauPdf?: number };
     if (!b.mon || !TEN_MON[b.mon]) return NextResponse.json({ error: 'Thiếu hoặc sai môn.' }, { status: 400 });
-    return NextResponse.json({ success: true, ...(await taoSach({ mon: b.mon, lop: b.lop ?? 4, loai: b.loai as 'SGK' | 'SGV', tap: Number(b.tap), tenFile: b.tenFile ?? '', soTrangPdf: Number(b.soTrangPdf), trangDauPdf: Number(b.trangDauPdf ?? 1) })) });
+    return NextResponse.json({ success: true, ...(await taoSach({ mon: b.mon, lop: await khoiHoacLamViec(b.lop), loai: b.loai as 'SGK' | 'SGV', tap: Number(b.tap), tenFile: b.tenFile ?? '', soTrangPdf: Number(b.soTrangPdf), trangDauPdf: Number(b.trangDauPdf ?? 1) })) });
   } catch (e) { return loi(e); }
 }
 

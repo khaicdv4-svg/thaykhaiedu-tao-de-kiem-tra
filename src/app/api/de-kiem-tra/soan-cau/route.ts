@@ -4,6 +4,7 @@ import { nguCanhChoCau } from '@/lib/repositories/sach.repository';
 import { HE_THONG_SOAN_CAU_TU_SACH, docCauAISoan, loiNhacSoanCau, soYTrongCau } from '@/core/chuong-trinh/sach';
 import { TEN_MON } from '@/core/chuong-trinh/mon';
 import { kiemTraDangBai } from '@/core/de/dang-bai';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
 export const maxDuration = 120;
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     const ngu = await nguCanhChoCau(b.mon, 4, { baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', tuan: typeof d.tuan === 'number' ? d.tuan : null });
     const baiDoc = b.baiDoc?.noiDung?.trim() ? b.baiDoc : null;
     if (!ngu.sgk.trim() && !baiDoc) return NextResponse.json({ error: `Chưa có trang SGK làm căn cứ để soạn. ${ngu.thieu.filter((x) => !/không bắt buộc/.test(x)).join(' ')}`, thieu: ngu.thieu }, { status: 422 });
-    const noiDungGoc = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, yNho: Array.isArray(d.yNho) ? d.yNho.slice(0, 8) : null, maMon: b.mon, ky: b.ky ?? null, tuan: typeof d.tuan === 'number' ? d.tuan : null, ghiChuThay: (b.ghiChu ?? '').slice(0, 500), dangBai: (d.dangBai ?? '').slice(0, 300) }, ngu);
+    const noiDungGoc = loiNhacSoanCau({ tenMon: TEN_MON[b.mon], dang: d.dang ?? null, hinhThuc: d.hinhThuc ?? 'TL', muc: d.muc ?? 1, diem: d.diem ?? 0.5, yccd: d.yccd, baiHoc: d.baiHoc ?? '', trangSgk: d.trangSgk ?? '', yeuCauHinh: d.yeuCauHinh, yNho: Array.isArray(d.yNho) ? d.yNho.slice(0, 8) : null, maMon: b.mon, ky: b.ky ?? null, tuan: typeof d.tuan === 'number' ? d.tuan : null, ghiChuThay: (b.ghiChu ?? '').slice(0, 500), dangBai: (d.dangBai ?? '').slice(0, 300), khoi: await layKhoiLamViec() }, ngu);
     const noiDung = baiDoc
       ? `${noiDungGoc}\n\nBÀI ĐỌC HIỂU CỦA ĐỀ (câu hỏi phải dựa vào bài đọc này, không dùng bài đọc trong SGK; được trích ý trong bài đọc này):\nTên bài: ${baiDoc.tieuDe ?? ''}${baiDoc.tacGia ? ` (${baiDoc.tacGia})` : ''}\n${(baiDoc.noiDung ?? '').slice(0, 6000)}`
       : noiDungGoc;

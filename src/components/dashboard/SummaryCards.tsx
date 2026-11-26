@@ -3,8 +3,10 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { FolderKanban, Clock, FileQuestion, BookOpen } from 'lucide-react';
 import { getAppDataMode } from '@/lib/supabase/config';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 export function SummaryCards() {
+  const { khoiLamViec } = useAuth();
   const dataMode = getAppDataMode();
   const isRealData = dataMode === 'REAL_DATA';
 
@@ -15,7 +17,7 @@ export function SummaryCards() {
       id: 'total-tests',
       title: 'Tổng đề kiểm tra',
       value: isRealData ? '0' : '24',
-      subtitle: isRealData ? 'Cơ sở dữ liệu thật (Lớp 4)' : 'DỮ LIỆU MẪU',
+      subtitle: isRealData ? `Cơ sở dữ liệu thật (Lớp ${khoiLamViec})` : 'DỮ LIỆU MẪU',
       icon: FolderKanban,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',

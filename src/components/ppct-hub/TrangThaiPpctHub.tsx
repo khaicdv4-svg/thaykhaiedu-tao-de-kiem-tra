@@ -37,7 +37,9 @@ const MAU_MON: Record<TrangThaiMon, string> = {
   hub_da_go: 'bg-red-50 text-red-800 border-red-200',
 };
 
-export function TrangThaiPpctHub({ lopMacDinh = 4 }: { lopMacDinh?: number }) {
+export function TrangThaiPpctHub({ lopMacDinh: lopTruyen }: { lopMacDinh?: number }) {
+  const { khoiLamViec } = useAuth();
+  const lopMacDinh = lopTruyen ?? khoiLamViec;
   const { trangThai, dangTai, napLai } = useTrangThaiHub();
   const { activeRole } = useAuth();
   const duocDongBo = VAI_TRO_DONG_BO.includes(activeRole);
@@ -47,10 +49,12 @@ export function TrangThaiPpctHub({ lopMacDinh = 4 }: { lopMacDinh?: number }) {
   const [thongDiep, setThongDiep] = useState<{ loai: 'ok' | 'loi'; chu: string } | null>(null);
 
   const dsLop = trangThai?.lop ?? [];
+  // Mở sẵn tab lớp của khối đang làm việc; đổi khối ở Tổng quan thì tab đổi theo
+  const coDsLop = dsLop.length > 0;
   useEffect(() => {
-    if (lopChon !== null || dsLop.length === 0) return;
+    if (!coDsLop) return;
     setLopChon(dsLop.some((l) => l.lop === lopMacDinh) ? lopMacDinh : dsLop[0].lop);
-  }, [dsLop, lopChon, lopMacDinh]);
+  }, [coDsLop, lopMacDinh]);
 
   const monCuaLop = useMemo(() => (trangThai?.mon ?? []).filter((m) => m.lop === lopChon), [trangThai, lopChon]);
   const tongLop = dsLop.find((l) => l.lop === lopChon);

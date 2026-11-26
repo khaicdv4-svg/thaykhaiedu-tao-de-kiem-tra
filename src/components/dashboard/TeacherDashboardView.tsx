@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/core/contexts/AuthContext';
 import {
   FileEdit,
   Clock,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export function TeacherDashboardView() {
+  const { khoiLamViec } = useAuth();
   const [stats, setStats] = useState({
     myExams: 0,
     peerReviews: 0,
@@ -173,7 +175,7 @@ export function TeacherDashboardView() {
               </span>
             </div>
             <CardDescription>
-              Đề thi của đồng nghiệp trong Tổ Khối 4 được phân công cho Thầy/Cô rà soát độc lập
+              Đề thi của đồng nghiệp trong Tổ Khối {khoiLamViec} được phân công cho Thầy/Cô rà soát độc lập
             </CardDescription>
           </CardHeader>
           <CardContent>

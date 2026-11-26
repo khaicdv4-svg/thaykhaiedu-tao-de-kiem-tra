@@ -17,6 +17,8 @@ import {
 } from '@/core/services/ai/cau-hinh-ai';
 import { coBiMatMayChu, giaiMaKhoa, maHoaKhoa } from '@/lib/ai/ma-hoa-khoa';
 import { goiModel, thuModel, type KetQuaAI, type YeuCauAI } from '@/lib/ai/goi-ai';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
+import { doiLopTrongLoiNhac } from '@/core/khoi-lam-viec';
 
 export const VAI_TRO_SUA_AI = ['GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
@@ -127,7 +129,10 @@ export async function goiAITheoViec(viec: ViecAI, yeuCau: YeuCauAI): Promise<Ket
   if (!khoa) throw new Error('Chưa cấu hình khóa AI. Tổ trưởng vào Cài đặt AI để nhập khóa.');
   const m = chonModelChoViec(cauHinh, viec);
   if (!m) throw new Error('Chưa chọn model cho việc này. Tổ trưởng vào Cài đặt AI để chọn.');
-  const kq = await goiModel(m, khoa, yeuCau);
+  // Lời nhắc viết sẵn cho khối 4: đổi "lớp 4", "khối 4" sang khối đang làm việc
+  const khoi = await layKhoiLamViec();
+  const yc = khoi === 4 ? yeuCau : { ...yeuCau, heThong: yeuCau.heThong && doiLopTrongLoiNhac(yeuCau.heThong, khoi), noiDung: doiLopTrongLoiNhac(yeuCau.noiDung, khoi) };
+  const kq = await goiModel(m, khoa, yc);
   return { ...kq, model: m };
 }
 

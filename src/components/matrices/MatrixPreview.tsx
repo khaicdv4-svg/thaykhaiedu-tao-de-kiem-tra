@@ -1,5 +1,5 @@
 /**
- * Xem trước ma trận (chung hoặc riêng) đúng bố cục file Word của tổ khối 4.
+ * Xem trước ma trận (chung hoặc riêng) đúng bố cục file Word của tổ.
  * Ba kiểu bố cục: docs/mau-ma-tran/README-mau-ma-tran.md, mục 2.
  * In trắng đen, Times New Roman.
  */
@@ -52,7 +52,7 @@ function Header({ m }: { m: MaTranChung }) {
         <br />
         <b>NĂM HỌC {m.nam_hoc}</b>
         <br />
-        <b>MÔN: {m.mon.toUpperCase()} – LỚP 4</b>
+        <b>MÔN: {m.mon.toUpperCase()} – {(m.lop || 'Lớp 4').toUpperCase()}</b>
         {m.thoi_gian_phut ? <div>Thời gian làm bài: {m.thoi_gian_phut} phút</div> : null}
       </div>
     </div>

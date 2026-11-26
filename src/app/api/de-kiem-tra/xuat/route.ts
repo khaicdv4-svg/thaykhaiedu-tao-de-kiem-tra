@@ -5,6 +5,7 @@ import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import { ghepDauBaiTheoMau } from '@/core/mau-de/ghep-mau';
 import { fileMauDangDung } from '@/lib/repositories/mau-de.repository';
+import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
 export const runtime = 'nodejs';
 
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
       tieuDeKy: `KTĐK ${TEN_KY[ky] ?? ky} - NĂM HỌC ${namHoc}`,
       tenMon,
       thoiGianPhut: phut,
+      lop: await layKhoiLamViec(),
     };
     if (sp.get('goi') === 'hoso') {
       const dt = await layDacTaCuaDe(mon, ky, de.dacTaId);

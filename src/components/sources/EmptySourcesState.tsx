@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpen, UploadCloud, FileText, ArrowRight } from 'lucide-react';
+import { useAuth } from '@/core/contexts/AuthContext';
 
 interface EmptySourcesStateProps {
   onStartImportJson?: () => void;
@@ -10,6 +11,7 @@ export function EmptySourcesState({
   onStartImportJson,
   onStartImportDocx,
 }: EmptySourcesStateProps) {
+  const { khoiLamViec } = useAuth();
   return (
     <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center bg-white dark:bg-slate-900 shadow-xs max-w-2xl mx-auto my-8 space-y-5">
       <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900 flex items-center justify-center mx-auto text-blue-600 dark:text-blue-400">
@@ -21,7 +23,7 @@ export function EmptySourcesState({
           Chưa có nguồn chuyên môn
         </div>
         <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-          Kho Chương trình & YCCĐ Khối 4 hiện đang trống
+          Kho Chương trình & YCCĐ Khối {khoiLamViec} hiện đang trống
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-lg mx-auto">
           Hệ thống yêu cầu nguồn PPCT và cây Yêu cầu cần đạt (YCCĐ) chính thức để làm căn cứ chuyên môn bắt buộc cho việc soạn ma trận và ra đề kiểm tra ở các giai đoạn sau.
@@ -55,7 +57,7 @@ export function EmptySourcesState({
       <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-left text-xs text-slate-500 space-y-1.5">
         <p className="font-semibold text-slate-700 dark:text-slate-300">Quy trình nhập nguồn chuẩn:</p>
         <p>1. Chọn tệp sao lưu JSON từ app THAYKHAIEDU PPCT HUB hoặc tệp Word/Excel theo mẫu.</p>
-        <p>2. Hệ thống tự động lọc Khối 4, năm học 2026–2027, bỏ dữ liệu demo.</p>
+        <p>2. Hệ thống tự động lọc Khối {khoiLamViec}, năm học 2026–2027, bỏ dữ liệu demo.</p>
         <p>3. Bộ kiểm tra sai lệch quét 6 tiêu chuẩn (môn, số tiết, tiêu đề, chuẩn Bộ, quan hệ bài/tiết, tuần/kỳ).</p>
         <p>4. Giáo viên chọn nhãn nguồn gốc <code>provenance_type</code> và bấm lưu vào kho chuyên môn trường.</p>
       </div>

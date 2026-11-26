@@ -7,6 +7,7 @@
 
 import React from 'react';
 import { WelcomeBanner } from '@/components/dashboard/WelcomeBanner';
+import { ChonKhoiLamViec } from '@/components/dashboard/ChonKhoiLamViec';
 import { RolePerspectiveSelector } from '@/components/dashboard/RolePerspectiveSelector';
 import { TeacherDashboardView } from '@/components/dashboard/TeacherDashboardView';
 import { GroupLeaderDashboardView } from '@/components/dashboard/GroupLeaderDashboardView';
@@ -21,6 +22,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
+      {/* 0. Chọn khối lớp làm việc: mọi chức năng đi theo khối này */}
+      <ChonKhoiLamViec />
+
       {/* 1. Lời chào & Ngữ cảnh sản phẩm */}
       <WelcomeBanner />
 
