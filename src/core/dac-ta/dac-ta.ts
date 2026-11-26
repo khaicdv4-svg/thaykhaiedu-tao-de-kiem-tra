@@ -250,7 +250,8 @@ export function kiemDinhDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, d: DacTa, t
     else if (d.tuan_kiem_tra !== null && r.tuan > d.tuan_kiem_tra) {
       loi.push(`${tenDong(r)}: nội dung dạy ở tuần ${r.tuan}, sau tuần kiểm tra (tuần ${d.tuan_kiem_tra}). Học sinh chưa được học.`);
     }
-    if (!r.trangSgk.trim()) {
+    // Tiếng Việt: đọc hiểu, viết dùng ngữ liệu ngoài SGK nên không đòi trang SGK (trừ khi bắt buộc)
+    if (!r.trangSgk.trim() && (tuyChon.batBuocTrangSgk || d.ma_mon !== 'TIENG_VIET')) {
       (tuyChon.batBuocTrangSgk ? loi : canhBao).push(`${tenDong(r)}: chưa ghi trang SGK.`);
     }
     if (r.dang !== 'VIET' && !r.dangBai?.trim() && yccdRong(r.yccd)) {

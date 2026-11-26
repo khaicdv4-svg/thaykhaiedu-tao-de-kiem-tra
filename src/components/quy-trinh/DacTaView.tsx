@@ -495,7 +495,7 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
                             <input aria-label={`Tuần câu ${r.cau}`} type="number" min={1} max={40} className={`${o} mt-0.5 ${r.tuan !== null ? '' : 'border-amber-400 bg-amber-50'}`} value={r.tuan ?? ''} onChange={(e) => suaDong(r.khoa, { tuan: e.target.value ? Number(e.target.value) : null })} />
                           </label>
                           <label className="text-xs text-slate-500">Trang SGK
-                            <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder="trang" value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
+                            <input aria-label={`Trang SGK câu ${r.cau}`} className={`${o} mt-0.5`} placeholder={maMon === 'TIENG_VIET' ? 'không bắt buộc' : 'trang'} value={r.trangSgk} onChange={(e) => suaDong(r.khoa, { trangSgk: e.target.value })} />
                           </label>
                           <label className="text-xs text-slate-500 sm:col-span-1">Hình kèm theo
                             <select aria-label={`Hình kèm theo câu ${r.cau}`} className={`${o} mt-0.5`} value={r.hinhKem ?? 'KHONG'} onChange={(e) => suaDong(r.khoa, { hinhKem: e.target.value as KieuHinhKem })}>

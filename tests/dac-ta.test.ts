@@ -101,6 +101,15 @@ describe('Kiểm định đặc tả', () => {
     expect(kiemDinhDacTa(toan, mtr, d, { batBuocTrangSgk: true }).hopLe).toBe(false);
   });
 
+  it('Tiếng Việt: thiếu trang SGK không cảnh báo, không chặn', () => {
+    const m = maTranRiengDaXacNhan(tiengViet);
+    const d = dienDu(taoDacTa(tiengViet, m, 1, { tuanKiemTra: 18 }));
+    for (const r of d.dong) r.trangSgk = '';
+    const kq = kiemDinhDacTa(tiengViet, m, d);
+    expect(kq.hopLe).toBe(true);
+    expect(kq.canhBao.some((c) => c.includes('chưa ghi trang SGK'))).toBe(false);
+  });
+
   it('chặn nội dung dạy sau tuần kiểm tra', () => {
     const d = dienDu(goc);
     d.dong[2].tuan = 19;
