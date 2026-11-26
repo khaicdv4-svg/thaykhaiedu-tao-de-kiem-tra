@@ -22,7 +22,7 @@ interface BaiKho {
   id: string; tieuDe: string; noiDung: string; tacGia: string; nguon: string;
   loai: 'DOC_THANH_TIENG' | 'DOC_HIEU' | null; chuDiem: string | null; theLoai: TheLoaiBaiDoc | null; trangThai: string; soTieng: number;
 }
-interface BaiPhanTich { tieuDe: string; noiDung: string; tacGia: string; nguon: string; nguonUrl: string; theLoai: TheLoaiBaiDoc; kiemTra?: { loi: string[]; canhBao: string[]; trungSgk?: { tiLe: number; baiSgk: string | null } } }
+interface BaiPhanTich { tieuDe: string; noiDung: string; tacGia: string; nguon: string; nguonUrl: string; theLoai: TheLoaiBaiDoc; chuDiem?: string | null; kiemTra?: { loi: string[]; canhBao: string[]; trungSgk?: { tiLe: number; baiSgk: string | null } } }
 
 const o = 'rounded-lg border border-slate-300 px-2 py-1.5 text-sm bg-white w-full';
 const nutPhu = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50';
@@ -100,6 +100,29 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
   }, [bd, ky]);
 
   const doi = (f: (b: BaiDocChon) => BaiDocChon) => { daSua.current = true; setBd(f); };
+
+  // Bài đọc hiểu chưa có thể loại hoặc chủ điểm (bài kho cũ, bài dán tay): app tự nhận từ chữ của bài
+  const daNhan = useRef('');
+  const [dangNhan, setDangNhan] = useState(false);
+  useEffect(() => {
+    if (!laDocHieu || dangTai) return;
+    const h = bd.baiDocHieu;
+    if (!h.noiDung.trim() || (h.theLoai && h.chuDiem)) return;
+    const khoa = `${ky}|${h.tieuDe}|${h.noiDung.length}`;
+    if (daNhan.current === khoa) return;
+    const t = window.setTimeout(async () => {
+      daNhan.current = khoa;
+      setDangNhan(true);
+      try {
+        const r = await fetch('/api/reading-passages/phan-tich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vanBan: `${h.tieuDe}\n${h.noiDung}`, loai: 'DOC_HIEU', ky }) });
+        const j = (await r.json().catch(() => ({}))) as { baiDoc?: BaiPhanTich[] };
+        const x = j.baiDoc?.[0];
+        if (x) doi((b) => ({ ...b, baiDocHieu: { ...b.baiDocHieu, theLoai: b.baiDocHieu.theLoai ?? x.theLoai ?? null, chuDiem: b.baiDocHieu.chuDiem ?? x.chuDiem ?? null } }));
+      } catch { /* không nhận được thì thầy cô chọn tay */ }
+      setDangNhan(false);
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [laDocHieu, dangTai, bd.baiDocHieu, ky]);
   const suaHieu = (p: Partial<BaiDocDe>) => doi((b) => ({ ...b, baiDocHieu: { ...b.baiDocHieu, ...p } }));
   const suaTT = (i: number, p: Partial<BaiDocDe>) => doi((b) => ({ ...b, baiDocThanhTieng: b.baiDocThanhTieng.map((x, k) => (k === i ? { ...x, ...p } : x)) }));
 
@@ -108,7 +131,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
   const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN', boNao);
   const dsChuDiem = chuDiemCuaKy(ky, boNao);
 
-  const tuKho = (b: BaiKho, noiDung = b.noiDung): BaiDocDe => ({ tieuDe: b.tieuDe, noiDung, tacGia: b.tacGia, nguon: b.nguon, khoId: b.id, theLoai: b.theLoai });
+  const tuKho = (b: BaiKho, noiDung = b.noiDung): BaiDocDe => ({ tieuDe: b.tieuDe, noiDung, tacGia: b.tacGia, nguon: b.nguon, khoId: b.id, theLoai: b.theLoai, chuDiem: b.chuDiem });
   const tuKhoTT = (b: BaiKho): BaiDocDe => {
     const d = kh ? catDoanTotNhat(b.noiDung, { min: kh.min, max: kh.max, dungSai: kh.dungSai }) : null;
     return tuKho(b, d?.doan ?? b.noiDung);
@@ -139,7 +162,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
       const j = (await r.json().catch(() => ({}))) as { baiDoc?: BaiPhanTich[]; error?: string };
       if (!r.ok || !j.baiDoc?.length) throw new Error(j.error ?? 'Không tách được bài đọc trong file.');
       const b = j.baiDoc[0];
-      suaHieu({ tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon || (b.nguonUrl ? `Nguồn: ${b.nguonUrl}` : ''), khoId: null, theLoai: b.theLoai });
+      suaHieu({ tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon || (b.nguonUrl ? `Nguồn: ${b.nguonUrl}` : ''), khoId: null, theLoai: b.theLoai, chuDiem: b.chuDiem ?? null });
       const canh = [...(b.kiemTra?.loi ?? []), ...(b.kiemTra?.canhBao ?? [])];
       if (j.baiDoc.length > 1) canh.unshift(`File có ${j.baiDoc.length} bài, app lấy bài đầu tiên "${b.tieuDe}".`);
       setBaoFile({ canh });
@@ -187,7 +210,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
     <div className={`the-tke p-6 space-y-4 ${laDocHieu && !soXong && !dangTai ? 'border-2 border-blue-500' : ''}`}>
       <button type="button" className="w-full flex flex-wrap items-center justify-between gap-2 text-left" onClick={() => setMo((x) => !x)} aria-expanded={mo}>
         <span className="font-semibold text-slate-900 flex items-center gap-2"><BookOpenText className="w-5 h-5 text-blue-600" /> {so ? `${so} ` : ''}{tieuDe} – {tenKy}
-          {laDocHieu && soXong > 0 && <span className="font-normal text-slate-600">: {hieu.tieuDe}{hieu.theLoai ? ` (${TEN_THE_LOAI[hieu.theLoai].toLowerCase()})` : ''}</span>}
+          {laDocHieu && soXong > 0 && <span className="font-normal text-slate-600">: <b className="text-slate-900">{hieu.tieuDe}</b>{hieu.chuDiem ? ` · chủ điểm ${hieu.chuDiem}` : ''}{hieu.theLoai ? ` · ${TEN_THE_LOAI[hieu.theLoai].toLowerCase()}` : ''}{dangNhan ? ' · đang nhận thể loại…' : ''}</span>}
         </span>
         <span className="flex items-center gap-2 text-sm text-slate-600">
           {dangTai ? <Loader2 className="w-4 h-4 animate-spin" /> : soXong === soCan && !trung ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : null}
@@ -201,7 +224,7 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
         <div className="space-y-4">
           {laDocHieu
             ? <p className="text-sm text-slate-600">Chọn bài từ Kho bài đọc, tải file (.docx, .txt) hoặc dán chữ vào ô Nội dung. Thể loại bài quyết định phần đọc hiểu của ma trận bên dưới: truyện, miêu tả, thơ, kịch dùng phần Văn bản văn học; văn bản thông tin dùng phần Văn bản thông tin. App tự lưu.</p>
-            : <p className="text-sm text-slate-600">4 bài đọc thành tiếng{dsChuDiem.length ? ` (chủ điểm: ${dsChuDiem.join('; ')})` : ''}. App tự lưu; bước 4 tự lấy bài, thầy cô chỉ soạn câu hỏi. Bài đọc hiểu chọn ở bước 2, phía trên phần lập ma trận.</p>}
+            : <p className="text-sm text-slate-600">4 bài đọc thành tiếng{dsChuDiem.length ? ` (chủ điểm: ${dsChuDiem.join('; ')})` : ''}. App tự lưu; bước 4 tự lấy bài, thầy cô chỉ soạn câu hỏi. Bài đọc hiểu chọn ở Phần 1.</p>}
           {tuDe && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Đây là bài đọc trong đề đang soạn. Sửa ở đây thì đề ở bước 4 đổi theo.</div>}
           {loi && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{loi}</div>}
           {trung && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 flex items-center gap-2"><TriangleAlert className="w-4 h-4" /> Bài đọc thành tiếng đang trùng bài đọc hiểu. Thầy cô chọn bài khác.</div>}
@@ -224,6 +247,10 @@ export function ChonBaiDoc({ ky, tenKy, phan, so, onDocHieu }: Props) {
                   {THE_LOAI_DOC_HIEU.map((t) => <option key={t} value={t}>{TEN_THE_LOAI[t]}</option>)}
                 </select>
                 {pa && <span className="text-slate-600">→ ma trận dùng phần <b>{pa === 'VBTT' ? 'Văn bản thông tin' : 'Văn bản văn học'}</b></span>}
+              </label>
+              <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700">Chủ điểm
+                <input aria-label="Chủ điểm bài đọc hiểu" list="ds-chu-diem" className={`${o} w-72`} value={hieu.chuDiem ?? ''} onChange={(e) => suaHieu({ chuDiem: e.target.value || null })} />
+                <datalist id="ds-chu-diem">{dsChuDiem.map((c) => <option key={c} value={c} />)}</datalist>
               </label>
             </div>
           ) : (

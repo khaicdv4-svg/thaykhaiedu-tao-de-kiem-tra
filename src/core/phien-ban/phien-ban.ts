@@ -21,6 +21,18 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 10,
+    ngay: '2026-11-26',
+    tieuDe: 'Đề Tiếng Việt có trang riêng, làm theo 3 phần',
+    noiDung: [
+      'Bước 1 chọn Tiếng Việt, bấm "Mở đề Tiếng Việt". Trang mới chia: Phần 1 Đọc hiểu, Phần 2 Đọc thành tiếng, Phần 3 Viết, Hoàn chỉnh đề.',
+      'Phần 1: chọn bài đọc hiểu (kho, tải file, dán chữ); app tự nhận tên bài, chủ điểm, thể loại. Ngay dưới là ma trận đọc hiểu theo ma trận chung của tổ, rồi bản đặc tả, rồi câu hỏi (AI soạn được).',
+      'Phần 2: chọn 4 bài đọc thành tiếng, rồi nhập câu hỏi, đáp án cho từng bài.',
+      'Phần 3: chọn kiểu bài viết, bản đặc tả, rồi đề bài và hướng dẫn chấm.',
+      'Hoàn chỉnh đề: xem cả đề như bản in (đọc thành tiếng, đọc hiểu kèm bài đọc, viết) và tab Đáp án, hướng dẫn chấm. Bấm "Sửa câu này" là mở đúng phần chứa câu. Xuất Word, gửi duyệt ở đây.',
+    ],
+  },
+  {
     so: 9,
     ngay: '2026-11-26',
     tieuDe: 'Tiếng Việt: chọn bài đọc hiểu rồi mới lập ma trận',

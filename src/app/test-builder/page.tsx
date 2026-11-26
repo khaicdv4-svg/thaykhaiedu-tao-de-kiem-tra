@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, CheckCircle2, CircleDashed, FilePlus2, Loader2, TriangleAlert } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { chonHopLe, kyTheoMon, monTheoKhoi, tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
-import { ChonBaiDoc } from '@/components/de/ChonBaiDoc';
+import { duongDanTV } from '@/components/quy-trinh/nhung';
 import { useBoNaoDaTai } from '@/lib/hooks/useBoNao';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, type CachLap } from '@/core/ho-so-de/ho-so-de';
@@ -71,6 +71,8 @@ export default function TestBuilderPage() {
   // Cách lập nhớ theo từng môn, kì
   useEffect(() => { if (daDocHoSo) setCachLap(docCachLap(maMon, ky)); }, [daDocHoSo, maMon, ky]);
   const chonCachLap = (c: CachLap) => { setCachLap(c); luuCachLap(maMon, ky, c); };
+  // Tiếng Việt lập từ ma trận chung của tổ (trang đề Tiếng Việt vẫn có nút dựng từ chương trình khi tổ chưa có)
+  useEffect(() => { if (daDocHoSo && maMon === 'TIENG_VIET' && cachLap !== 'MA_TRAN_CHUNG') { setCachLap('MA_TRAN_CHUNG'); luuCachLap(maMon, ky, 'MA_TRAN_CHUNG'); } }, [daDocHoSo, maMon, ky, cachLap]);
 
   useEffect(() => {
     let huy = false;
@@ -159,6 +161,15 @@ export default function TestBuilderPage() {
           </select>
           <span className="text-sm text-slate-500">Lớp {khoiLamViec} · {tenMon} · {tenKy}</span>
         </div>
+        {maMon === 'TIENG_VIET' ? (
+          <div className="rounded-xl border-2 border-indigo-500 bg-indigo-50 p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-indigo-900">
+              <div className="font-semibold text-base">Đề Tiếng Việt làm theo 3 phần</div>
+              Phần 1 Đọc hiểu (bài đọc, ma trận, đặc tả, câu hỏi) · Phần 2 Đọc thành tiếng (chọn bài, câu hỏi) · Phần 3 Viết · Hoàn chỉnh đề.
+            </div>
+            <Link href={duongDanTV(ky, 'p1-ma-tran')} className="nut-tke text-base px-5 py-2.5">Mở đề Tiếng Việt <ArrowRight className="w-5 h-5" /></Link>
+          </div>
+        ) : (
         <div>
           <div className="text-sm font-semibold text-slate-900 mb-1">Lập ma trận riêng từ</div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -173,9 +184,9 @@ export default function TestBuilderPage() {
             ))}
           </div>
         </div>
+        )}
       </div>
 
-      {maMon === 'TIENG_VIET' && daDocHoSo && <ChonBaiDoc ky={ky} tenKy={tenKy} phan="thanhTieng" />}
 
       <div className="the-tke p-6 space-y-3">
         <h2 className="font-semibold text-slate-900">Bộ đề của thầy cô: {tenMon}, {tenKy}</h2>

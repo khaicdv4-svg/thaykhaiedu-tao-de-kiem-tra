@@ -134,6 +134,10 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
   const [tab, setTab] = useState<'de' | 'dap-an'>('de');
   const cau = [...de.cau].sort((a, b) => (/^\d+$/.test(a.cau) ? Number(a.cau) : 1e9) - (/^\d+$/.test(b.cau) ? Number(b.cau) : 1e9));
   const tong = Math.round(cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
+  // Đề Tiếng Việt: đọc thành tiếng, đọc hiểu (kèm bài đọc), viết
+  const tv = de.ma_mon === 'TIENG_VIET' ? de.tiengViet : undefined;
+  const cauViet = cau.filter((c) => c.khoa.startsWith('viet/'));
+  const cauDoc = cau.filter((c) => !c.khoa.startsWith('viet/'));
   return (
     <div className="the-tke p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +153,39 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
           <div className="font-bold">{tab === 'de' ? `ĐỀ KIỂM TRA MÔN ${tenMon.toUpperCase()} - Lớp ${khoiLamViec}` : `HƯỚNG DẪN CHẤM MÔN ${tenMon.toUpperCase()} - LỚP ${khoiLamViec}`}</div>
           {tab === 'de' && <div>Thời gian: {phut} phút</div>}
         </div>
-        {tab === 'de' ? (
+        {tab === 'de' && tv ? (
+          <div className="space-y-3">
+            <div className="font-bold">A. KIỂM TRA ĐỌC</div>
+            <div className="font-bold">I. Đọc thành tiếng</div>
+            {tv.baiDocThanhTieng.map((b, i) => (
+              <div key={i} className="space-y-1">
+                {congCu?.onSuaCau && <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100" onClick={() => congCu.onSuaCau!(`doc/doc_thanh_tieng/${i + 1}`)}><Pencil className="w-3.5 h-3.5" /> Sửa bài, câu hỏi này</button>}
+                <div className="font-bold">Bài {i + 1}: {b.tieuDe || '(chưa chọn bài)'}</div>
+                <div className="whitespace-pre-line">{b.noiDung}</div>
+                {(b.tacGia || b.nguon) && <div className="text-right italic">{b.tacGia}{b.nguon ? ` (${b.nguon})` : ''}</div>}
+                <div><b>Câu hỏi:</b> {b.cauHoi || <span className="text-red-700">(chưa có)</span>}</div>
+              </div>
+            ))}
+            <div className="font-bold">II. Đọc hiểu</div>
+            <div className="text-center font-bold">{tv.baiDocHieu.tieuDe || '(chưa chọn bài đọc hiểu)'}</div>
+            <div className="whitespace-pre-line">{tv.baiDocHieu.noiDung}</div>
+            {(tv.baiDocHieu.tacGia || tv.baiDocHieu.nguon) && <div className="text-right italic">{tv.baiDocHieu.tacGia}{tv.baiDocHieu.nguon ? ` (${tv.baiDocHieu.nguon})` : ''}</div>}
+            {cauDoc.map((c) => (
+              <div key={c.khoa} id={`xem-${c.khoa}`}>
+                {congCu && <ThanhSuaCau c={c} cc={congCu} />}
+                <MotCau c={c} maMon={de.ma_mon} />
+              </div>
+            ))}
+            {cauViet.length > 0 && <div className="font-bold pt-2">B. KIỂM TRA VIẾT</div>}
+            {cauViet.map((c) => (
+              <div key={c.khoa} id={`xem-${c.khoa}`}>
+                {congCu && <ThanhSuaCau c={c} cc={congCu} />}
+                <MotCau c={c} maMon={de.ma_mon} />
+              </div>
+            ))}
+            <div className="text-center font-bold pt-2">HẾT ĐỀ</div>
+          </div>
+        ) : tab === 'de' ? (
           <div>{cau.map((c) => (
             <div key={c.khoa} id={`xem-${c.khoa}`}>
               {congCu && <ThanhSuaCau c={c} cc={congCu} />}
@@ -160,6 +196,13 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
           <table className="w-full border-collapse text-[16px]">
             <thead><tr><th className="border border-black p-1 w-16">Câu</th><th className="border border-black p-1">Đáp án, hướng dẫn chấm</th><th className="border border-black p-1 w-16">Điểm</th></tr></thead>
             <tbody>
+              {tv && tv.baiDocThanhTieng.map((b, i) => (
+                <tr key={`tt-${i}`} className="align-top">
+                  <td className="border border-black p-1 text-center">Đọc {i + 1}</td>
+                  <td className="border border-black p-1.5 leading-[1.5]"><div><b>{b.tieuDe}</b>: {b.cauHoi}</div><div>Trả lời: {b.traLoi || <span className="text-red-700">(chưa có)</span>}</div></td>
+                  <td className="border border-black p-1 text-center" />
+                </tr>
+              ))}
               {cau.map((c) => {
                 const lamRo = c.hinhThuc === 'TL' && c.dang !== 'VIET';
                 const da = dapAnHienThi(c).trim();

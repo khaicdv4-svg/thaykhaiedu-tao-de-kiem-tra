@@ -99,3 +99,23 @@ describe('Bài đọc hiểu quyết định phần VBVH / VBTT của ma trận'
     expect(lamSachBaiDocChon({ baiDocHieu: { tieuDe: 'A', theLoai: 'XYZ' } }).baiDocHieu.theLoai).toBeNull();
   });
 });
+
+import { duongDanTV, khoaThuocPhan, laMucTV, mucCuaCau } from '../src/components/quy-trinh/nhung';
+
+describe('Trang đề Tiếng Việt 3 phần', () => {
+  it('mỗi phần chỉ lấy câu của phần đó', () => {
+    expect(khoaThuocPhan('doc/doc_hieu/3', 'docHieu')).toBe(true);
+    expect(khoaThuocPhan('viet/viet/10', 'docHieu')).toBe(false);
+    expect(khoaThuocPhan('viet/viet/10', 'viet')).toBe(true);
+    expect(khoaThuocPhan('doc/doc_hieu/3', 'thanhTieng')).toBe(false);
+    expect(khoaThuocPhan('doc/doc_hieu/3', 'hoanChinh')).toBe(true);
+  });
+  it('sửa câu ở Hoàn chỉnh đề thì mở đúng phần', () => {
+    expect(mucCuaCau('doc/doc_hieu/3')).toBe('p1-cau-hoi');
+    expect(mucCuaCau('viet/viet/10')).toBe('p3-de-bai');
+    expect(mucCuaCau('doc/doc_thanh_tieng/2')).toBe('p2-cau-hoi');
+    expect(duongDanTV('CUOI_HK1', 'p1-cau-hoi', 'doc/doc_hieu/3')).toBe('/de-tieng-viet?mon=TIENG_VIET&ky=CUOI_HK1&muc=p1-cau-hoi&cau=doc%2Fdoc_hieu%2F3');
+    expect(laMucTV('p2-chon-bai')).toBe(true);
+    expect(laMucTV('x')).toBe(false);
+  });
+});

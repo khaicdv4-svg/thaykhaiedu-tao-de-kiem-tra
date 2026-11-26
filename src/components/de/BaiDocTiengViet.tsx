@@ -21,6 +21,10 @@ interface Props {
   onDoi: (g: NoiDungTiengViet) => void;
   /** Đường dẫn sang bước 1 để đổi bài. Có thì khóa phần bài đọc, chỉ cho soạn câu hỏi. */
   hrefDoiBai?: string;
+  /** Đường dẫn đổi bài đọc hiểu (mặc định: bước 2). */
+  hrefDoiBaiHieu?: string;
+  /** Trang đề Tiếng Việt: chỉ hiện phần đọc hiểu hoặc phần đọc thành tiếng. */
+  chiPhan?: 'docHieu' | 'thanhTieng';
 }
 
 function XemBai({ b, ten, tieng }: { b: BaiDocDe; ten: string; tieng: React.ReactNode }) {
@@ -34,7 +38,7 @@ function XemBai({ b, ten, tieng }: { b: BaiDocDe; ten: string; tieng: React.Reac
   );
 }
 
-export function BaiDocTiengViet({ ky, gia, onDoi, hrefDoiBai }: Props) {
+export function BaiDocTiengViet({ ky, gia, onDoi, hrefDoiBai, hrefDoiBaiHieu, chiPhan }: Props) {
   const [kho, setKho] = useState<BaiTrongKho[]>([]);
   const [loiKho, setLoiKho] = useState<string | null>(null);
 
@@ -80,17 +84,17 @@ export function BaiDocTiengViet({ ky, gia, onDoi, hrefDoiBai }: Props) {
     return (
       <div className="the-tke p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-900">Bài đọc</h2>
+          <h2 className="font-semibold text-slate-900">{chiPhan === 'docHieu' ? 'Bài đọc hiểu' : chiPhan === 'thanhTieng' ? 'Câu hỏi cho 4 bài đọc thành tiếng' : 'Bài đọc'}</h2>
           <span className="flex flex-wrap gap-3 text-sm">
-            <Link href={hrefDoiBai.replace('/test-builder', '/matrices')} className="text-indigo-700 underline">Đổi bài đọc hiểu (bước 2)</Link>
-            <Link href={hrefDoiBai} className="text-indigo-700 underline">Đổi bài đọc thành tiếng (bước 1)</Link>
+            {chiPhan !== 'thanhTieng' && <Link href={hrefDoiBaiHieu ?? hrefDoiBai.replace('/test-builder', '/matrices')} className="text-indigo-700 underline">Đổi bài đọc hiểu</Link>}
+            {chiPhan !== 'docHieu' && <Link href={hrefDoiBai} className="text-indigo-700 underline">Đổi bài đọc thành tiếng</Link>}
           </span>
         </div>
-        <div className="space-y-1">
+        {chiPhan !== 'thanhTieng' && <div className="space-y-1">
           <div className="text-xs font-medium text-slate-500">Bài đọc hiểu</div>
           <XemBai b={gia.baiDocHieu} ten="bài đọc hiểu" tieng={`${demTieng(gia.baiDocHieu.noiDung)} tiếng`} />
-        </div>
-        {gia.baiDocThanhTieng.map((b, i) => (
+        </div>}
+        {chiPhan !== 'docHieu' && gia.baiDocThanhTieng.map((b, i) => (
           <div key={i} className="border-t border-slate-100 pt-3 space-y-2">
             <div className="text-xs font-medium text-slate-500">Bài đọc thành tiếng {i + 1}</div>
             <XemBai b={b} ten={`bài đọc thành tiếng ${i + 1}`} tieng={nhanTieng(demTieng(b.noiDung))} />
