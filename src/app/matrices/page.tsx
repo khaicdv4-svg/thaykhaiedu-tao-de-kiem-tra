@@ -236,10 +236,17 @@ export default function MatricesPage() {
   const khungDungHienTai = laKhungDung(mtc);
   const tenMonDangChon = (maMon ? tenMonKT(maMon) : '');
   const kqChung = useMemo(() => (mtc ? kiemDinhMaTranChung(mtc) : null), [mtc]);
+  // Quay lại từ trang dựng khung: về bước 1 (đổi cách lập ở đó), không về màn trung gian
+  const veBuoc1 = () => { window.location.href = maMon ? `/test-builder?mon=${maMon}&ky=${kyDung}` : '/test-builder'; };
   // Ma trận chung của tổ dùng được: mở thẳng trang lập ma trận riêng, không qua trang chuẩn bị
   useEffect(() => {
     if (buoc === 0 && !dangDung && cachLap === 'MA_TRAN_CHUNG' && mtc && kqChung?.hopLe) setBuoc(2);
-  }, [buoc, dangDung, cachLap, mtc, kqChung]);
+    // Dựng từ chương trình: không qua màn trung gian. Có khung đã dựng thì mở luôn, chưa có thì vào trang dựng khung
+    if (buoc === 0 && !dangDung && cachLap === 'CHUONG_TRINH' && maMon && !khungDung) {
+      const cu = docKhungDung(maMon, kyDung);
+      if (cu) { setKhungDung(cu); setBuoc(2); } else setDangDung(true);
+    }
+  }, [buoc, dangDung, cachLap, mtc, kqChung, maMon, kyDung, khungDung]);
 
   // Nạp bản nháp (nếu có) khi chọn môn
   useEffect(() => {
@@ -539,8 +546,8 @@ export default function MatricesPage() {
 
       {buoc === 0 && dangDung && maMon && (
         maMon === 'TIENG_VIET'
-          ? <DungTiengViet key={`${maMon}-${kyDung}`} ky={kyDung} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
-          : <DungTuChuongTrinh key={`${maMon}-${kyDung}`} maMon={maMon} tenMon={tenMonDangChon} ky={kyDung} onDung={nhanKhungDung} onQuayLai={() => setDangDung(false)} />
+          ? <DungTiengViet key={`${maMon}-${kyDung}`} ky={kyDung} onDung={nhanKhungDung} onQuayLai={veBuoc1} />
+          : <DungTuChuongTrinh key={`${maMon}-${kyDung}`} maMon={maMon} tenMon={tenMonDangChon} ky={kyDung} onDung={nhanKhungDung} onQuayLai={veBuoc1} />
       )}
 
       {/* Chuẩn bị: chỉ hiện khi chưa mở thẳng được trang lập ma trận riêng */}
@@ -562,7 +569,11 @@ export default function MatricesPage() {
                 ) : mtc && kqChung ? (
                   <div className="space-y-3">
                     <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-                      Ma trận chung {khoMtc?.tenFile ? <b>{khoMtc.tenFile}</b> : null} còn lỗi nên chưa lập được ma trận riêng. Tổ trưởng sửa ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>.
+                      Ma trận chung {khoMtc?.tenFile ? <b>{khoMtc.tenFile}</b> : null} còn lỗi nên chưa lập được ma trận riêng. Tổ trưởng sửa ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>, hoặc thầy cô dựng ma trận từ chương trình.
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button type="button" className={nutChinh} onClick={() => { setCachLap('CHUONG_TRINH'); setDangDung(true); }}>Dựng ma trận từ chương trình <ArrowRight className="w-4 h-4" /></button>
+                      <Link href="/ma-tran-chung" className={nutPhu}>Mở Ma trận chung của tổ</Link>
                     </div>
                     <ValidationPanel ketQua={kqChung} />
                     <div className="rounded-xl border border-slate-200 overflow-hidden"><MatrixPreview maTran={mtc} /></div>
@@ -572,7 +583,11 @@ export default function MatricesPage() {
                     <div>
                       {khoMtc?.loi
                         ? <>Chưa dùng được ma trận chung{khoMtc.tenFile ? <> <b>{khoMtc.tenFile}</b></> : null}: {khoMtc.loi}</>
-                        : <>Tổ chưa có ma trận chung đã xác nhận cho môn và kì này. Tổ trưởng tải file ở mục <Link href="/ma-tran-chung" className="underline font-medium">Ma trận chung</Link>, hoặc về Bước 1 chọn &quot;Dựng từ chương trình&quot;.</>}
+                        : <>Tổ chưa có ma trận chung đã xác nhận cho môn và kì này. Thầy cô dựng ma trận từ phân phối chương trình ngay ở đây, hoặc chờ tổ trưởng tải ma trận chung.</>}
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button type="button" className={nutChinh} onClick={() => { setCachLap('CHUONG_TRINH'); setDangDung(true); }}>Dựng ma trận từ chương trình <ArrowRight className="w-4 h-4" /></button>
+                      <Link href="/ma-tran-chung" className={nutPhu}>Mở Ma trận chung của tổ</Link>
                     </div>
                     {kyDung === 'CUOI_HK1' && khoiLamViec === 4 && !dungMauCo && (
                       <button type="button" className={nutPhu} onClick={() => setDungMauCo(true)}>Tạm dùng mẫu Cuối HKI có sẵn trong app</button>
@@ -637,7 +652,11 @@ export default function MatricesPage() {
       {buoc === 2 && mtc && mtr && (
         <div className="space-y-4">
           {nhomLuaChon.length > 0 && (
-            <div className="the-tke p-6 space-y-4">
+            <div className={`the-tke p-6 space-y-4 ${chonDuPhuongAn ? '' : 'border-2 border-blue-500'}`}>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">1. Chọn phần thi trong đề</h2>
+                <p className="text-sm text-slate-600">{chonDuPhuongAn ? 'Đổi lựa chọn thì danh sách câu ở mục 2 đổi theo.' : 'Bấm chọn một ô ở mỗi dòng dưới đây. Chọn xong, danh sách câu hiện ở mục 2 để chọn YCCĐ.'}</p>
+              </div>
               {nhomLuaChon.map((nhom) => (
                 <fieldset key={nhom.ma}>
                   <legend className="font-semibold text-slate-900 mb-2">{nhom.ten}</legend>
@@ -660,8 +679,8 @@ export default function MatricesPage() {
               <p className="mt-1">YCCĐ lấy từ Kho chương trình GDPT 2018 (đã duyệt), theo chủ đề thầy đã ghép ở bước dựng khung. Mỗi câu chọn đúng một YCCĐ của chủ đề đó.</p>
             </div>
           ) : (
-          <div className="the-tke p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Nguồn yêu cầu cần đạt (YCCĐ)</h2>
+          <details className="the-tke p-4" open={nguonCT}>
+            <summary className="cursor-pointer text-sm text-slate-700">Nguồn yêu cầu cần đạt: <b>{nguonCT ? 'Chương trình GDPT 2018' : 'Ma trận chung của tổ'}</b> <span className="text-blue-700">(đổi)</span></summary>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {([
                 ['MA_TRAN_CHUNG', 'Ma trận chung của tổ', 'YCCĐ ghi sẵn trong ma trận chung tổ đã soạn và tải lên.'],
@@ -683,16 +702,26 @@ export default function MatricesPage() {
               </p>
             )}
             {nguonCT && yccdCT && yccdCT.length > 0 && <p className="text-xs text-slate-500 mt-2">Có {yccdCT.length} YCCĐ đã duyệt của {mtc?.mon} lớp {lopSo}. Câu đã chọn YCCĐ không nằm trong danh sách này sẽ bị báo lỗi khi kiểm tra.</p>}
-          </div>
+          </details>
           )}
 
           <div className="the-tke p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Chọn yêu cầu cần đạt, chỉnh câu cho từng câu</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{nhomLuaChon.length > 0 ? '2. ' : ''}Lập ma trận riêng: chọn yêu cầu cần đạt cho từng câu</h2>
             <p className="text-sm text-slate-600 mb-4">
               Mỗi câu gắn một YCCĐ; câu có nhiều ý nhỏ (a, b, c…) gắn thêm được, tối đa bằng số ý. Nguồn Ma trận chung: câu chỉ có một YCCĐ được chọn sẵn. Số câu, mức, TN/TL, điểm lấy theo ma trận chung; cần thì sửa ngay tại câu, ô đã sửa có viền vàng và nút khôi phục.
             </p>
             {!chonDuPhuongAn ? (
-              <p className="text-sm text-slate-500">Chọn phương án ở trên trước.</p>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 space-y-3">
+                <p>Chưa chọn phần thi nên chưa có danh sách câu. Chọn ngay ở đây (hoặc ở mục 1 phía trên):</p>
+                {nhomLuaChon.filter((n) => !mtr.lua_chon_da_dung[n.ma]).map((nhom) => (
+                  <div key={nhom.ma} className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{nhom.ten}:</span>
+                    {nhom.phuong_an.map((pa) => (
+                      <button key={pa.ma} type="button" className={nutPhu} onClick={() => chonPhuongAn(nhom.ma, pa.ma)}>{pa.ten}</button>
+                    ))}
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {cauList.map((c) => {

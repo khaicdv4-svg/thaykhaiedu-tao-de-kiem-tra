@@ -21,6 +21,17 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 8,
+    ngay: '2026-11-26',
+    tieuDe: 'Bước 2 (Ma trận) dễ thấy chỗ làm hơn',
+    noiDung: [
+      'Trang lập ma trận chia rõ: 1. Chọn phần thi (ví dụ Tiếng Việt chọn văn bản văn học hay văn bản thông tin), 2. Chọn YCCĐ cho từng câu. Chưa chọn phần thi thì nút chọn hiện ngay trong mục 2.',
+      'Nguồn YCCĐ thu gọn thành một dòng, bấm "đổi" khi cần.',
+      'Tổ chưa có ma trận chung (hoặc ma trận chung còn lỗi): có nút "Dựng ma trận từ chương trình" ngay tại bước 2, không phải quay về bước 1.',
+      'Chọn "Dựng từ chương trình" ở bước 1 thì bước 2 mở thẳng trang dựng khung (đã dựng rồi thì mở luôn khung đó).',
+    ],
+  },
+  {
     so: 7,
     ngay: '2026-11-26',
     tieuDe: 'Phân quyền theo tổ và duyệt đề theo quy trình của tổ',
