@@ -63,16 +63,18 @@ const NHAN_TRANG_THAI: Record<TrangThaiDe, { ten: string; mau: string }> = {
   DA_DUYET: { ten: 'Đã duyệt', mau: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   TRA_LAI: { ten: 'Bị trả lại, cần sửa', mau: 'bg-red-50 text-red-700 border-red-200' },
   DANG_THAM_DINH: { ten: 'Đang thẩm định', mau: 'bg-sky-50 text-sky-700 border-sky-200' },
-  DA_XAC_NHAN_TO: { ten: 'Tổ trưởng đã xác nhận', mau: 'bg-teal-50 text-teal-700 border-teal-200' },
+  DA_DUYET_CHEO: { ten: 'Đã duyệt chéo', mau: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  DA_XAC_NHAN_TO: { ten: 'Đã duyệt cấp tổ', mau: 'bg-teal-50 text-teal-700 border-teal-200' },
   CHO_BGH_DUYET: { ten: 'Chờ Ban giám hiệu duyệt', mau: 'bg-violet-50 text-violet-700 border-violet-200' },
   DA_PHAT_HANH: { ten: 'Đã phát hành', mau: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
   DA_LUU_TRU: { ten: 'Đã lưu trữ', mau: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
 
 const GHI_CHU_KHOA: Partial<Record<TrangThaiDe, string>> = {
-  SAN_SANG_DUYET: 'Đề đã gửi thẩm định. Nếu sửa, đề được thu hồi về bản nháp và phải gửi lại.',
-  DANG_THAM_DINH: 'Đề đang được thẩm định. Nếu sửa, đề được thu hồi về bản nháp và phải gửi lại.',
-  DA_XAC_NHAN_TO: 'Tổ trưởng đã xác nhận, đề đang chờ chuyển lên Ban giám hiệu nên chưa sửa được. Cần sửa thì nhờ người duyệt yêu cầu chỉnh sửa.',
+  SAN_SANG_DUYET: 'Đề đã gửi kiểm tra chéo. Nếu sửa, đề được thu hồi về bản nháp và phải gửi lại.',
+  DANG_THAM_DINH: 'Đề đang được kiểm tra chéo. Nếu sửa, đề được thu hồi về bản nháp và phải gửi lại.',
+  DA_DUYET_CHEO: 'Đề đã được duyệt chéo, đang chờ tổ duyệt nên chưa sửa được. Cần sửa thì nhờ tổ trưởng hoặc người phụ trách môn yêu cầu chỉnh sửa.',
+  DA_XAC_NHAN_TO: 'Tổ đã duyệt đề, đề đang chờ chọn nộp Ban giám hiệu nên chưa sửa được. Cần sửa thì nhờ người duyệt yêu cầu chỉnh sửa.',
   CHO_BGH_DUYET: 'Đề đang chờ Ban giám hiệu duyệt nên chưa sửa được. Cần sửa thì nhờ Ban giám hiệu yêu cầu chỉnh sửa.',
   DA_DUYET: 'Đề đã được duyệt. Sửa đề sẽ tạo phiên bản mới, bản đã duyệt cũ vẫn giữ nguyên.',
   DA_PHAT_HANH: 'Đề đã phát hành. Sửa đề sẽ tạo phiên bản mới, bản đã phát hành cũ vẫn giữ nguyên.',

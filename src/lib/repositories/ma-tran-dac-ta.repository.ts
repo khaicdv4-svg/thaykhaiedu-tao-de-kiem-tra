@@ -581,6 +581,8 @@ export interface DongKhoDe {
   laChuDe: boolean;
   duocXoa: boolean;
   hanhDong: string[];
+  /** Số thứ tự đề chính (1–3) khi tổ đã chọn nộp Ban giám hiệu. */
+  soDeChinh: number | null;
 }
 
 const TT_XOA_DUOC = ['BAN_NHAP', 'CAN_KIEM_TRA', 'CO_LOI', 'CAN_KIEM_TRA_LAI', 'TRA_LAI'];
@@ -589,7 +591,7 @@ const TT_XOA_DUOC = ['BAN_NHAP', 'CAN_KIEM_TRA', 'CO_LOI', 'CAN_KIEM_TRA_LAI', '
 export async function danhSachDe(): Promise<DongKhoDe[]> {
   const KHOI = await layKhoiLamViec();
   const { supabase, user, orgId, vaiTro } = await layNguoiDung();
-  const { data, error } = await supabase.from('de_kiem_tra').select('id, ma_de, ma_mon, ky_kiem_tra, trang_thai, pham_vi_xem, phien_ban_dac_ta, updated_at, duyet_luc, created_by').eq('organization_id', orgId).eq('khoi', KHOI).order('updated_at', { ascending: false });
+  const { data, error } = await supabase.from('de_kiem_tra').select('id, ma_de, ma_mon, ky_kiem_tra, trang_thai, pham_vi_xem, phien_ban_dac_ta, updated_at, duyet_luc, created_by, so_de_chinh').eq('organization_id', orgId).eq('khoi', KHOI).order('updated_at', { ascending: false });
   if (error) throw loiDe('Không đọc được kho đề', error.message);
   const hang = (data ?? []) as any[];
   const { data: dd } = await supabase.from('de_da_duyet').select('de_id, phien_ban').eq('organization_id', orgId).order('phien_ban', { ascending: false });
@@ -602,7 +604,7 @@ export async function danhSachDe(): Promise<DongKhoDe[]> {
     for (const p of (ps ?? []) as any[]) ten.set(p.id, p.full_name);
   }
   const hanhDong = await Promise.all(hang.map((r) => hanhDongCuaDe(supabase, r.id)));
-  const laBgh = vaiTro.includes('SCHOOL_LEADERSHIP') || vaiTro.includes('SCHOOL_ADMIN');
+  const laBgh = vaiTro.includes('SCHOOL_LEADERSHIP') || vaiTro.includes('SCHOOL_ADMIN') || vaiTro.includes('SYSTEM_ADMIN');
   return hang.map((r, i) => ({
     id: r.id, maDe: r.ma_de, maMon: r.ma_mon, ky: r.ky_kiem_tra, trangThai: r.trang_thai, phamViXem: r.pham_vi_xem, phienBanDacTa: r.phien_ban_dac_ta, capNhatLuc: r.updated_at, duyetLuc: r.duyet_luc ?? null,
     phienBanDaDuyetMoiNhat: moiNhat.get(r.id) ?? null,
@@ -610,6 +612,7 @@ export async function danhSachDe(): Promise<DongKhoDe[]> {
     laChuDe: r.created_by === user.id,
     duocXoa: laBgh || (r.created_by === user.id && TT_XOA_DUOC.includes(r.trang_thai)),
     hanhDong: hanhDong[i],
+    soDeChinh: r.so_de_chinh ?? null,
   }));
 }
 
@@ -622,7 +625,7 @@ export async function phienBanDeDaDuyet(deId: string): Promise<PhienBanDeDaDuyet
   return ((data ?? []) as any[]).map((r) => ({ phienBan: r.phien_ban, phienBanDacTa: r.phien_ban_dac_ta, duyetLuc: r.duyet_luc, ghiChu: r.ghi_chu }));
 }
 
-export const HANH_DONG_QUY_TRINH = ['GUI_THAM_DINH', 'THU_HOI_VE_NHAP', 'TAO_PHIEN_BAN_MOI', 'BAT_DAU_THAM_DINH', 'DE_NGHI_DAT', 'YEU_CAU_CHINH_SUA', 'XAC_NHAN_TO', 'CHUYEN_BGH', 'PHE_DUYET', 'PHAT_HANH', 'THU_HOI_DE', 'LUU_TRU'] as const;
+export const HANH_DONG_QUY_TRINH = ['GUI_THAM_DINH', 'THU_HOI_VE_NHAP', 'TAO_PHIEN_BAN_MOI', 'BAT_DAU_THAM_DINH', 'DE_NGHI_DAT', 'DUYET_CHEO', 'YEU_CAU_CHINH_SUA', 'XAC_NHAN_TO', 'CHUYEN_BGH', 'PHE_DUYET', 'PHAT_HANH', 'THU_HOI_DE', 'LUU_TRU'] as const;
 export type HanhDongQuyTrinh = (typeof HANH_DONG_QUY_TRINH)[number];
 
 /**
@@ -634,11 +637,11 @@ export async function chuyenTrangThaiDe(id: string, hanhDong: string, ghiChu: st
   if (!(HANH_DONG_QUY_TRINH as readonly string[]).includes(hanhDong)) throw new Error('Thao tác không hợp lệ.');
   const { supabase } = await layNguoiDung();
   const ban = await layDeTheoId(id);
-  if (hanhDong === 'PHE_DUYET' || hanhDong === 'XAC_NHAN_TO' || hanhDong === 'GUI_THAM_DINH') {
+  if (hanhDong === 'PHE_DUYET' || hanhDong === 'XAC_NHAN_TO' || hanhDong === 'GUI_THAM_DINH' || hanhDong === 'DUYET_CHEO') {
     const { orgId } = await layNguoiDung();
     const { chon, moiNhat } = await layDacTaDeKeThua(supabase, orgId, ban.maMon, ban.ky, ban.dacTaId);
     const kq = kiemDinhDe(chon.duLieu, ban.duLieu, { phienBanDacTaMoiNhat: moiNhat.phienBan ?? undefined });
-    if (!kq.hopLe) throw new Error(`Đề còn lỗi, chưa ${hanhDong === 'PHE_DUYET' ? 'duyệt' : hanhDong === 'GUI_THAM_DINH' ? 'gửi thẩm định' : 'xác nhận'} được: ${kq.loi[0]}`);
+    if (!kq.hopLe) throw new Error(`Đề còn lỗi, chưa ${hanhDong === 'PHE_DUYET' || hanhDong === 'DUYET_CHEO' ? 'duyệt' : hanhDong === 'GUI_THAM_DINH' ? 'gửi kiểm tra' : 'duyệt cấp tổ'} được: ${kq.loi[0]}`);
   }
   const { data, error } = await supabase.rpc('chuyen_trang_thai_de', { p_de: id, p_hanh_dong: hanhDong, p_ghi_chu: ghiChu.trim().slice(0, 1000) || null });
   if (error) throw new Error(error.message);
@@ -777,4 +780,32 @@ export async function danhSachHoSoDe(): Promise<DongHoSoDe[]> {
   const loi = mtr.error ?? dt.error ?? de.error;
   if (loi) throw new Error(`Không đọc được hồ sơ đề: ${loi.message}`);
   return tinhDanhSachHoSo((mtr.data ?? []) as unknown as HangBuoc[], (dt.data ?? []) as unknown as HangBuoc[], (de.data ?? []) as unknown as HangBuoc[]);
+}
+
+// ---------------------------------------------------------------------------
+// Việc của tổ: phân công kiểm tra chéo xoay vòng, chọn đề chính nộp Ban giám hiệu
+// ---------------------------------------------------------------------------
+
+export interface DongXoayVong { de: string; nguoiSoan: string | null; nguoiKiemTra: string | null; coQuyen: boolean }
+
+/** Phân công kiểm tra chéo xoay vòng cho mọi đề của một môn, kì (người này kiểm đề người kia, lần lượt cả tổ). */
+export async function phanCongXoayVong(maMon: string, ky: string): Promise<DongXoayVong[]> {
+  kiemMonKy(maMon, ky);
+  const KHOI = await layKhoiLamViec();
+  const { supabase } = await layNguoiDung();
+  const { data, error } = await supabase.rpc('phan_cong_xoay_vong', { p_khoi: KHOI, p_mon: maMon, p_ky: ky });
+  if (error) throw new Error(error.message);
+  return (data as DongXoayVong[] | null) ?? [];
+}
+
+/** Chọn tối đa 3 đề (đã duyệt cấp tổ) làm đề chính, nộp Ban giám hiệu. Thứ tự trong danh sách là số đề chính. */
+export async function chonDeChinh(maMon: string, ky: string, ds: string[]): Promise<number> {
+  kiemMonKy(maMon, ky);
+  if (!ds.length) throw new Error('Chưa chọn đề nào.');
+  if (ds.length > 3) throw new Error('Mỗi môn, kì nộp tối đa 3 đề chính.');
+  const KHOI = await layKhoiLamViec();
+  const { supabase } = await layNguoiDung();
+  const { data, error } = await supabase.rpc('chon_de_chinh', { p_khoi: KHOI, p_mon: maMon, p_ky: ky, p_ds: ds });
+  if (error) throw new Error(error.message);
+  return (data as number | null) ?? 0;
 }

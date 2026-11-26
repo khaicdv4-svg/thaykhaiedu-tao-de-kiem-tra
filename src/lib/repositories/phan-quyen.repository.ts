@@ -13,32 +13,37 @@ export interface QuyenCuaToi {
   laQuanTri: boolean;
   laBgh: boolean;
   laToTruong: boolean;
+  /** Có vai trò tổ phó. */
+  laToPho: boolean;
   /** Được soạn đề (giáo viên, tổ trưởng, tổ phó, Ban giám hiệu). Quản trị viên đơn thuần thì không. */
   duocSoanDe: boolean;
   /** Được giao ủy quyền (tổ trưởng hoặc Ban giám hiệu). */
   duocUyQuyen: boolean;
-  /** Được phân công người thẩm định cho đề. */
+  /** Được phân công người kiểm tra chéo cho đề (tổ trưởng, BGH, hoặc người được tích quyền phân công). */
   duocPhanCong: boolean;
   /** Chỉ có vai trò Ban giám hiệu (không phải giáo viên hay tổ trưởng): chỉ dùng chức năng BGH. */
   laBghThuan: boolean;
-  /** Các quyền chuyên môn đang có (SOAN_DE, THAM_DINH, SUA_MA_TRAN_DAC_TA, NAP_MUC_LUC_SACH). */
+  /** Các quyền chuyên môn đang có (xem QUYEN_GIAO_VIEN). */
   quyen: string[];
 }
 
 export async function quyenCuaToi(): Promise<QuyenCuaToi> {
   const { vaiTro, quyen } = await layNguoiDung();
   const co = (r: string) => vaiTro.includes(r);
-  const laBgh = co('SCHOOL_LEADERSHIP') || co('SCHOOL_ADMIN');
-  const laToTruong = co('GROUP_LEADER');
+  // Quản trị được mọi quyền (cơ sở dữ liệu coi quản trị như có mọi vai trò), trừ tự duyệt đề của mình.
+  const laQuanTri = co('SYSTEM_ADMIN');
+  const laBgh = laQuanTri || co('SCHOOL_LEADERSHIP') || co('SCHOOL_ADMIN');
+  const laToTruong = laQuanTri || co('GROUP_LEADER');
   return {
     vaiTro,
-    laQuanTri: co('SYSTEM_ADMIN'),
+    laQuanTri,
     laBgh,
     laToTruong,
-    duocSoanDe: co('TEACHER') || co('GROUP_LEADER') || co('DEPUTY_GROUP_LEADER') || laBgh,
+    laToPho: co('DEPUTY_GROUP_LEADER'),
+    duocSoanDe: laQuanTri || co('TEACHER') || co('GROUP_LEADER') || co('DEPUTY_GROUP_LEADER') || laBgh,
     duocUyQuyen: laToTruong || laBgh,
-    duocPhanCong: laToTruong || laBgh,
-    laBghThuan: co('SCHOOL_LEADERSHIP') && !co('TEACHER') && !co('GROUP_LEADER') && !co('DEPUTY_GROUP_LEADER') && !co('SCHOOL_ADMIN') && !co('SYSTEM_ADMIN'),
+    duocPhanCong: laToTruong || laBgh || quyen.includes('PHAN_CONG_CHEO'),
+    laBghThuan: co('SCHOOL_LEADERSHIP') && !co('TEACHER') && !co('GROUP_LEADER') && !co('DEPUTY_GROUP_LEADER') && !co('SCHOOL_ADMIN') && !laQuanTri,
     quyen,
   };
 }
@@ -128,7 +133,9 @@ export async function thuHoiUyQuyen(id: string): Promise<void> {
 // Đăng ký vai trò theo Gmail (quản trị) và bảng quyền giáo viên theo tổ
 // ---------------------------------------------------------------------------
 
-export const QUYEN_GIAO_VIEN = ['SOAN_DE', 'THAM_DINH', 'SUA_MA_TRAN_DAC_TA', 'NAP_MUC_LUC_SACH'] as const;
+export const QUYEN_GIAO_VIEN = ['SOAN_DE', 'THAM_DINH', 'SUA_MA_TRAN_DAC_TA', 'NAP_MUC_LUC_SACH', 'DUYET_CAP_TO', 'PHAN_CONG_CHEO'] as const;
+export const CHUC_VU_TO = ['TO_TRUONG', 'TO_PHO', 'THANH_VIEN'] as const;
+export type ChucVuTo = (typeof CHUC_VU_TO)[number] | 'BGH' | 'QUAN_TRI';
 export type MaQuyenGv = (typeof QUYEN_GIAO_VIEN)[number];
 
 export interface DongEmailVaiTro { id: string; email: string; vaiTro: string; khoi: number | null; ghiChu: string | null; taoLuc: string; daDangNhap: boolean }
@@ -162,7 +169,7 @@ export async function dsToQuanLy(): Promise<ToQuanLy[]> {
   return (data as ToQuanLy[] | null) ?? [];
 }
 
-export interface GiaoVienTrongTo { id: string; ten: string; email: string | null; hoatDong: boolean; khoa: boolean; ghiChuKhoa: string; quyen: Record<MaQuyenGv, boolean> }
+export interface GiaoVienTrongTo { id: string; ten: string; email: string | null; hoatDong: boolean; chucVu: ChucVuTo; khoa: boolean; ghiChuKhoa: string; quyen: Record<MaQuyenGv, boolean> }
 export async function dsQuyenTo(khoi: number): Promise<GiaoVienTrongTo[]> {
   const { supabase } = await layNguoiDung();
   const { data, error } = await supabase.rpc('ds_quyen_to', { p_khoi: khoi });
@@ -180,5 +187,36 @@ export async function apDungQuyenTo(khoi: number, ds: { user: string; quyen: str
 export async function chuyenGiaoVienSangTo(user: string, khoi: number): Promise<void> {
   const { supabase } = await layNguoiDung();
   const { error } = await supabase.rpc('chuyen_giao_vien_sang_to', { p_user: user, p_khoi: khoi });
+  if (error) throw new Error(error.message);
+}
+
+/** Đổi chức vụ trong tổ: quản trị đặt tổ trưởng; tổ trưởng (hoặc quản trị) đặt tổ phó, thành viên. Mỗi tổ một tổ trưởng, tối đa một tổ phó. */
+export async function datChucVuTo(khoi: number, user: string, chucVu: string): Promise<void> {
+  if (!(CHUC_VU_TO as readonly string[]).includes(chucVu)) throw new Error('Chức vụ không hợp lệ.');
+  const { supabase } = await layNguoiDung();
+  const { error } = await supabase.rpc('dat_chuc_vu_to', { p_khoi: khoi, p_user: user, p_chuc_vu: chucVu });
+  if (error) throw new Error(error.message);
+}
+
+export interface PhuTrachMon { maMon: string; userId: string; ten: string | null }
+
+/** Người phụ trách duyệt cấp tổ từng môn của tổ khối. */
+export async function dsPhuTrachMon(khoi: number): Promise<PhuTrachMon[]> {
+  const { supabase, orgId } = await layNguoiDung();
+  const { data, error } = await supabase.from('to_phu_trach_mon').select('ma_mon, user_id').eq('organization_id', orgId).eq('khoi', khoi);
+  if (error) throw new Error(`Không đọc được người phụ trách môn: ${error.message}`);
+  const ids = [...new Set(((data ?? []) as any[]).map((r) => r.user_id))];
+  const ten = new Map<string, string>();
+  if (ids.length) {
+    const { data: ps } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+    for (const p of (ps ?? []) as any[]) ten.set(p.id, p.full_name);
+  }
+  return ((data ?? []) as any[]).map((r) => ({ maMon: r.ma_mon, userId: r.user_id, ten: ten.get(r.user_id) ?? null }));
+}
+
+/** Giao (hoặc bỏ, khi user = null) người phụ trách duyệt cấp tổ một môn. Người được giao cần quyền DUYET_CAP_TO. */
+export async function giaoPhuTrachMon(khoi: number, maMon: string, user: string | null): Promise<void> {
+  const { supabase } = await layNguoiDung();
+  const { error } = await supabase.rpc('giao_phu_trach_mon', { p_khoi: khoi, p_mon: maMon, p_user: user });
   if (error) throw new Error(error.message);
 }

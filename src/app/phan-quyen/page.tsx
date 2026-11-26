@@ -2,12 +2,15 @@
 
 /**
  * Vai trò và ủy quyền.
+ * - Tổ trưởng (hoặc quản trị): bổ nhiệm tổ phó, tích quyền cho tổ phó và thành viên, giao môn phụ trách duyệt cấp tổ.
+ *   Quản trị bổ nhiệm tổ trưởng.
  * - Quản trị viên hệ thống: cấp / thu hồi vai trò cho thành viên (có thể cấp nhiều vai trò, có thời hạn).
  * - Tổ trưởng, Ban giám hiệu: ủy quyền có thời hạn cho người khác (không bao giờ gồm quyền phê duyệt).
  * Mọi kiểm tra quyền do cơ sở dữ liệu thực hiện; trang này chỉ gọi và hiển thị.
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { DANH_SACH_MON } from '@/core/kho-ma-tran/phan-loai';
 
 interface ThanhVien { id: string; ten: string; vaiTroGoc: string; vaiTro: string[] }
 interface DongVaiTro { id: string; userId: string; ten: string | null; vaiTro: string; khoi: number | null; tu: string; den: string | null; lyDo: string }
@@ -15,13 +18,18 @@ interface DongUyQuyen { id: string; nguoiGiao: string; nguoiNhan: string; hanhDo
 interface Quyen { laQuanTri: boolean; duocUyQuyen: boolean; laToTruong: boolean; vaiTro: string[] }
 interface DongEmail { id: string; email: string; vaiTro: string; khoi: number | null; ghiChu: string | null; daDangNhap: boolean }
 interface ToQl { khoi: number; ten: string; soGiaoVien: number }
-interface GvTo { id: string; ten: string; email: string | null; hoatDong: boolean; khoa: boolean; ghiChuKhoa: string; quyen: Record<string, boolean> }
+interface GvTo { id: string; ten: string; email: string | null; hoatDong: boolean; chucVu: string; khoa: boolean; ghiChuKhoa: string; quyen: Record<string, boolean> }
+interface PhuTrach { maMon: string; userId: string; ten: string | null }
 const COT_QUYEN: { ma: string; ten: string; mota: string }[] = [
   { ma: 'SOAN_DE', ten: 'Soạn đề', mota: 'Tạo và lưu đề kiểm tra của mình' },
-  { ma: 'THAM_DINH', ten: 'Thẩm định', mota: 'Được phân công thẩm định đề của đồng nghiệp' },
-  { ma: 'SUA_MA_TRAN_DAC_TA', ten: 'Ma trận, đặc tả', mota: 'Lập và sửa ma trận riêng, bản đặc tả' },
+  { ma: 'THAM_DINH', ten: 'Kiểm tra chéo', mota: 'Được phân công kiểm tra chéo và duyệt chéo đề của đồng nghiệp' },
+  { ma: 'PHAN_CONG_CHEO', ten: 'Phân công kiểm tra chéo', mota: 'Phân công ai kiểm tra đề của ai trong tổ' },
+  { ma: 'DUYET_CAP_TO', ten: 'Duyệt cấp tổ', mota: 'Duyệt cấp tổ và chọn đề chính cho các môn được giao phụ trách' },
+  { ma: 'SUA_MA_TRAN_DAC_TA', ten: 'Sửa ma trận người khác', mota: 'Sửa ma trận riêng, đặc tả của thành viên khác (bộ của mình ai cũng sửa được)' },
   { ma: 'NAP_MUC_LUC_SACH', ten: 'Mục lục, kho sách', mota: 'Nạp mục lục SGK, tải sách giáo khoa, sách giáo viên' },
 ];
+const MON_TO = DANH_SACH_MON.filter((m) => ['TOAN', 'TIENG_VIET', 'KHOA_HOC', 'LS_DL', 'CONG_NGHE'].includes(m.ma));
+const TEN_CHUC_VU: Record<string, string> = { TO_TRUONG: 'Tổ trưởng', TO_PHO: 'Tổ phó', THANH_VIEN: 'Thành viên', BGH: 'Ban giám hiệu', QUAN_TRI: 'Quản trị' };
 const VAI_TRO_EMAIL: Record<string, string> = { SCHOOL_LEADERSHIP: 'Ban giám hiệu', GROUP_LEADER: 'Tổ trưởng', DEPUTY_GROUP_LEADER: 'Tổ phó', TEACHER: 'Giáo viên (xếp vào tổ)' };
 
 const TEN_VAI_TRO: Record<string, string> = { TEACHER: 'Giáo viên', GROUP_LEADER: 'Tổ trưởng', DEPUTY_GROUP_LEADER: 'Tổ phó', SCHOOL_LEADERSHIP: 'Ban giám hiệu (duyệt đề)', SCHOOL_ADMIN: 'Ban giám hiệu', SYSTEM_ADMIN: 'Quản trị hệ thống' };
@@ -53,6 +61,7 @@ export default function PhanQuyenPage() {
   const [khoiChon, setKhoiChon] = useState<number | null>(null);
   const [gv, setGv] = useState<GvTo[]>([]);
   const [sua, setSua] = useState<Record<string, string[]>>({});
+  const [phuTrach, setPhuTrach] = useState<PhuTrach[]>([]);
   const [fUq, setFUq] = useState({ nguoiNhan: '', hanhDong: ['BAT_DAU_THAM_DINH'] as string[], den: '', lyDo: '' });
 
   const nap = useCallback(async () => {
@@ -78,6 +87,7 @@ export default function PhanQuyenPage() {
     if (!r.ok) { setTb(`Chưa đọc được bảng quyền: ${r.j.error}`); setGv([]); return; }
     const l = (r.j.giaoVien as GvTo[]) ?? [];
     setGv(l);
+    setPhuTrach((r.j.phuTrach as PhuTrach[]) ?? []);
     setSua(Object.fromEntries(l.filter((x) => !x.khoa).map((x) => [x.id, COT_QUYEN.filter((c) => x.quyen[c.ma]).map((c) => c.ma)])));
   }, []);
   useEffect(() => { void napBang(khoiChon); }, [khoiChon, napBang]);
@@ -90,6 +100,23 @@ export default function PhanQuyenPage() {
     setTb(r.ok ? `Đã áp dụng quyền cho tổ khối ${khoiChon} (${String(r.j.soNguoiDoi ?? 0)} người có thay đổi).` : `Chưa áp dụng được: ${r.j.error}`);
     if (r.ok) await napBang(khoiChon);
   };
+  const doiChucVu = async (x: GvTo, chucVu: string) => {
+    if (!khoiChon || chucVu === x.chucVu) return;
+    const loiNhac = chucVu === 'TO_PHO' ? `Bổ nhiệm ${x.ten} làm tổ phó tổ khối ${khoiChon}? Tổ phó hiện tại (nếu có) sẽ về làm thành viên.`
+      : chucVu === 'TO_TRUONG' ? `Bổ nhiệm ${x.ten} làm tổ trưởng tổ khối ${khoiChon}? Tổ trưởng hiện tại sẽ về làm thành viên.`
+      : `Cho ${x.ten} thôi chức ${TEN_CHUC_VU[x.chucVu] ?? ''}, về làm thành viên?`;
+    if (!confirm(loiNhac)) return;
+    const r = await post('/api/phan-quyen/to', { viec: 'CHUC_VU', khoi: khoiChon, user: x.id, chucVu });
+    setTb(r.ok ? `Đã đổi chức vụ của ${x.ten}.` : `Chưa đổi được: ${r.j.error}`);
+    if (r.ok) await napBang(khoiChon);
+  };
+  const giaoMon = async (maMon: string, user: string) => {
+    if (!khoiChon) return;
+    const r = await post('/api/phan-quyen/to', { viec: 'PHU_TRACH', khoi: khoiChon, mon: maMon, user: user || null });
+    setTb(r.ok ? 'Đã lưu người phụ trách môn.' : `Chưa lưu được: ${r.j.error}`);
+    if (r.ok) await napBang(khoiChon);
+  };
+  const duocChonPhuTrach = gv.filter((x) => x.chucVu === 'TO_TRUONG' || x.chucVu === 'QUAN_TRI' || (x.khoa ? false : (sua[x.id] ?? []).includes('DUYET_CAP_TO')) || (x.khoa && x.quyen.DUYET_CAP_TO));
   const themEmail = async () => {
     const list = fEm.ds.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
     if (!list.length) return;
@@ -159,8 +186,8 @@ export default function PhanQuyenPage() {
 
       {(quyen?.laQuanTri || quyen?.laToTruong) && (
         <div id="quyen-to" className="the-tke space-y-3 p-6 scroll-mt-24">
-          <h2 className="font-semibold text-slate-900">Quyền của giáo viên trong tổ</h2>
-          <p className="text-sm text-slate-600">Mặc định giáo viên chỉ soạn đề. Tích vào ô quyền nào thì giáo viên đó được cấp quyền ấy, bỏ tích thì thu lại, rồi bấm Áp dụng. Tổ trưởng, tổ phó và Ban giám hiệu đã có quyền theo vai trò nên không chỉnh ở đây.</p>
+          <h2 className="font-semibold text-slate-900">Thành viên, chức vụ và quyền trong tổ</h2>
+          <p className="text-sm text-slate-600">Chọn chức vụ ở cột Chức vụ (mỗi tổ một tổ trưởng, tối đa một tổ phó; chỉ quản trị bổ nhiệm tổ trưởng). Tích ô quyền nào thì người đó có quyền ấy, bỏ tích thì thu lại, rồi bấm Áp dụng. Mặc định giáo viên được soạn đề và kiểm tra chéo; tổ phó có hết các quyền, tổ trưởng bỏ tích được.</p>
           <div className="flex flex-wrap items-center gap-3">
             <label className="text-sm text-slate-700">Tổ
               <select aria-label="Chọn tổ" className={o + ' ml-2 w-auto'} value={khoiChon ?? ''} onChange={(e) => setKhoiChon(e.target.value ? Number(e.target.value) : null)}>
@@ -172,18 +199,30 @@ export default function PhanQuyenPage() {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-slate-50 text-left">
-                  <th className="border border-slate-200 px-2 py-1.5">Giáo viên</th>
+                  <th className="border border-slate-200 px-2 py-1.5">Thành viên</th>
+                  <th className="border border-slate-200 px-2 py-1.5">Chức vụ</th>
                   {COT_QUYEN.map((c) => <th key={c.ma} className="border border-slate-200 px-2 py-1.5 text-center" title={c.mota}>{c.ten}</th>)}
                   {quyen?.laQuanTri && <th className="border border-slate-200 px-2 py-1.5">Chuyển sang tổ</th>}
                 </tr>
               </thead>
               <tbody>
-                {gv.length === 0 && <tr><td colSpan={6} className="border border-slate-200 px-2 py-2 text-slate-500">Tổ này chưa có thành viên.</td></tr>}
+                {gv.length === 0 && <tr><td colSpan={COT_QUYEN.length + 3} className="border border-slate-200 px-2 py-2 text-slate-500">Tổ này chưa có thành viên.</td></tr>}
                 {gv.map((x) => (
                   <tr key={x.id} className={x.hoatDong ? '' : 'text-slate-400'}>
                     <td className="border border-slate-200 px-2 py-1.5">{x.ten}<div className="text-xs text-slate-500">{x.email}{!x.hoatDong ? ' · chưa kích hoạt' : ''}</div></td>
+                    <td className="border border-slate-200 px-2 py-1.5">
+                      {['BGH', 'QUAN_TRI'].includes(x.chucVu) || (x.chucVu === 'TO_TRUONG' && !quyen?.laQuanTri) || (x.ghiChuKhoa === 'Tài khoản của bạn' && !quyen?.laQuanTri)
+                        ? <span className="font-medium">{TEN_CHUC_VU[x.chucVu] ?? x.chucVu}</span>
+                        : (
+                          <select aria-label={`Chức vụ của ${x.ten}`} className={o} value={x.chucVu} onChange={(e) => void doiChucVu(x, e.target.value)}>
+                            {quyen?.laQuanTri && <option value="TO_TRUONG">Tổ trưởng</option>}
+                            <option value="TO_PHO">Tổ phó</option>
+                            <option value="THANH_VIEN">Thành viên</option>
+                          </select>
+                        )}
+                    </td>
                     {x.khoa
-                      ? <td colSpan={COT_QUYEN.length} className="border border-slate-200 px-2 py-1.5 text-center text-slate-500">{x.ghiChuKhoa}: đã có quyền theo vai trò</td>
+                      ? <td colSpan={COT_QUYEN.length} className="border border-slate-200 px-2 py-1.5 text-center text-slate-500">{x.ghiChuKhoa}: có đủ quyền theo chức vụ</td>
                       : COT_QUYEN.map((c) => (
                         <td key={c.ma} className="border border-slate-200 px-2 py-1.5 text-center">
                           <input type="checkbox" aria-label={`${c.ten} - ${x.ten}`} checked={(sua[x.id] ?? []).includes(c.ma)}
@@ -204,6 +243,26 @@ export default function PhanQuyenPage() {
           </div>
           <button type="button" className="inline-flex items-center rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50" disabled={!coThayDoi} onClick={() => void apDung()}>Áp dụng</button>
           {coThayDoi && <span className="ml-3 text-sm text-amber-700">Có thay đổi chưa áp dụng.</span>}
+
+          <div className="space-y-2 pt-3">
+            <h3 className="font-semibold text-slate-900">Người phụ trách duyệt cấp tổ từng môn</h3>
+            <p className="text-sm text-slate-600">Ví dụ tổ trưởng phụ trách 2 môn, tổ phó 2 môn. Người phụ trách duyệt cấp tổ các đề đã được duyệt chéo của môn đó và chọn tối đa 3 đề chính nộp Ban giám hiệu. Chỉ chọn được người đã có quyền Duyệt cấp tổ (bấm Áp dụng trước nếu vừa tích). Tổ trưởng luôn duyệt được mọi môn.</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {MON_TO.map((m) => {
+                const hienTai = phuTrach.find((p) => p.maMon === m.ma)?.userId ?? '';
+                return (
+                  <label key={m.ma} className="flex items-center gap-2 text-sm text-slate-700">
+                    <span className="w-36 shrink-0">{m.ten}</span>
+                    <select aria-label={`Phụ trách ${m.ten}`} className={o} value={hienTai} onChange={(e) => void giaoMon(m.ma, e.target.value)}>
+                      <option value="">Tổ trưởng (chưa giao riêng)</option>
+                      {duocChonPhuTrach.map((x) => <option key={x.id} value={x.id}>{x.ten} ({TEN_CHUC_VU[x.chucVu] ?? x.chucVu})</option>)}
+                      {hienTai && !duocChonPhuTrach.some((x) => x.id === hienTai) && <option value={hienTai}>{phuTrach.find((p) => p.maMon === m.ma)?.ten ?? hienTai}</option>}
+                    </select>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 

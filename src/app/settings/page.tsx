@@ -12,7 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Building2, CalendarDays, Check, FolderTree, Pencil, Plus, ShieldCheck, Star, Users, X } from 'lucide-react';
-import { ROLE_PERMISSIONS, SystemPermission, UserRole } from '@/types/permissions';
+import { BANG_QUYEN, CHUC_VU, TEN_CHUC_VU, TEN_NHOM } from '@/core/phan-quyen/bang-quyen';
 
 interface Truong { id: string; ma: string; ten: string; tinh: string; quan: string; diaChi: string; khoi: number[]; capNhat: string }
 interface NamHoc { id: string; ma: string; ten: string; batDau: string; ketThuc: string; hienTai: boolean }
@@ -34,13 +34,6 @@ const TEN_VAI_TRO: Record<string, string> = {
   TEACHER: 'Giáo viên', GROUP_LEADER: 'Tổ trưởng', DEPUTY_GROUP_LEADER: 'Tổ phó',
   SCHOOL_ADMIN: 'Ban giám hiệu (quản lý)', SCHOOL_LEADERSHIP: 'Ban giám hiệu (duyệt đề)', SYSTEM_ADMIN: 'Quản trị hệ thống',
 };
-const TEN_QUYEN: Record<SystemPermission, string> = {
-  CREATE_TEST: 'Tạo đề', EDIT_OWN_TEST: 'Sửa đề của mình', SUBMIT_TEST: 'Gửi đề đi kiểm tra',
-  CROSS_REVIEW_TEST: 'Kiểm tra chéo', REQUEST_REVISION: 'Yêu cầu chỉnh sửa', APPROVE_TEST: 'Duyệt đề',
-  LOCK_TEST: 'Khóa đề', VIEW_GROUP_TESTS: 'Xem đề của tổ', MANAGE_GROUP: 'Quản lý tổ',
-  MANAGE_TEMPLATES: 'Quản lý mẫu đề', MANAGE_SOURCES: 'Quản lý nguồn chuyên môn', MANAGE_USERS: 'Quản lý tài khoản',
-};
-const THU_TU_VAI_TRO: UserRole[] = ['TEACHER', 'DEPUTY_GROUP_LEADER', 'GROUP_LEADER', 'SCHOOL_LEADERSHIP', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
 
 const o = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-[15px] text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-500';
 const nutPhu = 'inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-50';
@@ -433,14 +426,18 @@ function PhanNguoiDung({ dl }: { dl: DuLieu }) {
 }
 
 function PhanVaiTro() {
-  const tatCa = Object.keys(TEN_QUYEN) as SystemPermission[];
+  const kyHieu = (v: string) => v === 'co' ? <Check className="w-4 h-4 inline text-indigo-600" aria-label="Có" />
+    : v === 'khong' ? <span className="text-slate-300" aria-label="Không">–</span>
+    : v === 'tich' ? <span className="text-xs font-medium text-amber-700">Khi được tích</span>
+    : <span className="text-xs text-slate-600">{v}</span>;
   return (
     <section className="the-tke p-6 space-y-4">
       <div>
         <h2 className="text-lg font-bold text-slate-900">Vai trò và quyền</h2>
         <p className="text-sm text-slate-600 mt-1">
-          Bảng tra cứu: mỗi vai trò làm được những việc nào. Giáo viên còn có các quyền riêng do tổ trưởng tích ở trang{' '}
-          <Link href="/phan-quyen#quyen-to" className="font-semibold text-indigo-700 underline">Vai trò và ủy quyền</Link>.
+          Bảng tra cứu theo chức vụ. Ô &quot;Khi được tích&quot; do tổ trưởng tích cho từng người ở trang{' '}
+          <Link href="/phan-quyen#quyen-to" className="font-semibold text-indigo-700 underline">Vai trò và ủy quyền</Link>
+          {' '}(giáo viên mặc định được soạn đề và kiểm tra chéo; tổ phó mặc định có hết, tổ trưởng bỏ tích được).
         </p>
       </div>
       <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -448,21 +445,20 @@ function PhanVaiTro() {
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-2.5 text-left font-semibold">Việc</th>
-              {THU_TU_VAI_TRO.map((r) => <th key={r} className="px-3 py-2.5 font-semibold text-center min-w-24">{TEN_VAI_TRO[r]}</th>)}
+              {CHUC_VU.map((r) => <th key={r} className="px-3 py-2.5 font-semibold text-center min-w-24">{TEN_CHUC_VU[r]}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {tatCa.map((q) => (
-              <tr key={q}>
-                <td className="px-4 py-2 font-medium text-slate-800">{TEN_QUYEN[q]}</td>
-                {THU_TU_VAI_TRO.map((r) => (
-                  <td key={r} className="px-3 py-2 text-center">
-                    {ROLE_PERMISSIONS[r].includes(q)
-                      ? <Check className="w-4 h-4 inline text-indigo-600" aria-label="Có" />
-                      : <span className="text-slate-300" aria-label="Không">–</span>}
-                  </td>
-                ))}
-              </tr>
+            {BANG_QUYEN.map((d, i) => (
+              <React.Fragment key={d.viec}>
+                {(i === 0 || BANG_QUYEN[i - 1].nhom !== d.nhom) && (
+                  <tr className="bg-slate-50/60"><td colSpan={CHUC_VU.length + 1} className="px-4 py-1.5 text-xs font-semibold uppercase text-slate-500">{TEN_NHOM[d.nhom]}</td></tr>
+                )}
+                <tr>
+                  <td className="px-4 py-2 font-medium text-slate-800">{d.viec}</td>
+                  {CHUC_VU.map((r) => <td key={r} className="px-3 py-2 text-center">{kyHieu(d.o[r])}</td>)}
+                </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

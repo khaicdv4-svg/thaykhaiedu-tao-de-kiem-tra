@@ -21,6 +21,17 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 7,
+    ngay: '2026-11-26',
+    tieuDe: 'Phân quyền theo tổ và duyệt đề theo quy trình của tổ',
+    noiDung: [
+      'Tổ trưởng chọn tổ phó ngay trong bảng thành viên của tổ, tích hoặc bỏ từng quyền cho tổ phó và giáo viên. Quản trị chọn tổ trưởng.',
+      'Thêm hai quyền: Phân công kiểm tra chéo và Duyệt cấp tổ. Tổ trưởng giao từng môn cho người phụ trách duyệt (ví dụ tổ trưởng 2 môn, tổ phó 2 môn).',
+      'Quy trình mới ở Kho đề: gửi kiểm tra chéo → người kiểm tra góp ý hoặc duyệt chéo → duyệt cấp tổ → chọn tối đa 3 đề chính mỗi môn nộp Ban giám hiệu. Có nút phân công kiểm tra chéo xoay vòng cả tổ.',
+      'Quản trị làm được mọi việc, trừ tự duyệt đề do mình soạn. Bảng quyền ở Cài đặt đã sửa cho đúng quyền thật.',
+    ],
+  },
+  {
     so: 6,
     ngay: '2026-11-26',
     tieuDe: 'Gọn bước làm đề: ít nút hơn, tự lưu, bài đọc chọn ở bước 1',

@@ -17,7 +17,7 @@ import { kiemTraDangBai } from '@/core/de/dang-bai';
 export type TrangThaiDe =
   | 'BAN_NHAP' | 'CAN_KIEM_TRA' | 'CO_LOI' | 'CAN_KIEM_TRA_LAI' // đang soạn
   | 'SAN_SANG_DUYET' // đã gửi, chờ thẩm định
-  | 'DANG_THAM_DINH' | 'TRA_LAI' | 'DA_XAC_NHAN_TO' | 'CHO_BGH_DUYET' | 'DA_DUYET' | 'DA_PHAT_HANH' | 'DA_LUU_TRU';
+  | 'DANG_THAM_DINH' | 'DA_DUYET_CHEO' | 'TRA_LAI' | 'DA_XAC_NHAN_TO' | 'CHO_BGH_DUYET' | 'DA_DUYET' | 'DA_PHAT_HANH' | 'DA_LUU_TRU';
 
 /** Trạng thái chỉ đặt qua thao tác duyệt, không cho trình duyệt tự gửi lên khi lưu. */
 export const TRANG_THAI_CHI_DO_DUYET: TrangThaiDe[] = ['DA_DUYET', 'TRA_LAI'];
@@ -26,7 +26,7 @@ export const TRANG_THAI_CHI_DO_DUYET: TrangThaiDe[] = ['DA_DUYET', 'TRA_LAI'];
 export const TRANG_THAI_NHAP: TrangThaiDe[] = ['BAN_NHAP', 'CAN_KIEM_TRA', 'CO_LOI', 'CAN_KIEM_TRA_LAI'];
 
 /** Trạng thái đề đã rời tay người soạn (đang xét duyệt hoặc đã duyệt): nội dung bị khóa. */
-export const TRANG_THAI_KHOA: TrangThaiDe[] = ['SAN_SANG_DUYET', 'DANG_THAM_DINH', 'DA_XAC_NHAN_TO', 'CHO_BGH_DUYET', 'DA_DUYET', 'DA_PHAT_HANH', 'DA_LUU_TRU'];
+export const TRANG_THAI_KHOA: TrangThaiDe[] = ['SAN_SANG_DUYET', 'DANG_THAM_DINH', 'DA_DUYET_CHEO', 'DA_XAC_NHAN_TO', 'CHO_BGH_DUYET', 'DA_DUYET', 'DA_PHAT_HANH', 'DA_LUU_TRU'];
 
 export const NHAN_LUA_CHON = ['A', 'B', 'C', 'D'] as const;
 
