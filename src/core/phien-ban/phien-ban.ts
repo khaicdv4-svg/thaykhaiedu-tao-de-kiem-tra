@@ -21,6 +21,16 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 5,
+    ngay: '2026-11-26',
+    tieuDe: 'Đề Word vừa trang, không còn khoảng trống lớn cuối trang',
+    noiDung: [
+      'Khung đầu đề (trường, họ tên, lớp, bảng điểm) giãn dòng 1,0 cho gọn.',
+      'Giãn dòng trong đề đặt cố định nên mở bằng Word hay xem trước đều dàn trang như nhau.',
+      'Trang nào còn trống nhiều, app tự thêm dòng kẻ rải đều cho các câu có chỗ viết; trang toàn trắc nghiệm thì giãn đều khoảng cách giữa các câu. Cuối trang chừa khoảng 1 cm.',
+    ],
+  },
+  {
     so: 4,
     ngay: '2026-11-26',
     tieuDe: 'Báo khi có phiên bản mới',

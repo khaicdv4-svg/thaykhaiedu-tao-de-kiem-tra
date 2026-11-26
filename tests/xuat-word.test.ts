@@ -5,7 +5,7 @@ import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
 import { kiemDinhDe, taoDeTuDacTa } from '../src/core/de/de';
-import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, xepCauTheoSo } from '../src/core/de/xuat-word';
+import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, gianCoDinh, phanBoChoTrong, uocLuongCaoCau, xepCauTheoSo } from '../src/core/de/xuat-word';
 import { docChuTuDocx, docTepTrongZip } from '../src/core/utils/docx-text';
 
 const mtc = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'LS_DL')!;
@@ -144,5 +144,24 @@ describe('Thông báo kiểm định theo thứ tự câu', () => {
     const buf = await Packer.toBuffer(dungTaiLieuDe(tt, d3));
     const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
     expect(xml).not.toContain('GHI CHU CHAM TRAC NGHIEM');
+  });
+});
+
+describe('Dàn trang đề môn thường', () => {
+  it('khung đầu đề và nội dung dùng giãn dòng cố định (Exactly)', async () => {
+    const buf = await Packer.toBuffer(dungTaiLieuDe(tt, de));
+    const xml = new TextDecoder().decode((await docTepTrongZip(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, 'word/document.xml'))!);
+    expect(xml).toContain('w:lineRule="exact"');
+    expect(xml).toContain(`w:line="${gianCoDinh(240)}"`); // đầu đề 1,0 dòng
+  });
+
+  it('lấp chỗ trống: chỉ thêm dòng cho câu tự luận, không làm câu nào phình quá trang', () => {
+    const pb = phanBoChoTrong(de.cau, de.ma_mon);
+    expect(pb).toHaveLength(de.cau.length);
+    de.cau.forEach((c, i) => {
+      if (c.hinhThuc === 'TN') expect(pb[i].dongThem).toBe(0);
+      expect(pb[i].dongThem).toBeLessThanOrEqual(6);
+      expect(uocLuongCaoCau(c, de.ma_mon, pb[i].dongThem) + pb[i].cachTruoc).toBeLessThan(16838 - 567 * 2);
+    });
   });
 });

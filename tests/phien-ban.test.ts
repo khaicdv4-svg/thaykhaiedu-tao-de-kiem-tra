@@ -12,7 +12,7 @@ describe('Phiên bản và nhật ký cập nhật', () => {
 
   it('lấy các mục mới hơn số đã xem, mới nhất ở đầu', () => {
     const moi = mucMoiHon(NHAT_KY_CAP_NHAT, 2);
-    expect(moi.map((m) => m.so)).toEqual([4, 3]);
+    expect(moi.map((m) => m.so)).toEqual(NHAT_KY_CAP_NHAT.map((m) => m.so).filter((so) => so > 2).sort((x, y) => y - x));
     expect(mucMoiHon(NHAT_KY_CAP_NHAT, soMoiNhat(NHAT_KY_CAP_NHAT))).toEqual([]);
   });
 
