@@ -21,6 +21,16 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 11,
+    ngay: '2026-11-26',
+    tieuDe: 'Sửa nút "Lưu và sang Soạn câu hỏi" ở bản đặc tả',
+    noiDung: [
+      'Bấm nút là hiện ngay kết quả cạnh nút: đang lưu, đã lưu (tự sang bước tiếp), hoặc danh sách lỗi cần sửa.',
+      'Lỗi nằm ở câu của phần khác (ví dụ bài viết chưa có bài học, tuần) thì app tự hiện cả các phần để thầy cô thấy chỗ sửa.',
+      'Sửa lỗi trang đặc tả, tạo đề có lúc nạp nhầm dữ liệu môn Toán trước khi nạp đúng môn đang làm.',
+    ],
+  },
+  {
     so: 10,
     ngay: '2026-11-26',
     tieuDe: 'Đề Tiếng Việt có trang riêng, làm theo 3 phần',

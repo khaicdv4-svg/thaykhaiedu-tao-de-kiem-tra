@@ -63,10 +63,11 @@ const LOP = 4;
 
 async function goiJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; j: T & { error?: string } }> {
   try {
-    const r = await fetch(url, init);
+    // Quá 4 phút không có trả lời thì báo lỗi, không để nút đứng im
+    const r = await fetch(url, { ...init, signal: init?.signal ?? AbortSignal.timeout(240000) });
     return { ok: r.ok, status: r.status, j: (await r.json().catch(() => ({}))) as T & { error?: string } };
   } catch {
-    return { ok: false, status: 0, j: { error: 'Không kết nối được hệ thống.' } as T & { error?: string } };
+    return { ok: false, status: 0, j: { error: 'Không kết nối được hệ thống hoặc hệ thống trả lời quá lâu. Thử lại sau ít phút.' } as T & { error?: string } };
   }
 }
 
@@ -74,6 +75,9 @@ async function goiJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolea
 export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
   const [maMon, setMaMon] = useState('TOAN');
   const [ky, setKy] = useState<KyDung>('CUOI_HK1');
+  // Chỉ nạp sau khi đọc hồ sơ đề (môn, kì), tránh nạp nhầm môn mặc định rồi ghi đè
+  const [sanSang, setSanSang] = useState(false);
+  const lanNap = useRef(0);
   const [dangTai, setDangTai] = useState(false);
   const [loiTai, setLoiTai] = useState<string | null>(null);
   const [mtrBan, setMtrBan] = useState<BanMaTranRieng | null>(null); // phiên bản ma trận riêng đã xác nhận mới nhất
@@ -107,6 +111,7 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
   useEffect(() => {
     const h = docHoSoDe();
     if (h) { setMaMon(h.mon); setKy(h.ky); luuHoSoDe(h); }
+    setSanSang(true);
   }, []);
 
   // Tự điền bài, tuần, trang cho câu còn trống (một lần cho mỗi bản đặc tả) và tự tạo đặc tả khi chưa có
@@ -130,6 +135,7 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
     setMtrBan(null);
     setChuaLuu(false);
 
+    const toi = ++lanNap.current;
     const [mtr, dt, pp, yc, ml] = await Promise.all([
       goiJson<{ moiNhat: BanMaTranRieng | null; maTranChungMoiHon?: { phienBan: number } | null }>(`/api/ma-tran-rieng?mon=${maMon}&ky=${ky}`),
       goiJson<{ banNhap: BanDacTaApi | null; moiNhat: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
@@ -137,6 +143,7 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
       goiJson<{ yccd: Yccd[] }>(`/api/chuong-trinh/yccd?mon=${maMon}&lop=${LOP}&trangThai=DA_DUYET`),
       goiJson<{ mucLuc: MucLucSgk[] }>(`/api/chuong-trinh/sgk-muc-luc?mon=${maMon}&lop=${LOP}`),
     ]);
+    if (toi !== lanNap.current) return;
     setTiet(pp.ok ? pp.j.tiet ?? [] : []);
     setMucLuc(ml.ok ? ml.j.mucLuc ?? [] : []);
     setYccdKho(yc.ok ? yc.j.yccd ?? [] : []);
@@ -182,7 +189,7 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
     setDangTai(false);
   }, [maMon, ky]);
 
-  useEffect(() => { void nap(); }, [nap]);
+  useEffect(() => { if (sanSang) void nap(); }, [nap, sanSang]);
 
   /** Gửi đặc tả lên máy chủ để tự chọn bài (AI hoặc theo từ chung) cho các câu còn trống. Không ghi đè ô đã điền. */
   const ghepBai = async (d: DacTa) => {
@@ -284,7 +291,10 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
 
   /** Trả về true khi đặc tả đã lưu và dùng được (đã xác nhận). */
   const gui = async (hanhDong: 'LUU' | 'LUU_NHAP' | 'XAC_NHAN', imLang = false): Promise<boolean> => {
-    if (!mtrBan || !dacTa) return false;
+    if (!mtrBan || !dacTa) {
+      if (!imLang) setThongBao(!mtrBan ? 'Chưa có ma trận riêng đã lưu. Lưu ma trận trước rồi quay lại.' : 'Chưa có bản đặc tả để lưu.');
+      return false;
+    }
     if (hanhDong === 'LUU') kiemTra();
     const banGui = dacTa;
     if (imLang) setDangTuLuu(true); else setDangGui(true);
@@ -311,9 +321,24 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
     return true;
   };
 
-  /** Nút chính: lưu (app tự kiểm tra); dùng được thì sang bước 4 luôn. */
+  /** Nút chính: lưu (app tự kiểm tra); dùng được thì sang bước 4 luôn. Kết quả hiện ngay cạnh nút. */
+  const [baoNut, setBaoNut] = useState<{ loai: 'dang' | 'loi' | 'ok'; chu: string; ds?: string[] } | null>(null);
   const luuVaSang = async () => {
-    if (await gui('LUU')) router.push(hrefTaoDe());
+    setBaoNut({ loai: 'dang', chu: 'Đang kiểm tra và lưu…' });
+    try {
+      const kq = kiemTra();
+      if (await gui('LUU')) {
+        setBaoNut({ loai: 'ok', chu: 'Đã lưu. Đang mở bước tiếp theo…' });
+        router.push(hrefTaoDe());
+        return;
+      }
+      const loi = kq?.loi ?? [];
+      // Lỗi nằm ở câu của phần khác (đang ẩn): hiện cả các phần để thầy cô thấy và sửa
+      if (nhung && dacTa && loi.some((l) => dacTa.dong.some((r) => !khoaThuocPhan(r.khoa, nhung.phan) && l.startsWith(`${r.phan ?? r.baiKiemTra}, Câu ${r.cau}`)))) setHienTatCa(true);
+      setBaoNut({ loai: 'loi', chu: loi.length ? `Chưa lưu xong vì đặc tả còn ${loi.length} lỗi. Sửa các ô được nêu dưới đây rồi bấm lại:` : 'Chưa lưu được. Xem thông báo ở đầu trang.', ds: loi.slice(0, 6) });
+    } catch (e) {
+      setBaoNut({ loai: 'loi', chu: `Chưa lưu được: ${e instanceof Error ? e.message : String(e)}` });
+    }
   };
 
   // Tự lưu bản nháp 2 giây sau lần sửa cuối, để bước 4 biết đặc tả đang được sửa và không tạo đề theo bản cũ
@@ -554,6 +579,13 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
               <input type="checkbox" checked={daXemTruoc} onChange={(e) => setDaXemTruoc(e.target.checked)} />
               Tôi đã xem kĩ bản đặc tả ở trên.
             </label>
+          )}
+
+          {baoNut && (
+            <div className={`rounded-xl border p-3 text-sm ${baoNut.loai === 'loi' ? 'border-red-300 bg-red-50 text-red-900' : baoNut.loai === 'ok' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-blue-200 bg-blue-50 text-blue-900'}`}>
+              <div className="flex items-center gap-2">{baoNut.loai === 'dang' && <Loader2 className="w-4 h-4 animate-spin" />}{baoNut.chu}</div>
+              {baoNut.ds && baoNut.ds.length > 0 && <ul className="list-disc pl-6 mt-1 space-y-0.5">{baoNut.ds.map((l) => <li key={l}>{l}</li>)}</ul>}
+            </div>
           )}
 
           {daXacNhan && !chuaLuu ? (

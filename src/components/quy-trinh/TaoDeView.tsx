@@ -91,10 +91,11 @@ const TEN_DANG: Record<string, string> = { NLC: 'Nhiều lựa chọn', DS: 'Đ�
 
 async function goiJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; j: T & { error?: string } }> {
   try {
-    const r = await fetch(url, init);
+    // Quá 4 phút không có trả lời thì báo lỗi, không để nút đứng im
+    const r = await fetch(url, { ...init, signal: init?.signal ?? AbortSignal.timeout(240000) });
     return { ok: r.ok, status: r.status, j: (await r.json().catch(() => ({}))) as T & { error?: string } };
   } catch {
-    return { ok: false, status: 0, j: { error: 'Không kết nối được hệ thống.' } as T & { error?: string } };
+    return { ok: false, status: 0, j: { error: 'Không kết nối được hệ thống hoặc hệ thống trả lời quá lâu. Thử lại sau ít phút.' } as T & { error?: string } };
   }
 }
 
@@ -105,6 +106,9 @@ async function goiJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolea
 export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   const [maMon, setMaMon] = useState('TOAN');
   const [ky, setKy] = useState<KyDung>('CUOI_HK1');
+  // Chỉ nạp sau khi đọc hồ sơ đề (môn, kì), tránh nạp nhầm môn mặc định rồi ghi đè
+  const [sanSang, setSanSang] = useState(false);
+  const lanNap = useRef(0);
   const [dangTai, setDangTai] = useState(false);
   const [loiTai, setLoiTai] = useState<string | null>(null);
   const [dacTaBan, setDacTaBan] = useState<BanDacTaApi | null>(null); // đặc tả đã xác nhận mới nhất
@@ -151,6 +155,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     // Hồ sơ đề (môn, kì) chọn ở bước 1: địa chỉ ?mon=&ky= hoặc hồ sơ lưu trên máy
     const h = docHoSoDe();
     if (h) { setMaMon(h.mon); setKy(h.ky); luuHoSoDe(h); }
+    setSanSang(true);
   }, []);
 
   const nap = useCallback(async () => {
@@ -163,6 +168,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     setDacTaDangSua(null);
     setDaSua(false);
     setBaiDocChon(null);
+    const toi = ++lanNap.current;
     const [dt, d, bdc] = await Promise.all([
       goiJson<{ moiNhat: BanDacTaApi | null; banNhap: BanDacTaApi | null }>(`/api/dac-ta?mon=${maMon}&ky=${ky}`),
       goiJson<{ de: BanDeApi | null; dacTaDaCat?: boolean }>(`/api/de-kiem-tra?mon=${maMon}&ky=${ky}`),
@@ -170,6 +176,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
         ? goiJson<{ baiDoc: BaiDocChon | null; tuDe?: boolean }>(`/api/bai-doc-chon?ky=${ky}`)
         : Promise.resolve({ ok: false, status: 0, j: { baiDoc: null } as { baiDoc: BaiDocChon | null; tuDe?: boolean; error?: string } }),
     ]);
+    if (toi !== lanNap.current) return;
     if (bdc.ok && !bdc.j.tuDe && baiDocChonCoGi(bdc.j.baiDoc)) setBaiDocChon(bdc.j.baiDoc);
     if (!dt.ok) { setLoiTai(dt.j.error ?? 'Không đọc được bản đặc tả.'); setDangTai(false); return; }
     const moiNhat = dt.j.moiNhat;
@@ -207,7 +214,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     setDangTai(false);
   }, [maMon, ky]);
 
-  useEffect(() => { void nap(); }, [nap]);
+  useEffect(() => { if (sanSang) void nap(); }, [nap, sanSang]);
 
   // Bài đọc chọn ở bước 1 tự vào đề (bước sau theo bước trước). Bài đổi chữ thì câu hỏi đọc thành tiếng của bài đó để trống.
   useEffect(() => {
