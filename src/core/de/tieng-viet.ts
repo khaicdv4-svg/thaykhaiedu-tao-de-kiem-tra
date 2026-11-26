@@ -4,7 +4,7 @@
  * Hàm thuần, không đọc ghi cơ sở dữ liệu.
  */
 
-import { khoangDoDai, type KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
+import { khoangDoDai, type KyKiemTraBaiDoc, type TheLoaiBaiDoc } from '@/core/reading-passages/quy-dinh';
 
 export interface BaiDocDe {
   tieuDe: string;
@@ -14,6 +14,16 @@ export interface BaiDocDe {
   nguon: string;
   /** Mã bài trong kho bài đọc (nếu lấy từ kho). */
   khoId?: string | null;
+  /** Thể loại (bài đọc hiểu): quyết định đề dùng phần Văn bản văn học hay Văn bản thông tin của ma trận. */
+  theLoai?: TheLoaiBaiDoc | null;
+}
+
+const THE_LOAI_HOP_LE: TheLoaiBaiDoc[] = ['TRUYEN', 'MIEU_TA', 'THO', 'VAN_BAN_THONG_TIN', 'KICH', 'KHAC'];
+
+/** Thể loại bài đọc hiểu → phương án phần đọc hiểu trong ma trận Tiếng Việt (VBVH / VBTT). Chưa rõ thì null. */
+export function phuongAnTheoTheLoai(theLoai: TheLoaiBaiDoc | null | undefined): 'VBVH' | 'VBTT' | null {
+  if (!theLoai || theLoai === 'KHAC') return null;
+  return theLoai === 'VAN_BAN_THONG_TIN' ? 'VBTT' : 'VBVH';
 }
 
 export interface BaiDocThanhTieng extends BaiDocDe {
@@ -92,6 +102,7 @@ function lamSachBai(v: unknown): BaiDocDe {
     tacGia: chuoi(o.tacGia, 300),
     nguon: chuoi(o.nguon, 1000),
     khoId: typeof o.khoId === 'string' && o.khoId ? o.khoId.slice(0, 64) : null,
+    theLoai: THE_LOAI_HOP_LE.includes(o.theLoai as TheLoaiBaiDoc) ? (o.theLoai as TheLoaiBaiDoc) : null,
   };
 }
 
@@ -115,7 +126,7 @@ export const baiDocChonCoGi = (c: BaiDocChon | null | undefined): c is BaiDocCho
 /** Lấy phần bài đọc của một đề (để bước 1 hiện bài đã có trong đề cũ khi chưa chọn ở bước 1). */
 export function baiDocChonTuDe(tv: NoiDungTiengViet | undefined): BaiDocChon | null {
   if (!tv) return null;
-  const bo = (b: BaiDocDe): BaiDocDe => ({ tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, khoId: b.khoId ?? null });
+  const bo = (b: BaiDocDe): BaiDocDe => ({ tieuDe: b.tieuDe, noiDung: b.noiDung, tacGia: b.tacGia, nguon: b.nguon, khoId: b.khoId ?? null, theLoai: b.theLoai ?? null });
   const c = lamSachBaiDocChon({ baiDocHieu: bo(tv.baiDocHieu), baiDocThanhTieng: tv.baiDocThanhTieng.map(bo) });
   return baiDocChonCoGi(c) ? c : null;
 }

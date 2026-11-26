@@ -175,7 +175,7 @@ export default function TestBuilderPage() {
         </div>
       </div>
 
-      {maMon === 'TIENG_VIET' && daDocHoSo && <ChonBaiDoc ky={ky} tenKy={tenKy} />}
+      {maMon === 'TIENG_VIET' && daDocHoSo && <ChonBaiDoc ky={ky} tenKy={tenKy} phan="thanhTieng" />}
 
       <div className="the-tke p-6 space-y-3">
         <h2 className="font-semibold text-slate-900">Bộ đề của thầy cô: {tenMon}, {tenKy}</h2>

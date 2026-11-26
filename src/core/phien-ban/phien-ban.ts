@@ -21,6 +21,17 @@ export interface MucCapNhat {
 
 export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
   {
+    so: 9,
+    ngay: '2026-11-26',
+    tieuDe: 'Tiếng Việt: chọn bài đọc hiểu rồi mới lập ma trận',
+    noiDung: [
+      'Bước 2 môn Tiếng Việt: mục 1 là Bài đọc hiểu (chọn từ kho, tải file .docx/.txt hoặc dán chữ). Bên dưới là phần lập ma trận riêng theo ma trận chung của tổ.',
+      'Thể loại bài đọc hiểu quyết định phần đọc hiểu của ma trận: truyện, miêu tả, thơ, kịch dùng Văn bản văn học; văn bản thông tin dùng Văn bản thông tin. App tự chọn, không phải bấm.',
+      'Tải file bài đọc: app tự nhận tên bài, tác giả, nguồn, thể loại, đếm tiếng và báo nếu trùng sách giáo khoa.',
+      'Bước 1 môn Tiếng Việt chỉ còn chọn 4 bài đọc thành tiếng.',
+    ],
+  },
+  {
     so: 8,
     ngay: '2026-11-26',
     tieuDe: 'Bước 2 (Ma trận) dễ thấy chỗ làm hơn',

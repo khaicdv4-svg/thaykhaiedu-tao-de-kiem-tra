@@ -43,6 +43,8 @@ import { DungTiengViet } from '@/components/matrices/DungTiengViet';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { docCachLap, docHoSoDe, luuCachLap, luuHoSoDe, tenKyHoSo, tenMonHoSo } from '@/core/ho-so-de/ho-so-de';
 import { useAuth } from '@/core/contexts/AuthContext';
+import { ChonBaiDoc } from '@/components/de/ChonBaiDoc';
+import { phuongAnTheoTheLoai, type BaiDocDe } from '@/core/de/tieng-viet';
 
 const BUOC = ['Lập ma trận riêng', 'Xem trước và lưu'] as const;
 
@@ -183,6 +185,7 @@ export default function MatricesPage() {
   const [loiCT, setLoiCT] = useState<string | null>(null);
   const [cachLap, setCachLap] = useState<'MA_TRAN_CHUNG' | 'CHUONG_TRINH'>('MA_TRAN_CHUNG');
   const [dangDung, setDangDung] = useState(false);
+  const [baiDocHieu, setBaiDocHieu] = useState<BaiDocDe | null>(null);
   const [kyDung, setKyDung] = useState<KyDung>('CUOI_HK1');
   /** Ma trận chung đọc từ file tổ đã tải lên và xác nhận (Kho ma trận chung) */
   const [khoMtc, setKhoMtc] = useState<{ coFile: boolean; mtc: MaTranChung | null; canhBao: string[]; loi?: string; tenFile?: string; phienBan?: number; banChoXacNhan?: { phienBan: number; taiLenLuc: string } | null } | null>(null);
@@ -353,6 +356,15 @@ export default function MatricesPage() {
       return { ...m, lua_chon_da_dung: lc, cau_hoi: m.cau_hoi.filter((c) => conLai.has(c.khoa)) };
     });
 
+  // Bài đọc hiểu đã có thể loại: tự chọn phần Văn bản văn học / Văn bản thông tin cho khớp
+  useEffect(() => {
+    if (!mtc || !mtr || maMon !== 'TIENG_VIET') return;
+    const pa = phuongAnTheoTheLoai(baiDocHieu?.theLoai);
+    if (!pa) return;
+    const nhom = cacNhomLuaChon(mtc).find((n) => n.phuong_an.some((x) => x.ma === 'VBVH') && n.phuong_an.some((x) => x.ma === 'VBTT'));
+    if (nhom && mtr.lua_chon_da_dung[nhom.ma] !== pa) chonPhuongAn(nhom.ma, pa);
+  }, [baiDocHieu?.theLoai, mtc, mtr, maMon]);
+
   const chonYccd = (khoa: string, yccd: string) =>
     capNhat((m) => {
       const cu = m.cau_hoi.find((c) => c.khoa === khoa);
@@ -497,6 +509,10 @@ export default function MatricesPage() {
   const daChon = useMemo(() => new Map((mtr?.cau_hoi ?? []).map((c) => [c.khoa, c.yccd])), [mtr]);
   const daChonThem = useMemo(() => new Map((mtr?.cau_hoi ?? []).map((c) => [c.khoa, c.yccd_them ?? []])), [mtr]);
   const nhomLuaChon = mtc ? cacNhomLuaChon(mtc) : [];
+  // Tiếng Việt: thể loại bài đọc hiểu quyết định phần VBVH / VBTT của ma trận
+  const paDocHieu = maMon === 'TIENG_VIET' ? phuongAnTheoTheLoai(baiDocHieu?.theLoai) : null;
+  const laNhomVanBan = (n: { phuong_an: { ma: string }[] }) => n.phuong_an.some((x) => x.ma === 'VBVH') && n.phuong_an.some((x) => x.ma === 'VBTT');
+  const soTV = maMon === 'TIENG_VIET' ? 1 : 0;
   const chonDuPhuongAn = !!mtr && nhomLuaChon.every((n) => mtr.lua_chon_da_dung[n.ma]);
   const banTrinhBay = useMemo(() => (mtc && mtr && chonDuPhuongAn ? dungMaTranRieng(mtc, mtr) : null), [mtc, mtr, chonDuPhuongAn]);
 
@@ -543,6 +559,10 @@ export default function MatricesPage() {
         </div>
       )}
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
+
+      {maMon === 'TIENG_VIET' && daDocHoSo && (
+        <ChonBaiDoc ky={kyDung} tenKy={tenKyHoSo(kyDung)} phan="docHieu" so="1." onDocHieu={setBaiDocHieu} />
+      )}
 
       {buoc === 0 && dangDung && maMon && (
         maMon === 'TIENG_VIET'
@@ -654,8 +674,8 @@ export default function MatricesPage() {
           {nhomLuaChon.length > 0 && (
             <div className={`the-tke p-6 space-y-4 ${chonDuPhuongAn ? '' : 'border-2 border-blue-500'}`}>
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">1. Chọn phần thi trong đề</h2>
-                <p className="text-sm text-slate-600">{chonDuPhuongAn ? 'Đổi lựa chọn thì danh sách câu ở mục 2 đổi theo.' : 'Bấm chọn một ô ở mỗi dòng dưới đây. Chọn xong, danh sách câu hiện ở mục 2 để chọn YCCĐ.'}</p>
+                <h2 className="text-lg font-semibold text-slate-900">{1 + soTV}. Chọn phần thi trong đề</h2>
+                <p className="text-sm text-slate-600">{chonDuPhuongAn ? 'Đổi lựa chọn thì danh sách câu bên dưới đổi theo.' : 'Bấm chọn một ô ở mỗi dòng dưới đây. Chọn xong, danh sách câu hiện ở mục bên dưới để chọn YCCĐ.'}</p>
               </div>
               {nhomLuaChon.map((nhom) => (
                 <fieldset key={nhom.ma}>
@@ -663,11 +683,13 @@ export default function MatricesPage() {
                   <div className="flex flex-wrap gap-2">
                     {nhom.phuong_an.map((pa) => (
                       <label key={pa.ma} className={`cursor-pointer rounded-lg border px-4 py-2 text-sm ${mtr.lua_chon_da_dung[nhom.ma] === pa.ma ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-slate-200'}`}>
-                        <input type="radio" className="sr-only" name={nhom.ma} checked={mtr.lua_chon_da_dung[nhom.ma] === pa.ma} onChange={() => chonPhuongAn(nhom.ma, pa.ma)} />
+                        <input type="radio" className="sr-only" name={nhom.ma} disabled={!!paDocHieu && laNhomVanBan(nhom)} checked={mtr.lua_chon_da_dung[nhom.ma] === pa.ma} onChange={() => chonPhuongAn(nhom.ma, pa.ma)} />
                         {pa.ten}
                       </label>
                     ))}
                   </div>
+                  {paDocHieu && laNhomVanBan(nhom) && <p className="text-xs text-slate-500 mt-1">App chọn theo thể loại bài đọc hiểu ở mục 1. Muốn đổi thì đổi bài hoặc thể loại ở mục 1.</p>}
+                  {!paDocHieu && soTV > 0 && laNhomVanBan(nhom) && <p className="text-xs text-amber-800 mt-1">Chọn bài đọc hiểu và thể loại ở mục 1, app tự chọn phần này cho khớp.</p>}
                 </fieldset>
               ))}
             </div>
@@ -706,7 +728,7 @@ export default function MatricesPage() {
           )}
 
           <div className="the-tke p-6">
-            <h2 className="text-lg font-semibold text-slate-900">{nhomLuaChon.length > 0 ? '2. ' : ''}Lập ma trận riêng: chọn yêu cầu cần đạt cho từng câu</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{nhomLuaChon.length > 0 ? `${2 + soTV}. ` : soTV ? '2. ' : ''}Lập ma trận riêng: chọn yêu cầu cần đạt cho từng câu</h2>
             <p className="text-sm text-slate-600 mb-4">
               Mỗi câu gắn một YCCĐ; câu có nhiều ý nhỏ (a, b, c…) gắn thêm được, tối đa bằng số ý. Nguồn Ma trận chung: câu chỉ có một YCCĐ được chọn sẵn. Số câu, mức, TN/TL, điểm lấy theo ma trận chung; cần thì sửa ngay tại câu, ô đã sửa có viền vàng và nút khôi phục.
             </p>

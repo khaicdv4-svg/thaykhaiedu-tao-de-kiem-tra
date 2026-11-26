@@ -80,8 +80,11 @@ export function BaiDocTiengViet({ ky, gia, onDoi, hrefDoiBai }: Props) {
     return (
       <div className="the-tke p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-900">Bài đọc (chọn ở bước 1)</h2>
-          <Link href={hrefDoiBai} className="text-sm text-indigo-700 underline">Đổi bài đọc ở bước 1</Link>
+          <h2 className="font-semibold text-slate-900">Bài đọc</h2>
+          <span className="flex flex-wrap gap-3 text-sm">
+            <Link href={hrefDoiBai.replace('/test-builder', '/matrices')} className="text-indigo-700 underline">Đổi bài đọc hiểu (bước 2)</Link>
+            <Link href={hrefDoiBai} className="text-indigo-700 underline">Đổi bài đọc thành tiếng (bước 1)</Link>
+          </span>
         </div>
         <div className="space-y-1">
           <div className="text-xs font-medium text-slate-500">Bài đọc hiểu</div>

@@ -84,3 +84,18 @@ describe('Bài đọc Tiếng Việt chọn ở bước 1', () => {
     expect(baiDocChonTuDe(undefined)).toBeNull();
   });
 });
+
+import { phuongAnTheoTheLoai } from '../src/core/de/tieng-viet';
+
+describe('Bài đọc hiểu quyết định phần VBVH / VBTT của ma trận', () => {
+  it('văn bản thông tin → VBTT; truyện, miêu tả, thơ, kịch → VBVH; chưa rõ → null', () => {
+    expect(phuongAnTheoTheLoai('VAN_BAN_THONG_TIN')).toBe('VBTT');
+    for (const t of ['TRUYEN', 'MIEU_TA', 'THO', 'KICH'] as const) expect(phuongAnTheoTheLoai(t)).toBe('VBVH');
+    expect(phuongAnTheoTheLoai('KHAC')).toBeNull();
+    expect(phuongAnTheoTheLoai(null)).toBeNull();
+  });
+  it('giữ thể loại khi lưu, bỏ giá trị lạ', () => {
+    expect(lamSachBaiDocChon({ baiDocHieu: { tieuDe: 'A', theLoai: 'THO' } }).baiDocHieu.theLoai).toBe('THO');
+    expect(lamSachBaiDocChon({ baiDocHieu: { tieuDe: 'A', theLoai: 'XYZ' } }).baiDocHieu.theLoai).toBeNull();
+  });
+});
