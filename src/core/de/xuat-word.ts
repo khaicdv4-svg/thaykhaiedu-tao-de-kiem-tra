@@ -386,18 +386,33 @@ export function uocLuongCaoCau(c: CauDe, maMon = '', them = 0): number {
  * thêm từng dòng kẻ, rải đều cho các câu có chỗ viết trên trang; trang không có câu nào để viết
  * (toàn trắc nghiệm) thì chia đều khoảng trống thành khoảng cách phía trên các câu. Luôn chừa ~1 cm cuối trang.
  */
-export function phanBoChoTrong(cau: CauDe[], maMon = ''): ChoTrong[] {
+/** Chiều cao ước lượng của các đoạn chữ thường (giãn DAN_DONG) đặt trước bảng câu hỏi */
+export function uocLuongCaoDoan(cacDoan: string[], rong = RONG_TRANG - 160) {
+  return cacDoan.reduce((t, d) => t + soDongChu(d, rong) * gianCoDinh(DAN_DONG) + 80, 0);
+}
+
+/**
+ * Số dòng kẻ cho tờ Viết để lấp vừa hai trang (đầu đề + đề bài + "Bài làm" + dòng kẻ), chừa ~1 cm cuối mỗi trang.
+ * Hàng bài làm được phép sang trang nên chỉ cần tính tổng chiều cao.
+ */
+export function soDongTrangViet(deBai: string): number {
+  const cao = gianCoDinh(360);
+  const truoc = CAO_DAU_DE + soDongChu(`Đề bài: ${deBai}`, RONG_NOI_DUNG - 160) * gianCoDinh(DAN_DONG) + 60 + gianCoDinh(DAN_DONG) + 160;
+  return Math.max(30, Math.floor((CAO_TRANG * 2 - truoc - CHUA_CUOI_TRANG) / cao));
+}
+
+export function phanBoChoTrong(cau: CauDe[], maMon = '', caoDauTrang = CAO_DAU_DE): ChoTrong[] {
   const kq: ChoTrong[] = cau.map(() => ({ dongThem: 0, cachTruoc: 0 }));
   const cao = cau.map((c) => uocLuongCaoCau(c, maMon));
   const trang: number[][] = [[]];
-  let daDung = CAO_DAU_DE;
+  let daDung = caoDauTrang;
   cau.forEach((_, i) => {
     if (daDung + cao[i] > CAO_TRANG && trang[trang.length - 1].length) { trang.push([]); daDung = 0; }
     trang[trang.length - 1].push(i);
     daDung += cao[i];
   });
   trang.forEach((ds, k) => {
-    const dau = k === 0 ? CAO_DAU_DE : 0;
+    const dau = k === 0 ? caoDauTrang : 0;
     const cuoi = k === trang.length - 1 ? CAO_HET_DE : 0;
     let trong = CAO_TRANG - dau - cuoi - ds.reduce((t, i) => t + cao[i], 0) - CHUA_CUOI_TRANG;
     if (trong <= 0) return;
@@ -617,12 +632,18 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
   const kh = tv.baiDocThanhTieng;
 
   // 1. Đọc hiểu: tờ câu hỏi
+  const loiDan = [
+    `II. ĐỌC HIỂU: ${fmtDiem(diemDocHieu)} điểm`,
+    `Em đọc bài “${tv.baiDocHieu.tieuDe}” rồi làm các bài tập sau:`,
+    ...(dsTN ? [`Khoanh tròn vào chữ cái (A, B, C, D) trước ý trả lời đúng nhất cho từng câu hỏi ${dsTN} và làm các bài tập dưới đây:`] : []),
+  ];
+  const choTrongDocHieu = phanBoChoTrong(cauDocHieu, 'TIENG_VIET', CAO_DAU_DE + uocLuongCaoDoan(loiDan));
   const toCauHoi = [
     ...dauDe(t, { tenMon: 'TIẾNG VIỆT (ĐỌC HIỂU)', phut: 30 }),
     doan([tr(`II. ĐỌC HIỂU: ${fmtDiem(diemDocHieu)} điểm`, { bold: true })], { truoc: 80 }),
     doan([tr('Em đọc bài '), tr(`“${tv.baiDocHieu.tieuDe}”`, { italics: true }), tr(' rồi làm các bài tập sau:')], { thut: 300 }),
     ...(dsTN ? [doan(`Khoanh tròn vào chữ cái (A, B, C, D) trước ý trả lời đúng nhất cho từng câu hỏi ${dsTN} và làm các bài tập dưới đây:`, { sau: 40 })] : []),
-    bangCau(cauDocHieu, true),
+    bangCau(cauDocHieu, true, 'TIENG_VIET', choTrongDocHieu),
     doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 }),
   ];
 
@@ -648,7 +669,7 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
           o2([
             doan([tr('Đề bài: ', { bold: true }), tr(cauViet?.deBai.trim() ?? '')]),
             doan([tr('Bài làm', { bold: true })], { align: AlignmentType.CENTER, truoc: 60 }),
-            ...Array.from({ length: 44 }, () => dongCham()),
+            ...Array.from({ length: soDongTrangViet(cauViet?.deBai.trim() ?? '') }, () => dongCham()),
           ], RONG_NOI_DUNG),
         ],
       })],

@@ -28,6 +28,7 @@ export const NHAT_KY_CAP_NHAT: MucCapNhat[] = [
       'Khung đầu đề (trường, họ tên, lớp, bảng điểm) giãn dòng 1,0 cho gọn.',
       'Giãn dòng trong đề đặt cố định nên mở bằng Word hay xem trước đều dàn trang như nhau.',
       'Trang nào còn trống nhiều, app tự thêm dòng kẻ rải đều cho các câu có chỗ viết; trang toàn trắc nghiệm thì giãn đều khoảng cách giữa các câu. Cuối trang chừa khoảng 1 cm.',
+      'Đề Tiếng Việt: phần đọc hiểu cũng tự lấp trang; tờ Viết tự tính số dòng kẻ cho kín hai trang thay vì cố định 44 dòng.',
     ],
   },
   {
