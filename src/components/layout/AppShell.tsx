@@ -6,6 +6,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { Breadcrumb } from './Breadcrumb';
 import { AuthProvider } from '@/core/contexts/AuthContext';
+import { ThongBaoPhienBan } from './ThongBaoPhienBan';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -35,6 +36,8 @@ function AppShellContent({ children }: AppShellProps) {
           {children}
         </main>
       </div>
+      {/* Báo phiên bản mới, nhật ký cập nhật */}
+      <ThongBaoPhienBan />
     </div>
   );
 }

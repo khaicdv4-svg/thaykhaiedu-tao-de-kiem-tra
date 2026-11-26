@@ -15,6 +15,8 @@ import { useAuth } from '@/core/contexts/AuthContext';
 import { ChevronDown, ChevronLeft, ChevronRight, GraduationCap, Lock } from 'lucide-react';
 import { ganHoSo } from '@/core/ho-so-de/ho-so-de';
 import { useHoSoDe } from '@/components/ui/ThanhHoSoDe';
+import { PHIEN_BAN } from '@/core/phien-ban/phien-ban';
+import { SU_KIEN_MO_NHAT_KY } from '@/components/layout/ThongBaoPhienBan';
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -200,6 +202,17 @@ export function Sidebar({ isMobileOpen, onCloseMobile, isCollapsed = false, onTo
         </nav>
 
         <div className="p-3 shrink-0 border-t border-white/10">
+          {/* Phiên bản app: bấm để xem nhật ký cập nhật */}
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event(SU_KIEN_MO_NHAT_KY))}
+              className="w-full mb-1 rounded-lg px-2 py-1.5 text-center text-[11px] text-indigo-200 hover:bg-white/10 hover:text-white"
+              title="Xem nhật ký cập nhật"
+            >
+              Phiên bản {PHIEN_BAN} · Có gì mới
+            </button>
+          )}
           <button
             type="button"
             onClick={onToggleCollapse}
