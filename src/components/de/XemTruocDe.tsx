@@ -129,13 +129,15 @@ function ThanhSuaCau({ c, cc }: { c: CauDe; cc: CongCuSuaCau }) {
   );
 }
 
-export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem trước' }: { de: DeKiemTra; truong: string; tenMon: string; phut: number; congCu?: CongCuSuaCau; tieuDe?: string }) {
+export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem trước', chiPhan }: { de: DeKiemTra; truong: string; tenMon: string; phut: number; congCu?: CongCuSuaCau; tieuDe?: string; /** Đề Tiếng Việt: chỉ hiện một phần */ chiPhan?: 'docHieu' | 'viet' }) {
   const { khoiLamViec } = useAuth();
   const [tab, setTab] = useState<'de' | 'dap-an'>('de');
   const cau = [...de.cau].sort((a, b) => (/^\d+$/.test(a.cau) ? Number(a.cau) : 1e9) - (/^\d+$/.test(b.cau) ? Number(b.cau) : 1e9));
   const tong = Math.round(cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
   // Đề Tiếng Việt: đọc thành tiếng, đọc hiểu (kèm bài đọc), viết
-  const tv = de.ma_mon === 'TIENG_VIET' ? de.tiengViet : undefined;
+  const tvGoc = de.ma_mon === 'TIENG_VIET' ? de.tiengViet : undefined;
+  const tv = tvGoc && chiPhan ? { ...tvGoc, baiDocThanhTieng: [] } : tvGoc;
+  const hienDoc = chiPhan !== 'viet';
   const cauViet = cau.filter((c) => c.khoa.startsWith('viet/'));
   const cauDoc = cau.filter((c) => !c.khoa.startsWith('viet/'));
   return (
@@ -155,8 +157,8 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
         </div>
         {tab === 'de' && tv ? (
           <div className="space-y-3">
-            <div className="font-bold">A. KIỂM TRA ĐỌC</div>
-            <div className="font-bold">I. Đọc thành tiếng</div>
+            {hienDoc && <div className="font-bold">A. KIỂM TRA ĐỌC</div>}
+            {!chiPhan && <div className="font-bold">I. Đọc thành tiếng</div>}
             {tv.baiDocThanhTieng.map((b, i) => (
               <div key={i} className="space-y-1">
                 {congCu?.onSuaCau && <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100" onClick={() => congCu.onSuaCau!(`doc/doc_thanh_tieng/${i + 1}`)}><Pencil className="w-3.5 h-3.5" /> Sửa bài, câu hỏi này</button>}
@@ -166,10 +168,12 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
                 <div><b>Câu hỏi:</b> {b.cauHoi || <span className="text-red-700">(chưa có)</span>}</div>
               </div>
             ))}
+            {hienDoc && <>
             <div className="font-bold">II. Đọc hiểu</div>
             <div className="text-center font-bold">{tv.baiDocHieu.tieuDe || '(chưa chọn bài đọc hiểu)'}</div>
             <div className="whitespace-pre-line">{tv.baiDocHieu.noiDung}</div>
             {(tv.baiDocHieu.tacGia || tv.baiDocHieu.nguon) && <div className="text-right italic">{tv.baiDocHieu.tacGia}{tv.baiDocHieu.nguon ? ` (${tv.baiDocHieu.nguon})` : ''}</div>}
+            </>}
             {cauDoc.map((c) => (
               <div key={c.khoa} id={`xem-${c.khoa}`}>
                 {congCu && <ThanhSuaCau c={c} cc={congCu} />}
@@ -183,7 +187,7 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
                 <MotCau c={c} maMon={de.ma_mon} />
               </div>
             ))}
-            <div className="text-center font-bold pt-2">HẾT ĐỀ</div>
+            {!chiPhan && <div className="text-center font-bold pt-2">HẾT ĐỀ</div>}
           </div>
         ) : tab === 'de' ? (
           <div>{cau.map((c) => (

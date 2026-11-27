@@ -58,14 +58,17 @@ export function demTieng(noiDung: string): number {
   return noiDung.split(/\s+/).filter((t) => /[\p{L}\p{N}]/u.test(t)).length;
 }
 
-export function kiemDinhTiengViet(ky: KyKiemTraBaiDoc, tv: NoiDungTiengViet | undefined): { loi: string[]; canhBao: string[] } {
+export function kiemDinhTiengViet(ky: KyKiemTraBaiDoc, tv: NoiDungTiengViet | undefined, phan?: 'docHieu' | 'thanhTieng'): { loi: string[]; canhBao: string[] } {
   const loi: string[] = [];
   const canhBao: string[] = [];
-  if (!tv) return { loi: ['Chưa có bài đọc hiểu và bài đọc thành tiếng cho đề Tiếng Việt.'], canhBao };
+  if (!tv) return { loi: [phan === 'docHieu' ? 'Chưa có bài đọc hiểu.' : phan === 'thanhTieng' ? 'Chưa có bài đọc thành tiếng.' : 'Chưa có bài đọc hiểu và bài đọc thành tiếng cho đề Tiếng Việt.'], canhBao };
 
   const h = tv.baiDocHieu;
-  if (!h.tieuDe.trim() || !h.noiDung.trim()) loi.push('Bài đọc hiểu: chưa có tên bài hoặc nội dung.');
-  if (h.noiDung.trim() && (!h.tacGia.trim() || !h.nguon.trim())) loi.push('Bài đọc hiểu: cần ghi tác giả và nguồn.');
+  if (phan !== 'thanhTieng') {
+    if (!h.tieuDe.trim() || !h.noiDung.trim()) loi.push('Bài đọc hiểu: chưa có tên bài hoặc nội dung.');
+    if (h.noiDung.trim() && (!h.tacGia.trim() || !h.nguon.trim())) loi.push('Bài đọc hiểu: cần ghi tác giả và nguồn.');
+  }
+  if (phan === 'docHieu') return { loi, canhBao };
 
   if (tv.baiDocThanhTieng.length !== SO_BAI_THANH_TIENG) loi.push(`Đọc thành tiếng cần đúng ${SO_BAI_THANH_TIENG} bài đọc.`);
   const kh = khoangDoDai('DOC_THANH_TIENG', ky, 'TRUYEN');

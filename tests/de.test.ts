@@ -232,3 +232,24 @@ describe('làm đề mới từ đề đã duyệt', () => {
     expect(kq.de.cau.find((c) => c.khoa === kq.trong[0])!.deBai).toBe('');
   });
 });
+
+describe('Kiểm định đề Tiếng Việt theo phần', () => {
+  const tv = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'TIENG_VIET' && m.ky_kiem_tra === 'CUOI_HK1')!;
+  const mtrTV = maTranRieng(tv);
+  mtrTV.cau_hoi = danhSachCau(tv, mtrTV.lua_chon_da_dung).map((c) => ({ khoa: c.khoa, yccd: c.dong.yccd[0] }));
+  const dtTV = taoDacTa(tv, mtrTV, 1, { tuanKiemTra: 18 });
+  const deDu = dienDu(taoDeTuDacTa(dtTV, 1));
+  // Phần Viết còn trống, như lúc mới soạn xong Phần 1
+  const deDocXong = { ...deDu, cau: deDu.cau.map((c) => (c.khoa.startsWith('viet/') ? { ...c, deBai: '', huongDanCham: '' } : c)) };
+
+  it('không đòi tổng 10 cho cả đề Tiếng Việt (Đọc và Viết là hai bài)', () => {
+    const kq = kiemDinhDe(dtTV, deDu);
+    expect(kq.loi.some((l) => /Tổng điểm/.test(l))).toBe(false);
+  });
+
+  it('đang ở Phần 1 Đọc hiểu: không báo lỗi của Viết và Đọc thành tiếng', () => {
+    const kq = kiemDinhDe(dtTV, deDocXong, { phan: 'docHieu' });
+    expect(kq.loi.some((l) => /Viết|thành tiếng|Tổng điểm/.test(l))).toBe(false);
+    expect(kiemDinhDe(dtTV, deDocXong).loi.some((l) => /Viết: chưa có đề bài/.test(l))).toBe(true);
+  });
+});

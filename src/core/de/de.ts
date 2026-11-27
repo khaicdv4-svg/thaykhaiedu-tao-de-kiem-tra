@@ -344,10 +344,22 @@ function kiemDinhMotCau(c: CauDe): string[] {
 export interface TuyChonKiemDinhDe {
   /** Số phiên bản đặc tả đã xác nhận mới nhất, để báo khi đề kế thừa bản cũ. */
   phienBanDacTaMoiNhat?: number;
+  /** Đề Tiếng Việt làm theo phần: chỉ kiểm tra câu và bài đọc của phần này (không xét tổng điểm cả đề). */
+  phan?: 'docHieu' | 'thanhTieng' | 'viet';
+}
+
+/** Câu (khóa) thuộc phần nào của đề Tiếng Việt. */
+export function khoaThuocPhanTV(khoa: string, phan: 'docHieu' | 'thanhTieng' | 'viet'): boolean {
+  if (phan === 'docHieu') return khoa.startsWith('doc/doc_hieu/');
+  if (phan === 'viet') return khoa.startsWith('viet/');
+  return false;
 }
 
 /** Kiểm định đề với đặc tả mà nó kế thừa: khớp từng câu, từng điểm, nội dung và đáp án đầy đủ, không trùng câu. */
-export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinhDe = {}): KetQuaKiemDinhDe {
+export function kiemDinhDe(dacTaDu: DacTa, deDu: DeKiemTra, tuyChon: TuyChonKiemDinhDe = {}): KetQuaKiemDinhDe {
+  const phan = dacTaDu.ma_mon === 'TIENG_VIET' ? tuyChon.phan : undefined;
+  const dacTa: DacTa = phan ? { ...dacTaDu, dong: dacTaDu.dong.filter((r) => khoaThuocPhanTV(r.khoa, phan)) } : dacTaDu;
+  const de: DeKiemTra = phan ? { ...deDu, cau: deDu.cau.filter((c) => khoaThuocPhanTV(c.khoa, phan)) } : deDu;
   const loi: string[] = [];
   const canhBao: string[] = [];
 
@@ -375,13 +387,23 @@ export function kiemDinhDe(dacTa: DacTa, de: DeKiemTra, tuyChon: TuyChonKiemDinh
 
   if (de.cau.reduce((n, c) => n + (c.hinh ?? []).reduce((m, h) => m + h.anh.length, 0), 0) > TOI_DA_KY_TU_HINH_CA_DE) loi.push('Tổng dung lượng hình trong đề quá lớn. Bớt hình hoặc dùng hình nhỏ hơn.');
 
-  const tong = lamTron(de.cau.reduce((s, c) => s + c.diem, 0));
-  if (tong !== 10) loi.push(`Tổng điểm của đề là ${tong}, cần đúng 10.`);
+  if (dacTa.ma_mon === 'TIENG_VIET') {
+    // Đề Tiếng Việt có hai bài (Đọc, Viết), mỗi bài 10 điểm; điểm đọc thành tiếng nằm ngoài các câu.
+    // Nên so điểm từng bài với đặc tả (đặc tả đã được kiểm khớp ma trận) thay vì đòi tổng 10.
+    for (const [tienTo, ten] of [['doc/', 'phần Đọc hiểu'], ['viet/', 'bài Viết']] as const) {
+      const dt = lamTron(dacTa.dong.filter((r) => r.khoa.startsWith(tienTo)).reduce((s, r) => s + r.diem, 0));
+      const d = lamTron(de.cau.filter((c) => c.khoa.startsWith(tienTo)).reduce((s, c) => s + c.diem, 0));
+      if (dt !== d) loi.push(`Tổng điểm ${ten} là ${d}, đặc tả là ${dt}.`);
+    }
+  } else {
+    const tong = lamTron(de.cau.reduce((s, c) => s + c.diem, 0));
+    if (tong !== 10) loi.push(`Tổng điểm của đề là ${tong}, cần đúng 10.`);
+  }
 
   for (const c of xepDongTheoCau(de.cau)) loi.push(...kiemDinhMotCau(c));
 
   if (dacTa.ma_mon === 'TIENG_VIET') {
-    const tv = kiemDinhTiengViet(dacTa.ky_kiem_tra as KyKiemTraBaiDoc, de.tiengViet);
+    const tv = phan === 'viet' ? { loi: [], canhBao: [] } : kiemDinhTiengViet(dacTa.ky_kiem_tra as KyKiemTraBaiDoc, de.tiengViet, phan);
     loi.push(...tv.loi);
     canhBao.push(...tv.canhBao);
   }

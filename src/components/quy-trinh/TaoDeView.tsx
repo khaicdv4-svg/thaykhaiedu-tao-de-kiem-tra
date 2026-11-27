@@ -124,8 +124,13 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   const [dangXuat, setDangXuat] = useState(false);
   // Hai chế độ: soạn từng câu, hoặc xem cả đề như bản in (từ đó bấm sửa đúng câu, đúng bước, rồi xuất Word)
   const [cheDoGoc, setCheDo] = useState<'soan' | 'xem'>('soan');
-  // Trang đề Tiếng Việt: các phần chỉ soạn, mục Hoàn chỉnh đề chỉ xem
-  const cheDo: 'soan' | 'xem' = nhung ? (nhung.phan === 'hoanChinh' ? 'xem' : 'soan') : cheDoGoc;
+  // Trang đề Tiếng Việt: mỗi phần có Soạn và Xem trước phần đó; mục Hoàn chỉnh đề chỉ xem
+  const [xemPhan, setXemPhan] = useState(false);
+  const coXemPhan = !!nhung && (nhung.phan === 'docHieu' || nhung.phan === 'viet');
+  const cheDo: 'soan' | 'xem' = nhung ? (nhung.phan === 'hoanChinh' || (coXemPhan && xemPhan) ? 'xem' : 'soan') : cheDoGoc;
+  const laXemPhan = coXemPhan && cheDo === 'xem';
+  // Kiểm tra đề theo phần đang làm (không báo lỗi của phần khác, không đòi tổng điểm cả đề)
+  const phanKiem = nhung && nhung.phan !== 'hoanChinh' ? nhung.phan : undefined;
   const trongPhan = (khoa: string) => !nhung || khoaThuocPhan(khoa, nhung.phan);
   const hrefDacTa = (cau?: string) => (nhung ? nhung.lienKet(cau?.startsWith('viet/') || nhung.phan === 'viet' ? 'p3-dac-ta' : 'p1-dac-ta', cau) : cau ? duongDanCau('/dac-ta', { mon: maMon, ky }, cau) : `/dac-ta?mon=${maMon}&ky=${ky}`);
   const MUC_TIEP: Partial<Record<string, MucTV>> = { docHieu: 'p2-chon-bai', thanhTieng: 'p3-kieu-bai', viet: 'hoan-chinh' };
@@ -236,7 +241,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   // Mở Xem đề là tự kiểm tra cả đề (không đổi trạng thái đề)
   useEffect(() => {
     if (cheDo !== 'xem' || !de || !dacTaBan) return;
-    setKetQua(kiemDinhDe(dacTaBan.duLieu, de, { phienBanDacTaMoiNhat: dacTaBan.phienBan ?? undefined }));
+    setKetQua(kiemDinhDe(dacTaBan.duLieu, de, { phienBanDacTaMoiNhat: dacTaBan.phienBan ?? undefined, phan: phanKiem }));
   }, [cheDo, dacTaBan]);
   deRef.current = de;
 
@@ -415,7 +420,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     const daSoan = ds.length - loi.length;
     if (daSoan > 0) await gui('BAN_NHAP', deTam);
     const soLech = Object.keys(lechTungCau(dacTaBan.duLieu, deTam)).length;
-    if (daSoan > 0 && !loi.length && !nhung) setCheDo('xem');
+    if (daSoan > 0 && !loi.length) { if (!nhung) setCheDo('xem'); else if (coXemPhan) { setXemPhan(true); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
     setThongBao(daSoan
       ? `AI đã soạn ${daSoan}/${ds.length} câu cùng đáp án và đã lưu bản nháp.${loi.length ? ` Còn ${loi.length} câu chưa soạn được (xem danh sách bên dưới).` : ''} ${soLech ? `Có ${soLech} câu cần xem lại (đánh dấu đỏ ở màn Xem đề).` : ''} Thầy cô xem lại cả đề, bấm "Sửa câu này" ở câu cần sửa, xem đúng rồi xuất Word.`
       : 'AI chưa soạn được câu nào. Xem lí do bên dưới.');
@@ -511,7 +516,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
 
   const kiemTra = (): KetQuaKiemDinhDe | null => {
     if (!dacTaBan || !de) return null;
-    const kq = kiemDinhDe(dacTaBan.duLieu, de, { phienBanDacTaMoiNhat: dacTaBan.phienBan ?? undefined });
+    const kq = kiemDinhDe(dacTaBan.duLieu, de, { phienBanDacTaMoiNhat: dacTaBan.phienBan ?? undefined, phan: phanKiem });
     setKetQua(kq);
     setTrangThai((t) => trangThaiDeSauKiemDinh(t, kq));
     return kq;
@@ -532,7 +537,8 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     if (deRef.current === deGui || tt === 'SAN_SANG_DUYET') setDaSua(false);
     setLoiTuLuu(false);
     if (imLang) return true;
-    if (r.j.kiemDinh) setKetQua(r.j.kiemDinh);
+    if (phanKiem && dacTaBan) setKetQua(kiemDinhDe(dacTaBan.duLieu, deGui, { phienBanDacTaMoiNhat: dacTaBan.phienBan ?? undefined, phan: phanKiem }));
+    else if (r.j.kiemDinh) setKetQua(r.j.kiemDinh);
     setThongBao(tt === 'SAN_SANG_DUYET' ? 'Đã gửi đề đi thẩm định. Theo dõi nhận xét và các bước duyệt ở Kho đề.' : 'Đã lưu đề lên hệ thống. Đề của thầy/cô chỉ mình thầy/cô xem, đến khi chia sẻ hoặc gửi thẩm định.');
     return true;
   };
@@ -641,6 +647,15 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
               </button>
             ))}
             <span className="text-xs text-slate-500 px-2">{cheDo === 'soan' ? 'Soạn, sửa từng câu. Xong thì sang Xem đề để kiểm tra cả đề và xuất Word.' : 'Xem cả đề như bản in. Câu đánh dấu đỏ cần xem lại; bấm "Sửa câu này" hoặc "Sửa ở bước Đặc tả".'}{daSua ? ' Có thay đổi chưa lưu.' : ''}</span>
+          </div>}
+          {coXemPhan && <div className="the-tke p-2 flex flex-wrap items-center gap-2" role="tablist" aria-label="Soạn hoặc xem trước phần này">
+            {([[false, nhung!.phan === 'viet' ? 'Soạn đề bài viết' : 'Soạn câu hỏi', PenLine], [true, 'Xem trước phần này', Eye]] as const).map(([k, t, Icon]) => (
+              <button key={String(k)} type="button" role="tab" aria-selected={xemPhan === k} onClick={() => { setXemPhan(k); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${xemPhan === k ? 'text-white bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow' : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'}`}>
+                <Icon className="w-4 h-4" /> {t}
+              </button>
+            ))}
+            <span className="text-xs text-slate-500 px-2">{xemPhan ? 'Xem phần này như bản in, kèm đáp án. Câu nào sai thì bấm "Sửa câu này".' : 'Soạn, sửa từng câu. Xong bấm "Xem trước phần này" để đọc lại.'}{daSua ? ' Có thay đổi chưa lưu.' : ''}</span>
           </div>}
           {(!nhung || nhung.phan === 'hoanChinh') && <div className="the-tke p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
             <span>{de.cau.length} câu · tổng <b>{fmtDiem(tongDiem)}</b> điểm</span>
@@ -959,15 +974,22 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
           </>)}
 
           {cheDo === 'xem' && (() => {
-            const lech = lechTungCau(dacTaBan.duLieu, de);
+            const lechDu = lechTungCau(dacTaBan.duLieu, de);
+            const lech = laXemPhan ? Object.fromEntries(Object.entries(lechDu).filter(([k]) => trongPhan(k))) : lechDu;
             const soLech = Object.keys(lech).length;
             return (<>
               <div className={`rounded-xl border p-4 text-sm flex flex-wrap items-center justify-between gap-3 ${soLech ? 'border-red-200 bg-red-50 text-red-900' : 'border-emerald-200 bg-emerald-50 text-emerald-900'}`}>
                 <span>{soLech ? `Có ${soLech} câu cần xem lại (đánh dấu đỏ ngay trên câu). Sai nội dung câu thì bấm "Sửa câu này"; sai từ gốc (YCCĐ, dạng bài, bài học) thì bấm "Sửa ở bước Đặc tả".` : 'Các câu đều khớp đặc tả. Thầy cô đọc lại toàn đề và đáp án, đúng rồi thì xuất Word.'}</span>
                 {soLech > 0 && <button type="button" className={nutPhu} onClick={() => { const k = Object.keys(lech)[0]; document.getElementById(`xem-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>Tới câu đầu tiên cần sửa</button>}
               </div>
-              <XemTruocDe de={de} truong={truong} tenMon={tenMon} phut={phut} tieuDe="Xem đề"
-                congCu={{ lech, onSuaCau: nhung ? (k) => { window.location.href = nhung.lienKet(mucCuaCau(k), k); } : moCau, hrefDacTa: (k) => hrefDacTa(k) }} />
+              <XemTruocDe de={laXemPhan ? { ...de, cau: de.cau.filter((c) => trongPhan(c.khoa)) } : de} truong={truong} tenMon={tenMon} phut={phut}
+                tieuDe={laXemPhan ? (nhung!.phan === 'viet' ? 'Xem trước Phần 3: Viết' : 'Xem trước Phần 1: Đọc hiểu') : 'Xem đề'}
+                chiPhan={laXemPhan ? (nhung!.phan as 'docHieu' | 'viet') : undefined}
+                congCu={{ lech, onSuaCau: laXemPhan ? (k) => { setXemPhan(false); window.setTimeout(() => cuonToiCau(k), 150); } : nhung ? (k) => { window.location.href = nhung.lienKet(mucCuaCau(k), k); } : moCau, hrefDacTa: (k) => hrefDacTa(k) }} />
+              {laXemPhan && MUC_TIEP[nhung!.phan] && <div className="flex flex-wrap gap-3">
+                <button type="button" className={nutPhu} onClick={() => { setXemPhan(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><PenLine className="w-4 h-4" /> Quay lại soạn</button>
+                <Link href={nhung!.lienKet(MUC_TIEP[nhung!.phan]!)} className={nutChinh} onClick={() => { if (daSua) void gui('BAN_NHAP'); }}>{nhung!.phan === 'docHieu' ? 'Tiếp theo: Phần 2 – Đọc thành tiếng' : 'Tiếp theo: Hoàn chỉnh đề'} <ArrowRight className="w-4 h-4" /></Link>
+              </div>}
             </>);
           })()}
 
@@ -986,7 +1008,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
             </div>
           )}
 
-          {cheDo === 'xem' && <div className="the-tke p-4 space-y-3 text-sm">
+          {cheDo === 'xem' && !laXemPhan && <div className="the-tke p-4 space-y-3 text-sm">
             <h2 className="font-semibold text-slate-900">Hoàn tất</h2>
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex-1 min-w-60">
