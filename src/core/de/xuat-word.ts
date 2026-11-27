@@ -37,7 +37,7 @@ import {
   WidthType,
 } from 'docx';
 import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
-import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laPhanCauTach, nhanCau, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laDienChoCham, laPhanCauTach, moRongChoCham, nhanCau, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 import { tachPhanSo } from '@/core/de/phan-so';
 
@@ -232,7 +232,8 @@ function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean, them = 0): T
   const o = (k?: { nhan: string; nd: string }) => o2(
     k ? [
       doan([tr(`${k.nhan}) `, { bold: true }), tr(k.nd)], { dong: DAN_CAU, giuDong: true }),
-      ...(datTinh ? Array.from({ length: 5 + them }, () => doan('', { dong: 400 })) : Array.from({ length: 3 + them }, () => dongCham(rong - 300, 400))),
+      // Đặt tính cũng có dòng kẻ chấm để học sinh đặt tính, tính thẳng hàng
+      ...Array.from({ length: (datTinh ? 5 : 3) + them }, () => dongCham(rong - 300, 400)),
     ] : [doan('')],
     rong,
   );
@@ -278,8 +279,11 @@ export function laPhanNoiTiep(cau: CauDe[], i: number): boolean {
 function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false): (Paragraph | Table)[] {
   const kq: (Paragraph | Table)[] = [];
   const iPhai = (c.hinh ?? []).findIndex((h) => h.canh === 'PHAI' && h.anh && /^data:image\/(jpeg|png);base64,/.test(h.anh));
-  const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
-  const doanDau = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || (tiep || laPhanCauTach(c) ? '' : 'Thực hiện các yêu cầu sau:') : c.deBai);
+  // Câu điền chỗ chấm (đổi đơn vị đo…): giữ từng dòng như đề, kéo dài chỗ chấm, không thêm dòng kẻ bên dưới
+  const dien = laDienChoCham(c);
+  const deBaiIn = dien ? moRongChoCham(c.deBai) : c.deBai;
+  const nhieuY = !dien && c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
+  const doanDau = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || (tiep || laPhanCauTach(c) ? '' : 'Thực hiện các yêu cầu sau:') : deBaiIn);
   const nhan = tr(nhanIn(c, tiep), { bold: true });
   let daNhan = false;
   const trai: Paragraph[] = [];
@@ -296,7 +300,8 @@ function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false)
       if (h?.anh) (iPhai >= 0 ? sauBang : kq).push(...hinhCau([h]));
       else dich.push(doan([tr(`[Hình ${d.khung}: chưa có ảnh]`, { italics: true })], { dong: DAN_CAU }));
     } else {
-      dich.push(doan(daNhan ? [tr(d.chu ?? '', { bold: inDam })] : [nhan, tr(d.chu ?? '', { bold: inDam })], { dong: DAN_CAU }));
+      // Đề bài luôn đi liền phần làm bài bên dưới (không để câu hỏi nằm một mình cuối trang)
+      dich.push(doan(daNhan ? [tr(d.chu ?? '', { bold: inDam })] : [nhan, tr(d.chu ?? '', { bold: inDam })], { dong: DAN_CAU, giuDong: true }));
       daNhan = true;
     }
   }
@@ -344,6 +349,18 @@ const CAO_DAU_DE = 3700; // khung đầu đề + bảng điểm + dòng PHẦN B
 const CAO_HET_DE = 120 + gianCoDinh(DAN_DONG);
 /** Chừa cuối mỗi trang (khoảng 1 cm) vì chiều cao chỉ là ước lượng; không để chữ sát mép */
 const CHUA_CUOI_TRANG = 600;
+/** Câu cao hơn mức này (khoảng 6 cm) được phép ngắt sang trang sau, giữa các dòng kẻ */
+const CAO_CHO_PHEP_CAT = 3400;
+
+/**
+ * Câu được cắt sang trang sau giữa các dòng kẻ: câu tự luận chỉ có đề bài và dòng kẻ chấm (không hình, không lưới ý),
+ * đủ dài. Đề bài giữ liền dòng kẻ đầu tiên nên không bị bỏ lại một mình cuối trang.
+ */
+function choPhepCat(c: CauDe, maMon: string, them: number): boolean {
+  if (c.hinhThuc !== 'TL' || c.dang === 'DS' || laDienChoCham(c) || (c.hinh ?? []).some((h) => h.anh)) return false;
+  if (c.dang !== 'VIET' && tachYTrongDeBai(c.deBai)) return false;
+  return uocLuongCaoCau(c, maMon, them) >= CAO_CHO_PHEP_CAT;
+}
 const KI_TU_MOT_DONG = (rong: number) => Math.max(10, Math.floor(rong / 122)); // TNR 13: trung bình ~122 twip/kí tự
 
 function soDongChu(chu: string, rong: number) {
@@ -357,7 +374,7 @@ function caoAnh(h: NonNullable<CauDe['hinh']>[number], rongToiDa: number) {
 
 /** Chiều cao dòng kẻ thêm của câu (twip), 0 nếu câu không có chỗ viết để thêm */
 function caoMotDongThem(c: CauDe, maMon: string): number {
-  if (c.hinhThuc !== 'TL' || c.dang === 'DS') return 0;
+  if (c.hinhThuc !== 'TL' || c.dang === 'DS' || laDienChoCham(c)) return 0;
   const nhieuY = c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
   if (nhieuY) return Math.ceil(nhieuY.y.length / 2) * gianCoDinh(400);
   return gianCoDinh(maMon === 'TOAN' ? 420 : 380);
@@ -369,8 +386,8 @@ export function uocLuongCaoCau(c: CauDe, maMon = '', them = 0): number {
   const rong = RONG_NOI_DUNG - 160;
   const hinh = (c.hinh ?? []).filter((h) => h.anh);
   const phai = hinh.find((h) => h.canh === 'PHAI');
-  const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
-  const chu = (nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai).replace(/\[\s*Hình\s*\d+\s*\]/gi, '');
+  const nhieuY = !laDienChoCham(c) && c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
+  const chu = (nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : laDienChoCham(c) ? moRongChoCham(c.deBai) : c.deBai).replace(/\[\s*Hình\s*\d+\s*\]/gi, '');
   let cao = soDongChu(`${nhanCau(c)}. ${chu}`, phai ? rong * 0.6 : rong) * LC;
   if (phai) cao = Math.max(cao, caoAnh(phai, Math.floor(rong * 0.38)));
   const conLai = hinh.filter((h) => h !== phai);
@@ -448,17 +465,29 @@ export function phanBoChoTrong(cau: CauDe[], maMon = '', caoDauTrang = CAO_DAU_D
 
 /** Mỗi câu một hàng: điểm bên trái, nội dung bên phải, một đường kẻ dọc giữa hai cột, hàng không bị cắt ngang trang. */
 function bangCau(cau: CauDe[], inDam = false, maMon = '', choTrong?: ChoTrong[]): Table {
-  const rows = cau.map((c, i) => {
+  const rows = cau.flatMap((c, i) => {
     const them = choTrong?.[i]?.dongThem ?? 0;
     const cach = choTrong?.[i]?.cachTruoc ?? 0;
     const dem = cach > 0 ? [new Paragraph({ children: [], spacing: { line: cach, lineRule: LineRuleType.EXACT, before: 0, after: 0 } })] : [];
-    return new TableRow({
+    const nd = noiDungCau(c, inDam, maMon, them, laPhanNoiTiep(cau, i)) as Paragraph[];
+    const oDiem = o2([...dem, doan([tr(`…/${fmtDiem(c.diem)}đ`)], { align: AlignmentType.LEFT })], RONG_DIEM, { ...CAC_VIEN_KHONG, right: VIEN_DEN });
+    if (!choPhepCat(c, maMon, them)) {
+      // Câu ngắn: cả câu một hàng, không cắt ngang trang
+      return [new TableRow({ cantSplit: true, children: [oDiem, o2([...dem, ...nd], RONG_NOI_DUNG)] })];
+    }
+    // Câu dài: hàng đầu gồm đề bài và 2 dòng kẻ đầu (không tách); mỗi dòng kẻ còn lại một hàng riêng,
+    // nên trang được lấp kín và chỗ cắt trang luôn nằm giữa hai dòng kẻ
+    const soDong = soDongTraLoi(c, maMon) + them;
+    const cat = Math.max(0, nd.length - soDong + 2);
+    const duoi = nd.slice(cat);
+    const hangDuoi = duoi.map((p, k) => new TableRow({
       cantSplit: true,
       children: [
-        o2([...dem, doan([tr(`…/${fmtDiem(c.diem)}đ`)], { align: AlignmentType.LEFT })], RONG_DIEM, { ...CAC_VIEN_KHONG, right: VIEN_DEN }),
-        o2([...dem, ...(noiDungCau(c, inDam, maMon, them, laPhanNoiTiep(cau, i)) as Paragraph[])], RONG_NOI_DUNG),
+        new TableCell({ children: [doan('')], width: { size: RONG_DIEM, type: WidthType.DXA }, borders: { ...CAC_VIEN_KHONG, right: VIEN_DEN }, margins: { top: 0, bottom: 0, left: 80, right: 80 } }),
+        new TableCell({ children: [p], width: { size: RONG_NOI_DUNG, type: WidthType.DXA }, borders: CAC_VIEN_KHONG, margins: { top: 0, bottom: k === duoi.length - 1 ? 40 : 0, left: 80, right: 80 } }),
       ],
-    });
+    }));
+    return [new TableRow({ cantSplit: true, children: [oDiem, new TableCell({ children: [...dem, ...nd.slice(0, cat)], width: { size: RONG_NOI_DUNG, type: WidthType.DXA }, borders: CAC_VIEN_KHONG, margins: { top: 40, bottom: 0, left: 80, right: 80 } })] }), ...hangDuoi];
   });
   return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: [RONG_DIEM, RONG_NOI_DUNG], layout: TableLayoutType.FIXED, rows });
 }

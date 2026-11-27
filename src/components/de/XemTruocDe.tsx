@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ListChecks, Pencil } from 'lucide-react';
 import { ChuPhanSo as PS } from '@/components/de/ChuPhanSo';
-import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laPhanCauTach, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laDienChoCham, laPhanCauTach, moRongChoCham, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import { useAuth } from '@/core/contexts/AuthContext';
 
 const fmt = (x: number) => String(x).replace('.', ',');
@@ -36,7 +36,7 @@ function LuoiY({ y, datTinh }: { y: { nhan: string; nd: string }[]; datTinh: boo
       {y.map((k) => (
         <div key={k.nhan}>
           <div><b>{k.nhan})</b> <PS chu={k.nd} /></div>
-          {datTinh ? <div style={{ height: 130 }} aria-hidden /> : <DongCham n={3} cao={30} />}
+          <DongCham n={datTinh ? 5 : 3} cao={30} />
         </div>
       ))}
     </div>
@@ -47,8 +47,9 @@ function LuoiY({ y, datTinh }: { y: { nhan: string; nd: string }[]; datTinh: boo
 const noiTiep = (ds: CauDe[], i: number) => i > 0 && ds[i - 1].cau === ds[i].cau && laPhanCauTach(ds[i]);
 
 function MotCau({ c, maMon, tiep = false }: { c: CauDe; maMon: string; tiep?: boolean }) {
-  const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
-  const doan = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || (tiep || laPhanCauTach(c) ? '' : 'Thực hiện các yêu cầu sau:') : c.deBai);
+  const dien = laDienChoCham(c);
+  const nhieuY = !dien && c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
+  const doan = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || (tiep || laPhanCauTach(c) ? '' : 'Thực hiện các yêu cầu sau:') : dien ? moRongChoCham(c.deBai) : c.deBai);
   const iPhai = (c.hinh ?? []).findIndex((h) => h.canh === 'PHAI' && h.anh);
   const conLai = chiSoHinhChuaGan(c).filter((i) => i !== iPhai).map((i) => (c.hinh ?? [])[i]).filter((h) => h?.anh);
   const hPhai = iPhai >= 0 ? (c.hinh ?? [])[iPhai] : undefined;

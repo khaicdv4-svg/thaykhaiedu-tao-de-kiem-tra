@@ -208,8 +208,23 @@ export function taoDeTuDacTa(dacTa: DacTa, phienBanDacTa: number, noiDungCu: Rec
  * Số dòng chấm chừa cho câu tự luận (cả đề in và bản xem trước dùng chung).
  * Bài viết: 18 dòng. Toán cần nhiều chỗ hơn (đặt tính, lời giải, đáp số); đề bài có "đặt tính" thì chừa ít nhất 6 dòng.
  */
+/** Chỗ chấm trong đề bài ("... cm²", "…") để học sinh điền thẳng vào. */
+const CHO_CHAM = /\.{3,}|…+/g;
+
+/** Câu tự luận điền thẳng vào chỗ chấm (đổi đơn vị đo, điền số…): không cần dòng kẻ trả lời bên dưới. */
+export function laDienChoCham(c: Pick<CauDe, 'dang' | 'deBai'> & Partial<Pick<CauDe, 'hinhThuc'>>): boolean {
+  if (c.dang === 'VIET' || c.dang === 'DS' || c.hinhThuc === 'TN') return false;
+  return /\.{3,}|…/.test(c.deBai);
+}
+
+/** Kéo dài chỗ chấm đủ rộng để học sinh viết số, đơn vị (khoảng 3–4 cm). */
+export function moRongChoCham(deBai: string): string {
+  return deBai.replace(CHO_CHAM, '……………………');
+}
+
 export function soDongTraLoi(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: string): number {
   if (c.dang === 'VIET') return 18;
+  if (laDienChoCham(c)) return 0;
   const toan = maMon === 'TOAN';
   const goc = toan ? Math.ceil(c.diem * 5) + 1 : Math.ceil(c.diem * 4) + 1;
   let n = Math.max(3, Math.min(toan ? 10 : 8, goc));
@@ -227,7 +242,9 @@ export function tachYTrongDeBai(deBai: string): DeBaiNhieuY | null {
   const t = deBai.replace(/\s+/g, ' ').trim();
   const vt: { nhan: string; bd: number; sau: number }[] = [];
   let tuViTri = 0;
-  for (const nhan of 'abcdef') {
+  // Ý đầu có thể không phải a) (phần sau của câu chia ý: b), c), d))
+  const dauTien = /(^|[^\p{L}\d])([a-f])\)/u.exec(t)?.[2] ?? 'a';
+  for (const nhan of 'abcdef'.slice('abcdef'.indexOf(dauTien))) {
     const re = new RegExp(`(^|[^\\p{L}\\d])${nhan}\\)\\s*`, 'u');
     const m = re.exec(t.slice(tuViTri));
     if (!m) break;
