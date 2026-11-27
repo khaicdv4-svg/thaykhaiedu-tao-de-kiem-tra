@@ -86,8 +86,12 @@ export function kiemDinhTiengViet(ky: KyKiemTraBaiDoc, tv: NoiDungTiengViet | un
       if (n < kh.min - kh.dungSai || n > kh.max + kh.dungSai) loi.push(`${t}: ${n} tiếng, quy định ${kh.min}–${kh.max} tiếng (lệch tối đa ±${kh.dungSai}).`);
     }
   });
-  const ten = tv.baiDocThanhTieng.map((b) => b.tieuDe.trim().toLowerCase()).filter(Boolean);
-  if (new Set(ten).size < ten.length) loi.push('Hai bài đọc thành tiếng trùng tên.');
+  // Cùng nội dung là lỗi; cùng tên nhưng khác đoạn (cắt từ một bài dài) chỉ nhắc xem lại
+  const co = tv.baiDocThanhTieng.filter((b) => b.noiDung.trim());
+  const chu = co.map((b) => b.noiDung.replace(/\s+/g, ' ').trim().toLowerCase());
+  const ten = co.map((b) => b.tieuDe.trim().toLowerCase()).filter(Boolean);
+  if (new Set(chu).size < chu.length) loi.push('Hai bài đọc thành tiếng trùng nội dung.');
+  else if (new Set(ten).size < ten.length) canhBao.push('Có hai bài đọc thành tiếng cùng tên (hai đoạn của một bài). Thầy cô xem có nên đổi một bài khác không.');
   return { loi, canhBao };
 }
 
