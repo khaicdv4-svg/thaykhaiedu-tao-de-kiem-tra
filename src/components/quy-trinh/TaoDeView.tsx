@@ -269,6 +269,29 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     setThongBao('Đã tạo khung đề từ đặc tả. Nhập đề bài, phương án và đáp án cho từng câu rồi lưu bản nháp.');
   };
 
+  // Xóa hẳn đề nháp đang dang dở (không dùng lại). Bấm hai lần để chắc chắn, không dùng hộp thoại của trình duyệt.
+  const [hoiXoa, setHoiXoa] = useState(false);
+  const [dangXoa, setDangXoa] = useState(false);
+  const xoaDuoc = !GHI_CHU_KHOA[trangThai] && trangThai !== 'SAN_SANG_DUYET';
+  const xoaDeNhap = async () => {
+    if (!hoiXoa) { setHoiXoa(true); window.setTimeout(() => setHoiXoa(false), 6000); return; }
+    setHoiXoa(false);
+    if (deId) {
+      setDangXoa(true);
+      const r = await goiJson<{ success?: boolean }>(`/api/de-kiem-tra?id=${encodeURIComponent(deId)}`, { method: 'DELETE' });
+      setDangXoa(false);
+      if (!r.ok) { setThongBao(`Chưa xóa được: ${r.j.error ?? 'lỗi không rõ'}`); return; }
+    }
+    setDe(null);
+    setDeId(null);
+    setTrangThai('BAN_NHAP');
+    setDaSua(false);
+    setKetQua(null);
+    setSach({});
+    setThongBao('Đã xóa đề nháp. Muốn làm đề mới thì bấm "Tạo khung đề từ đặc tả".');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Chưa có đề: tự dựng khung đề từ đặc tả để thầy cô bấm "Tạo đề" ngay
   const daTuDung = useRef('');
   useEffect(() => {
@@ -667,6 +690,12 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
             <button type="button" className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50" onClick={taoMoi} title="Bỏ nội dung đang soạn, làm khung đề trống theo đặc tả mới nhất">
               <RefreshCw className="w-4 h-4" /> Làm lại đề trống
             </button>
+            {xoaDuoc && (
+              <button type="button" disabled={dangXoa} onClick={() => void xoaDeNhap()} title="Xóa hẳn đề nháp này, không dùng lại"
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50 ${hoiXoa ? 'border-red-600 bg-red-600 text-white hover:bg-red-700' : 'border-red-300 bg-white text-red-700 hover:bg-red-50'}`}>
+                {dangXoa ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} {hoiXoa ? 'Bấm lần nữa để xóa hẳn' : 'Xóa đề nháp'}
+              </button>
+            )}
           </div>}
 
           {cheDo === 'soan' && (<>
