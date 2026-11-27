@@ -143,7 +143,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   const conTro = useRef<Record<string, number>>({});
   const [veAI, setVeAI] = useState<Record<string, { mo?: boolean; moTa: string; dich: number | null; dang?: boolean; loi?: string; xem?: HinhCau }>>({});
   const [goiY, setGoiY] = useState<Record<string, { dang?: boolean; text?: string; canh?: string }>>({});
-  type KetQuaSach = { dang?: 'soan' | 'doi'; loi?: string; thieu?: string[]; trang?: string; soan?: { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string; cacDe?: { deBai: string; huongDanCham: string }[] }; doi?: { trongPhamVi: string; khopSach: string; dapAnDung: string; chepNguyenSach: string; nhanXet: string[]; goiY: string } };
+  type KetQuaSach = { dang?: 'soan' | 'doi'; loi?: string; thieu?: string[]; trang?: string; soan?: { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string; cacDe?: { deBai: string; huongDanCham: string }[]; moTaHinh?: string }; doi?: { trongPhamVi: string; khopSach: string; dapAnDung: string; chepNguyenSach: string; nhanXet: string[]; goiY: string } };
   const [sach, setSach] = useState<Record<string, KetQuaSach>>({});
   // Bài đọc Tiếng Việt chọn ở bước 1 (null: chưa chọn ở bước 1, đề giữ bài đang có)
   const [baiDocChon, setBaiDocChon] = useState<BaiDocChon | null>(null);
@@ -366,7 +366,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
 
   const dongDacTaCua = (c: CauDe) => {
     const d = dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa);
-    return { yNho: c.yNho, baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa, dangBai: d?.dangBai?.trim() || undefined, noiDung: d?.noiDung ?? null, tuanKiemTra: dacTaBan?.duLieu.tuan_kiem_tra ?? null };
+    return { yNho: c.yNho, baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh ? `${TEN_KIEU_HINH[c.yeuCauHinh.kieu]}${c.yeuCauHinh.moTa ? `: ${c.yeuCauHinh.moTa}` : ''}` : undefined, dangBai: d?.dangBai?.trim() || undefined, noiDung: d?.noiDung ?? null, tuanKiemTra: dacTaBan?.duLieu.tuan_kiem_tra ?? null };
   };
   const dangBaiCua = (c: CauDe) => dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa)?.dangBai?.trim() || '';
   /** Ghi chú riêng của thầy ở đặc tả: AI luôn soạn theo (dạng bài gửi riêng ở dòng đặc tả). */
@@ -395,6 +395,24 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     const lc = [...x.luaChon]; while (lc.length < c.luaChon.length) lc.push('');
     suaCau(c.khoa, { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) });
     setSach((g) => ({ ...g, [c.khoa]: {} }));
+    if (c.yeuCauHinh && x.moTaHinh) setVeAI((v) => ({ ...v, [c.khoa]: { moTa: x.moTaHinh!, dich: null, mo: true } }));
+  };
+
+  /**
+   * Câu đặc tả yêu cầu hình: AI vẽ ngay theo mô tả AI soạn kèm đề bài, gắn vào khung [Hình 1].
+   * Hình cho từng phương án A–D vẫn để thầy cô vẽ ở từng câu. Trả về lỗi (nếu có) để báo lại, không chặn việc soạn.
+   */
+  const veHinhTuDong = async (c: CauDe, deBai: string, luaChon: string[], moTa: string): Promise<{ p?: Partial<NoiDungCau>; loi?: string }> => {
+    if (!c.yeuCauHinh || c.yeuCauHinh.kieu === 'PHUONG_AN' || (c.hinh ?? []).some((h) => h.anh)) return {};
+    const moTaVe = moTa || c.yeuCauHinh.moTa || '';
+    const r = await goiJson<{ svg?: string; rong?: number; cao?: number }>('/api/de-kiem-tra/ve-hinh', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mon: maMon, deBai, luaChon, moTa: moTaVe, kieu: c.yeuCauHinh.kieu }),
+    });
+    if (!r.ok || !r.j.svg) return { loi: r.j.error ?? 'AI chưa vẽ được hình' };
+    const h = await svgSangHinh(r.j.svg, r.j.rong ?? 400, r.j.cao ?? 250, moTaVe);
+    const coKhung = soKhungTrongDeBai(deBai).includes(1);
+    return { p: { hinh: [{ ...h, chuThich: '' }], deBai: coKhung ? deBai : chenKhungVaoDeBai(deBai, 1) } };
   };
 
   /** Tạo đề: AI soạn mọi câu còn trống theo đặc tả (bài, trang SGK, YCCĐ, mức, dạng, điểm), điền thẳng vào đề rồi lưu bản nháp. */
@@ -412,6 +430,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     let deTam: DeKiemTra = de;
     const loi: string[] = [];
     let xong = 0;
+    let soDaSoan = 0;
     setTaoDeAI({ dang: true, xong: 0, tong: ds.length, loi: [] });
     const soanMot = async (c: CauDe) => {
       const docHieu = laCauDocHieu(c);
@@ -425,9 +444,18 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
       if (x.khongDuCanCu || !x.deBai) { loi.push(`${nhanCau(c)}: ${x.ghiChu || 'sách chưa đủ căn cứ'}`); return; }
       const lc = [...x.luaChon];
       while (lc.length < c.luaChon.length) lc.push('');
-      const p: Partial<NoiDungCau> = { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) };
+      let p: Partial<NoiDungCau> = { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) };
+      if (c.yeuCauHinh) {
+        try {
+          const ve = await veHinhTuDong(c, x.deBai, lc, x.moTaHinh ?? '');
+          if (ve.p) p = { ...p, ...ve.p };
+          else if (ve.loi) loi.push(`${nhanCau(c)}: đã soạn câu nhưng ${ve.loi.charAt(0).toLowerCase()}${ve.loi.slice(1)}. Bấm "AI vẽ hình theo đề bài" ở câu này.`);
+        } catch (e) { loi.push(`${nhanCau(c)}: đã soạn câu nhưng chưa vẽ được hình (${e instanceof Error ? e.message : String(e)}).`); }
+        if (x.moTaHinh) setVeAI((v) => ({ ...v, [c.khoa]: { moTa: x.moTaHinh!, dich: null } }));
+      }
       deTam = { ...deTam, cau: deTam.cau.map((y) => (y.khoa === c.khoa ? { ...y, ...p } : y)) };
       suaCau(c.khoa, p);
+      soDaSoan++;
     };
     // Soạn ba câu cùng lúc cho nhanh
     let i = 0;
@@ -440,12 +468,12 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
       }
     }));
     setTaoDeAI({ dang: false, xong, tong: ds.length, loi });
-    const daSoan = ds.length - loi.length;
+    const daSoan = soDaSoan;
     if (daSoan > 0) await gui('BAN_NHAP', deTam);
     const soLech = Object.keys(lechTungCau(dacTaBan.duLieu, deTam)).length;
     if (daSoan > 0 && !loi.length) { if (!nhung) setCheDo('xem'); else if (coXemPhan) { setXemPhan(true); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
     setThongBao(daSoan
-      ? `AI đã soạn ${daSoan}/${ds.length} câu cùng đáp án và đã lưu bản nháp.${loi.length ? ` Còn ${loi.length} câu chưa soạn được (xem danh sách bên dưới).` : ''} ${soLech ? `Có ${soLech} câu cần xem lại (đánh dấu đỏ ở màn Xem đề).` : ''} Thầy cô xem lại cả đề, bấm "Sửa câu này" ở câu cần sửa, xem đúng rồi xuất Word.`
+      ? `AI đã soạn ${daSoan}/${ds.length} câu cùng đáp án và đã lưu bản nháp.${ds.length - daSoan ? ` Còn ${ds.length - daSoan} câu chưa soạn được (xem danh sách bên dưới).` : ''}${loi.length > ds.length - daSoan ? ' Có câu đã soạn nhưng chưa vẽ được hình (xem bên dưới).' : ''} ${soLech ? `Có ${soLech} câu cần xem lại (đánh dấu đỏ ở màn Xem đề).` : ''} Thầy cô xem lại cả đề, bấm "Sửa câu này" ở câu cần sửa, xem đúng rồi xuất Word.`
       : 'AI chưa soạn được câu nào. Xem lí do bên dưới.');
   };
 

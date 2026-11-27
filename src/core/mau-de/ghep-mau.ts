@@ -194,8 +194,12 @@ function cacPhanTuSau(xml: string, ten: string): Khuc[] {
 // Co giãn bề ngang bảng, dọn những thứ không mang sang được
 // ---------------------------------------------------------------------------
 
-function beNgangChu(docXml: string): number | null {
-  const sect = docXml.match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/)?.[0];
+/**
+ * Bề ngang trang chữ của mục (section) chứa vị trí `tu`: lấy w:sectPr đầu tiên từ vị trí đó trở đi
+ * (Word ghi thuộc tính mục ở cuối mục). Hồ sơ có mục ngang (ma trận) trước mục dọc (đề) nên không lấy sectPr đầu tệp.
+ */
+function beNgangChu(docXml: string, tu = 0): number | null {
+  const sect = docXml.slice(tu).match(/<w:sectPr\b[\s\S]*?<\/w:sectPr>/)?.[0];
   if (!sect) return null;
   const so = (the: string, tt: string) => Number(sect.match(new RegExp(`<w:${the}\\b[^>]*\\bw:${tt}="(\\d+)"`))?.[1] ?? NaN);
   const rong = so('pgSz', 'w');
@@ -365,10 +369,6 @@ export function ghepDauBaiTheoMau(tepDe: Uint8Array, tepMau: Uint8Array): KetQua
   let docRa = strFromU8(ra['word/document.xml']);
 
   let dauBai = donDep(layDauBaiMau(docMau));
-  const nMau = beNgangChu(docMau);
-  const nRa = beNgangChu(docRa);
-  if (nMau && nRa) dauBai = coGian(dauBai, nRa / nMau);
-  if (nRa) dauBai = khopBeNgang(dauBai, nRa);
   dauBai = chepQuanHe(dauBai, mau, ra);
   chepKieu(dauBai, mau, ra);
 
@@ -382,7 +382,10 @@ export function ghepDauBaiTheoMau(tepDe: Uint8Array, tepMau: Uint8Array): KetQua
     if (j === undefined) continue;
     const td = docTieuDeCuaApp(xml1);
     if (!td) continue;
-    thay.push({ batDau: khoi[i].batDau, ketThuc: khoi[j].ketThuc, xml: thayTieuDe(dauBai, td) });
+    // Co giãn theo đúng mục chứa đầu bài này (mục dọc của đề, không phải mục ngang của ma trận)
+    const nRa = beNgangChu(docRa, khoi[i].batDau);
+    const xmlDau = nRa ? khopBeNgang(dauBai, nRa) : dauBai;
+    thay.push({ batDau: khoi[i].batDau, ketThuc: khoi[j].ketThuc, xml: thayTieuDe(xmlDau, td) });
     i = j;
   }
   if (!thay.length) throw new Error('Tệp đề không có đầu bài để thay.');

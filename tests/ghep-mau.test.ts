@@ -115,7 +115,13 @@ describe('Xuất đề theo mẫu của tổ', () => {
 
   it('bộ hồ sơ và đề Tiếng Việt: thay mọi đầu bài, phần đọc thành tiếng không ghi thời gian', async () => {
     const { dacTa, de } = deLsdl();
-    expect(ghepDauBaiTheoMau(new Uint8Array(await Packer.toBuffer(dungHoSoDe(tt, dacTa, de))), await taoMau()).soChoThay).toBe(1);
+    const hs = ghepDauBaiTheoMau(new Uint8Array(await Packer.toBuffer(dungHoSoDe(tt, dacTa, de))), await taoMau());
+    expect(hs.soChoThay).toBe(1);
+    // Hồ sơ có trang ngang (ma trận) trước trang dọc (đề): đầu bài phải theo bề ngang trang dọc
+    const xmlHs = strFromU8(unzipSync(hs.tep)['word/document.xml']);
+    const dauHs = xmlHs.slice(xmlHs.indexOf('GV coi') - 6000, xmlHs.indexOf('PHẦN BÀI LÀM'));
+    expect(dauHs).toContain('<w:tblW w:w="10772" w:type="dxa"/>');
+    expect(dauHs).not.toContain('<w:tblW w:w="15704"');
 
     const tv = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'TIENG_VIET')!;
     const lc: LuaChon = {};

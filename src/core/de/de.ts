@@ -245,10 +245,17 @@ export function tachYTrongDeBai(deBai: string): DeBaiNhieuY | null {
 
 /** Đáp án viết ra để in: NLC kèm nội dung phương án, Đúng/Sai theo từng ý. */
 export function dapAnHienThi(c: CauDe): string {
-  if (c.dang === 'NLC') {
-    const n = c.dapAn.trim().toUpperCase();
-    const i = (NHAN_LUA_CHON as readonly string[]).indexOf(n);
-    return i >= 0 && c.luaChon[i]?.trim() ? `${n}. ${c.luaChon[i]}` : n;
+  const coPA = c.luaChon.some((x) => x.trim());
+  if (c.dang === 'NLC' || (c.hinhThuc === 'TN' && c.dang !== 'DS' && coPA)) {
+    // Đáp án trắc nghiệm luôn ghi "chữ cái. nội dung", kể cả khi đáp án lưu là nội dung phương án
+    const goc = c.dapAn.trim();
+    const n = goc.toUpperCase();
+    let i = (NHAN_LUA_CHON as readonly string[]).indexOf(n);
+    if (i < 0 && /^[A-D]\.\s*\S/i.test(goc)) return goc;
+    const gon = (x: string) => x.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').replace(/[.。]$/, '').trim();
+    if (i < 0) i = c.luaChon.findIndex((x) => x.trim() && gon(x) === gon(goc));
+    if (i < 0) return goc;
+    return c.luaChon[i]?.trim() ? `${NHAN_LUA_CHON[i]}. ${c.luaChon[i]}` : NHAN_LUA_CHON[i];
   }
   if (c.dang === 'DS') return Array.from(c.dapAn.replace(/[\s,;]/g, '').toUpperCase()).map((k, i) => `${(c.yNho ?? [])[i] ?? String.fromCharCode(97 + i)}) ${k === 'Đ' ? 'Đúng' : 'Sai'}`).join('; ');
   return c.dapAn;

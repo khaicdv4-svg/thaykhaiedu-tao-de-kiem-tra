@@ -172,7 +172,7 @@ function mota(c: CauChoAI): string {
   const khoi = c.khoi ?? 4;
   return `Môn ${c.tenMon} lớp ${khoi}. Câu ${c.hinhThuc === 'TL' ? 'tự luận' : 'trắc nghiệm'}${c.dang ? ` (dạng ${c.dang})` : ''}, mức ${c.muc}, ${String(c.diem).replace('.', ',')} điểm.
 Yêu cầu cần đạt: ${c.yccd || '(chưa ghi)'}
-Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaDangBai(c)}${moTaYNho(c)}${c.yeuCauHinh ? `\nHình kèm theo (theo đặc tả): ${c.yeuCauHinh}` : ''}${c.ghiChuThay ? `\nYÊU CẦU RIÊNG CỦA GIÁO VIÊN CHO CÂU NÀY (bắt buộc theo đúng dạng bài này; YCCĐ rộng hơn thì chỉ soạn phần khớp yêu cầu, không đổi sang dạng khác): ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}
+Bài: ${c.baiHoc || '(chưa ghi)'}${c.trangSgk ? `, ${c.trangSgk}` : ''}${moTaDangBai(c)}${moTaYNho(c)}${c.yeuCauHinh ? `\nCÂU NÀY BẮT BUỘC CÓ HÌNH (giáo viên yêu cầu ở đặc tả): ${c.yeuCauHinh}. Soạn đề bài gắn với hình: học sinh phải nhìn hình mới trả lời được (ví dụ "Trong hình dưới đây, …", "Quan sát hình vẽ, …"); đặt dòng "[Hình 1]" riêng ở chỗ hình nằm trong đề bài. Trả thêm trường "moTaHinh": mô tả thật cụ thể để vẽ hình (tên các điểm, đoạn, góc, số đo, vị trí, nhãn), khớp đúng đề bài và đáp án; hình không được để lộ đáp án.` : ''}${c.ghiChuThay ? `\nYÊU CẦU RIÊNG CỦA GIÁO VIÊN CHO CÂU NÀY (bắt buộc theo đúng dạng bài này; YCCĐ rộng hơn thì chỉ soạn phần khớp yêu cầu, không đổi sang dạng khác): ${c.ghiChuThay}` : ''}${c.deBai ? `\nĐề bài: ${c.deBai}` : ''}${lc}${c.dapAn ? `\nĐáp án của giáo viên: ${c.dapAn}` : ''}${c.huongDanCham ? `\nHướng dẫn chấm: ${c.huongDanCham}` : ''}
 
 QUY TẮC CỦA TỔ KHỐI ${khoi} (bắt buộc tuân theo):
 ${quyTacTheoMon({ maMon: c.maMon, tenMon: c.tenMon, ky: c.ky, muc: c.muc, tuan: c.tuan, khoi })}`;
@@ -196,7 +196,7 @@ function layJson(t: string): Record<string, unknown> | null {
 const chu = (x: unknown) => (typeof x === 'string' ? chuanHoaPhanSo(x.replace(/\*\*/g, '')).trim() : '');
 const phuongAn = (x: unknown) => boNhanPhuongAn(chu(x));
 
-export interface CauAISoan { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string; cacDe?: { deBai: string; huongDanCham: string }[] }
+export interface CauAISoan { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string; cacDe?: { deBai: string; huongDanCham: string }[]; moTaHinh?: string }
 export function docCauAISoan(traLoi: string): CauAISoan | null {
   const j = layJson(traLoi);
   if (!j) return null;
@@ -206,7 +206,7 @@ export function docCauAISoan(traLoi: string): CauAISoan | null {
   const cacDe = Array.isArray(j.cacDe)
     ? (j.cacDe as unknown[]).map((x) => (x && typeof x === 'object' ? x as Record<string, unknown> : {})).map((x) => ({ deBai: chu(x.deBai), huongDanCham: chu(x.huongDanCham) })).filter((x) => x.deBai).slice(0, 2)
     : [];
-  return { deBai, luaChon: Array.isArray(j.luaChon) ? j.luaChon.map(phuongAn) : [], dapAn: chu(j.dapAn), huongDanCham: chu(j.huongDanCham), khongDuCanCu: khong, ghiChu: chu(j.ghiChu), ...(cacDe.length ? { cacDe } : {}) };
+  return { deBai, luaChon: Array.isArray(j.luaChon) ? j.luaChon.map(phuongAn) : [], dapAn: chu(j.dapAn), huongDanCham: chu(j.huongDanCham), khongDuCanCu: khong, ghiChu: chu(j.ghiChu), ...(cacDe.length ? { cacDe } : {}), ...(chu(j.moTaHinh) ? { moTaHinh: chu(j.moTaHinh) } : {}) };
 }
 
 export type KetLuan = 'co' | 'khong' | 'khong_du_can_cu';

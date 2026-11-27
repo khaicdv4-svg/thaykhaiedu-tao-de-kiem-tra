@@ -253,3 +253,13 @@ describe('Kiểm định đề Tiếng Việt theo phần', () => {
     expect(kiemDinhDe(dtTV, deDocXong).loi.some((l) => /Viết: chưa có đề bài/.test(l))).toBe(true);
   });
 });
+
+describe('Đáp án trắc nghiệm luôn có chữ cái', () => {
+  const c = (dapAn: string) => ({ khoa: 'x/1', cau: '1', yNho: null, muc: 1, hinhThuc: 'TN', dang: null, diem: 0.5, yccd: '', deBai: 'Góc bé hơn góc vuông là góc nào?', luaChon: ['Góc nhọn', 'Góc tù', 'Góc bẹt', 'Góc vuông'], dapAn, huongDanCham: '', ghiChuHinh: '' }) as DeKiemTra['cau'][number];
+  it('đáp án lưu bằng nội dung hoặc chữ cái đều hiện "A. Góc nhọn"', async () => {
+    const { dapAnHienThi } = await import('../src/core/de/de');
+    expect(dapAnHienThi(c('Góc nhọn'))).toBe('A. Góc nhọn');
+    expect(dapAnHienThi(c('A'))).toBe('A. Góc nhọn');
+    expect(dapAnHienThi(c('A. Góc nhọn'))).toBe('A. Góc nhọn');
+  });
+});

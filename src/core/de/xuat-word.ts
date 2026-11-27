@@ -36,6 +36,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
+import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
 import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laPhanCauTach, nhanCau, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 import { tachPhanSo } from '@/core/de/phan-so';
@@ -839,7 +840,7 @@ function bangDacTa(dacTa: DacTa): Table {
         oN([r.tuan == null ? '' : String(r.tuan)], w[6], { align: AlignmentType.CENTER }),
         oN([r.baiHoc], w[7]),
         oN([r.trangSgk], w[8]),
-        oN([r.dangBai?.trim() ? `Dạng bài: ${r.dangBai.trim()}${r.ghiChu.trim() ? `. ${r.ghiChu.trim()}` : ''}` : r.ghiChu], w[9]),
+        oN([[r.dangBai?.trim() ? `Dạng bài: ${r.dangBai.trim()}` : '', r.ghiChu.trim(), r.hinhKem && r.hinhKem !== 'KHONG' ? `Có hình: ${TEN_KIEU_HINH[r.hinhKem].toLowerCase()}${r.moTaHinh?.trim() ? ` (${r.moTaHinh.trim()})` : ''}` : ''].filter(Boolean).join('. ')], w[9]),
       ],
     }));
   }
