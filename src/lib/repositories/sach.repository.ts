@@ -5,6 +5,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { canQuyenSua } from '@/lib/repositories/quyen-nap';
 import { dsMucLucSgk } from '@/lib/repositories/chuong-trinh.repository';
+import { ganNguCanhViet, type MucSgkViet, type NguCanhViet } from '@/core/de/de-viet-tv';
 import { chonTrangSgv, gopBaiSgk, gopTrang, GHI_CHU_OCR, type BaiSgkChu, khoangTrangCuaCau, trangPdfTuTrangSach, type NguCanhSach, type TrangSach } from '@/core/chuong-trinh/sach';
 
 const VAI_TRO_SUA = ['GROUP_LEADER', 'DEPUTY_GROUP_LEADER', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN'];
@@ -163,4 +164,46 @@ export async function nguCanhChoCau(mon: string, lop: number, dong: { baiHoc: st
     if (!chon.length) thieu.push('Không tìm thấy trang SGV nhắc tên bài này.');
   }
   return rong;
+}
+
+/** Mã môn của Xưởng → mã môn trong kho SGK chung, dùng cho đề bài Viết. */
+const MON_KHO_CHUNG_VIET: Record<string, string> = { TIENG_VIET: 'subj-tv' };
+
+/**
+ * Ngữ cảnh soạn đề bài Viết (Tiếng Việt): các tiết Viết và Ôn tập có cùng kiểu bài trong SGK, đến tuần kiểm tra.
+ * Không cần trang SGK trong đặc tả. Lỗi hoặc thiếu dữ liệu thì trả ngữ cảnh rỗng, không chặn việc soạn.
+ */
+export async function nguCanhBaiViet(mon: string, lop: number, tuanDen: number, re: RegExp): Promise<NguCanhViet> {
+  const rong: NguCanhViet = { thamKhao: '', deSgk: [], nguon: [] };
+  const goc = MON_KHO_CHUNG_VIET[mon];
+  if (!goc) return rong;
+  try {
+    const { supabase } = await layNguoiDung();
+    const cacTap = tuanDen > 18 ? [1, 2] : [1];
+    const { data: sach } = await supabase.from('sgk_books').select('id, volume').eq('subject_id', `${goc}${lop}`).eq('grade', lop).in('volume', cacTap);
+    const ds = (sach ?? []) as { id: string; volume: number }[];
+    if (!ds.length) return rong;
+    // Trang cuối đã học: theo mục lục (tuần ≤ tuần kiểm tra); không có mục lục thì không giới hạn
+    const mucLuc = await dsMucLucSgk(mon, lop).catch(() => []);
+    const muc: MucSgkViet[] = [];
+    for (const tap of cacTap) {
+      const b = ds.find((x) => x.volume === tap);
+      if (!b) continue;
+      const trongTap = mucLuc.filter((m) => m.tap === tap && m.tuan !== null && m.trang !== null);
+      const sau = trongTap.filter((m) => (m.tuan as number) > tuanDen).map((m) => m.trang as number);
+      const trangToiDa = sau.length ? Math.min(...sau) - 1 : Infinity;
+      const { data } = await supabase.from('sgk_sections')
+        .select('kind, number_label, title, printed_page_start, printed_page_end, text_content')
+        .eq('book_id', b.id).neq('kind', 'CHU_DE').not('text_content', 'is', null).order('order_index').limit(200);
+      for (const r of (data ?? []) as any[]) {
+        const tu = r.printed_page_start as number;
+        if (Number.isFinite(trangToiDa) && tu > trangToiDa) continue;
+        muc.push({ nhan: `${tap === 2 ? 'Tập 2, ' : ''}${String(r.number_label ?? '')}`, ten: String(r.title ?? ''), trangTu: tu, trangDen: r.printed_page_end as number, laOnTap: r.kind === 'ON_TAP', noiDung: String(r.text_content ?? '') });
+      }
+    }
+    muc.sort((a, b) => (a.nhan.startsWith('Tập 2') ? 1000 : 0) + a.trangTu - ((b.nhan.startsWith('Tập 2') ? 1000 : 0) + b.trangTu));
+    return ganNguCanhViet(muc, re);
+  } catch {
+    return rong;
+  }
 }

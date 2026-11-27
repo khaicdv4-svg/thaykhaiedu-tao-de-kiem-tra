@@ -338,7 +338,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
 
   const dongDacTaCua = (c: CauDe) => {
     const d = dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa);
-    return { yNho: c.yNho, baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa, dangBai: d?.dangBai?.trim() || undefined };
+    return { yNho: c.yNho, baiHoc: d?.baiHoc ?? '', trangSgk: d?.trangSgk ?? '', tuan: d?.tuan ?? null, yccd: c.yccd, dang: c.dang, hinhThuc: c.hinhThuc, muc: c.muc, diem: c.diem, yeuCauHinh: c.yeuCauHinh?.moTa, dangBai: d?.dangBai?.trim() || undefined, noiDung: d?.noiDung ?? null, tuanKiemTra: dacTaBan?.duLieu.tuan_kiem_tra ?? null };
   };
   const dangBaiCua = (c: CauDe) => dacTaBan?.duLieu.dong.find((r) => r.khoa === c.khoa)?.dangBai?.trim() || '';
   /** Ghi chú riêng của thầy ở đặc tả: AI luôn soạn theo (dạng bài gửi riêng ở dòng đặc tả). */
@@ -662,7 +662,9 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
             </button>
             <span className="text-sm text-slate-600 flex-1 min-w-60">
               {de.cau.some((c) => trongPhan(c.khoa) && !c.deBai.trim())
-                ? `AI viết đề bài, phương án, đáp án và hướng dẫn chấm cho ${de.cau.filter((c) => trongPhan(c.khoa) && !c.deBai.trim()).length} câu còn trống, theo đúng bài, trang SGK, YCCĐ, mức và điểm trong đặc tả. Thầy cô chỉ cần xem, sửa và gửi duyệt.`
+                ? nhung?.phan === 'viet'
+                  ? 'AI tham khảo dạng đề ở các tiết Viết và tiết Ôn tập cùng kiểu bài trong SGK, rồi ra đề mới diễn đạt khác, không trùng đề học sinh đã làm trên lớp. Kèm hướng dẫn chấm. Không cần trang SGK.'
+                  : `AI viết đề bài, phương án, đáp án và hướng dẫn chấm cho ${de.cau.filter((c) => trongPhan(c.khoa) && !c.deBai.trim()).length} câu còn trống, theo đúng bài, trang SGK, YCCĐ, mức và điểm trong đặc tả. Thầy cô chỉ cần xem, sửa và gửi duyệt.`
                 : 'Các câu đã có nội dung. Muốn AI viết lại toàn bộ thì bấm "Viết lại tất cả".'}
             </span>
             {!de.cau.some((c) => trongPhan(c.khoa) && !c.deBai.trim()) && !taoDeAI?.dang && (
