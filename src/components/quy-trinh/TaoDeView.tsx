@@ -9,7 +9,7 @@
 import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Download, Eye, FilePlus2, ImagePlus, Lock, PenLine, Square, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Download, Eye, FilePlus2, Lock, PenLine, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
@@ -18,7 +18,7 @@ import { NganHangCauHoi } from '@/components/de/NganHangCauHoi';
 import { VietLaiCauAI } from '@/components/de/VietLaiCauAI';
 import { goiYTuNganHang, type GoiYMotCau } from '@/core/de/goi-y-ngan-hang';
 import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
-import { svgSangHinh, xuLyAnhDe } from '@/core/utils/anh-de';
+import { svgSangHinh } from '@/core/utils/anh-de';
 import { apBaiDocChon, baiDocChonCoGi, taoNoiDungTiengVietRong, type BaiDocChon, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
 import { ChuPhanSo } from '@/components/de/ChuPhanSo';
@@ -29,13 +29,10 @@ import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
 import { khoaThuocPhan, mucCuaCau, type MucTV, type NhungTV } from '@/components/quy-trinh/nhung';
 import {
   NHAN_LUA_CHON,
-  TOI_DA_HINH_MOT_CAU,
   cauDaXong,
   chenKhungVaoDeBai,
-  doiKhungTrongDeBai,
   soKhungTrongDeBai,
   xoaKhungKhoiDeBai,
-  type HinhCau,
   dungLaiDe,
   kiemDinhDe,
   lechTungCau,
@@ -139,9 +136,6 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   // Có thay đổi chưa lưu lên hệ thống (để xuất Word đúng bản đang xem)
   const [daSua, setDaSua] = useState(false);
   const deRef = useRef<DeKiemTra | null>(null);
-  const [loiHinh, setLoiHinh] = useState<Record<string, string>>({});
-  const conTro = useRef<Record<string, number>>({});
-  const [veAI, setVeAI] = useState<Record<string, { mo?: boolean; moTa: string; dich: number | null; dang?: boolean; loi?: string; xem?: HinhCau }>>({});
   const [goiY, setGoiY] = useState<Record<string, { dang?: boolean; text?: string; canh?: string }>>({});
   type KetQuaSach = { dang?: 'soan' | 'doi'; loi?: string; thieu?: string[]; trang?: string; soan?: { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string; cacDe?: { deBai: string; huongDanCham: string }[]; moTaHinh?: string }; doi?: { trongPhamVi: string; khopSach: string; dapAnDung: string; chepNguyenSach: string; nhanXet: string[]; goiY: string } };
   const [sach, setSach] = useState<Record<string, KetQuaSach>>({});
@@ -395,7 +389,6 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     const lc = [...x.luaChon]; while (lc.length < c.luaChon.length) lc.push('');
     suaCau(c.khoa, { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) });
     setSach((g) => ({ ...g, [c.khoa]: {} }));
-    if (c.yeuCauHinh && x.moTaHinh) setVeAI((v) => ({ ...v, [c.khoa]: { moTa: x.moTaHinh!, dich: null, mo: true } }));
   };
 
   /**
@@ -449,9 +442,8 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
         try {
           const ve = await veHinhTuDong(c, x.deBai, lc, x.moTaHinh ?? '');
           if (ve.p) p = { ...p, ...ve.p };
-          else if (ve.loi) loi.push(`${nhanCau(c)}: đã soạn câu nhưng ${ve.loi.charAt(0).toLowerCase()}${ve.loi.slice(1)}. Bấm "AI vẽ hình theo đề bài" ở câu này.`);
+          else if (ve.loi) loi.push(`${nhanCau(c)}: đã soạn câu nhưng ${ve.loi.charAt(0).toLowerCase()}${ve.loi.slice(1)}. Câu vẫn dùng được, thầy cô dán hình vào bản Word sau khi xuất.`);
         } catch (e) { loi.push(`${nhanCau(c)}: đã soạn câu nhưng chưa vẽ được hình (${e instanceof Error ? e.message : String(e)}).`); }
-        if (x.moTaHinh) setVeAI((v) => ({ ...v, [c.khoa]: { moTa: x.moTaHinh!, dich: null } }));
       }
       deTam = { ...deTam, cau: deTam.cau.map((y) => (y.khoa === c.khoa ? { ...y, ...p } : y)) };
       suaCau(c.khoa, p);
@@ -477,85 +469,11 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
       : 'AI chưa soạn được câu nào. Xem lí do bên dưới.');
   };
 
-  const KHUNG_TRONG: HinhCau = { ten: '', chuThich: '', anh: '', rong: 0, cao: 0 };
-
-  const themKhung = (c: CauDe) => {
-    const co = c.hinh ?? [];
-    if (co.length >= TOI_DA_HINH_MOT_CAU) { setLoiHinh((l) => ({ ...l, [c.khoa]: `Mỗi câu tối đa ${TOI_DA_HINH_MOT_CAU} hình.` })); return; }
-    setLoiHinh((l) => ({ ...l, [c.khoa]: '' }));
-    suaCau(c.khoa, { deBai: chenKhungVaoDeBai(c.deBai, co.length + 1, conTro.current[c.khoa]), hinh: [...co, { ...KHUNG_TRONG }] });
-  };
-  const taiVaoKhung = async (c: CauDe, i: number, f: File | undefined) => {
-    if (!f) return;
-    try {
-      const h = await xuLyAnhDe(f);
-      suaCau(c.khoa, { hinh: (c.hinh ?? []).map((x, k) => (k === i ? { ...h, chuThich: x.chuThich } : x)) });
-      setLoiHinh((l) => ({ ...l, [c.khoa]: '' }));
-    } catch (e) { setLoiHinh((l) => ({ ...l, [c.khoa]: e instanceof Error ? e.message : String(e) })); }
-  };
-  /** Tải nhiều ảnh: ảnh lần lượt vào các khung còn trống, thừa thì thành hình mới (in thành hàng sau đề bài). */
-  const themHinh = async (c: CauDe, files: FileList | null) => {
-    if (!files?.length) return;
+  /** Xóa một hình đã có của câu (kèm dòng [Hình n] trong đề bài). */
+  const xoaHinh = (c: CauDe, i: number) => {
     const ds = [...(c.hinh ?? [])];
-    const loi: string[] = [];
-    for (const f of Array.from(files)) {
-      try {
-        const h = await xuLyAnhDe(f);
-        const trong = ds.findIndex((x) => !x.anh);
-        if (trong >= 0) ds[trong] = { ...h, chuThich: ds[trong].chuThich };
-        else if (ds.length >= TOI_DA_HINH_MOT_CAU) { loi.push(`Mỗi câu tối đa ${TOI_DA_HINH_MOT_CAU} hình.`); break; } else ds.push(h);
-      } catch (e) { loi.push(e instanceof Error ? e.message : String(e)); }
-    }
-    setLoiHinh((l) => ({ ...l, [c.khoa]: loi.join(' ') }));
-    suaCau(c.khoa, { hinh: ds });
-  };
-  const suaHinh = (c: CauDe, i: number, p: { chuThich?: string; xoa?: boolean; doi?: number; canh?: 'PHAI' | null }) => {
-    const ds = [...(c.hinh ?? [])];
-    let deBai = c.deBai;
-    if (p.xoa) { ds.splice(i, 1); deBai = xoaKhungKhoiDeBai(deBai, i + 1); }
-    else if (p.doi) { const j = i + p.doi; if (j >= 0 && j < ds.length) { [ds[i], ds[j]] = [ds[j], ds[i]]; deBai = doiKhungTrongDeBai(deBai, i + 1, j + 1); } }
-    else if (p.canh !== undefined) {
-      // Chỉ một hình bên phải mỗi câu: bật hình này thì tắt các hình khác.
-      for (let k = 0; k < ds.length; k++) {
-        const { canh: _bo, ...con } = ds[k];
-        ds[k] = k === i && p.canh ? { ...con, canh: 'PHAI' } : con;
-      }
-    }
-    else ds[i] = { ...ds[i], chuThich: p.chuThich ?? ds[i].chuThich };
-    suaCau(c.khoa, { hinh: ds, deBai });
-  };
-
-  const moVeAI = (c: CauDe, dich: number | null) => setVeAI((v) => ({ ...v, [c.khoa]: { moTa: (dich !== null ? c.hinh?.[dich]?.moTa : v[c.khoa]?.moTa) ?? c.yeuCauHinh?.moTa ?? '', dich, mo: true } }));
-  const veHinhAI = async (c: CauDe) => {
-    const cu = veAI[c.khoa];
-    if (!cu) return;
-    setVeAI((v) => ({ ...v, [c.khoa]: { ...cu, dang: true, loi: undefined, xem: undefined } }));
-    const r = await goiJson<{ svg?: string; rong?: number; cao?: number }>('/api/de-kiem-tra/ve-hinh', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mon: maMon, deBai: c.deBai, luaChon: c.luaChon, moTa: cu.moTa || c.yeuCauHinh?.moTa || '', kieu: c.yeuCauHinh?.kieu }),
-    });
-    if (!r.ok || !r.j.svg) { setVeAI((v) => ({ ...v, [c.khoa]: { ...cu, loi: r.j.error ?? 'AI chưa vẽ được.' } })); return; }
-    try {
-      const h = await svgSangHinh(r.j.svg, r.j.rong ?? 400, r.j.cao ?? 250, cu.moTa);
-      setVeAI((v) => ({ ...v, [c.khoa]: { ...cu, xem: h } }));
-    } catch (e) { setVeAI((v) => ({ ...v, [c.khoa]: { ...cu, loi: e instanceof Error ? e.message : String(e) } })); }
-  };
-  /** Dùng hình AI vẽ: vào khung được chọn, hoặc khung trống đầu tiên, hoặc khung mới (tự đặt vị trí ở cuối đề bài, trước các phương án). */
-  const dungHinhAI = (c: CauDe) => {
-    const v = veAI[c.khoa];
-    if (!v?.xem) return;
-    const ds = [...(c.hinh ?? [])];
-    let deBai = c.deBai;
-    let i = v.dich !== null && v.dich < ds.length ? v.dich : ds.findIndex((x) => !x.anh);
-    if (i < 0) {
-      if (ds.length >= TOI_DA_HINH_MOT_CAU) { setVeAI((x) => ({ ...x, [c.khoa]: { ...v, loi: `Mỗi câu tối đa ${TOI_DA_HINH_MOT_CAU} hình. Xóa bớt một hình.` } })); return; }
-      ds.push({ ...KHUNG_TRONG });
-      i = ds.length - 1;
-      deBai = chenKhungVaoDeBai(deBai, i + 1);
-    }
-    ds[i] = { ...v.xem, chuThich: ds[i].chuThich };
-    suaCau(c.khoa, { hinh: ds, deBai });
-    setVeAI((x) => ({ ...x, [c.khoa]: { moTa: v.moTa, dich: null } }));
+    ds.splice(i, 1);
+    suaCau(c.khoa, { hinh: ds, deBai: xoaKhungKhoiDeBai(c.deBai, i + 1) });
   };
 
   const suaTiengViet = (g: NoiDungTiengViet) => {
@@ -795,15 +713,17 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
             {nhom.map(([ten, tatCa]) => [ten, tatCa.filter((c) => trongPhan(c.khoa))] as const).filter(([, ds]) => ds.length > 0).map(([ten, cauNhom]) => (
               <div key={ten} className="the-tke p-4 space-y-3">
                 <h2 className="font-semibold text-slate-900">{ten}</h2>
-                <div className="divide-y divide-slate-100">
+                <div className="space-y-4">
                   {cauNhom.map((c) => (
-                    <div key={c.khoa} id={`cau-${c.khoa}`} className="py-4 space-y-2 transition-shadow">
-                      <div className="flex flex-wrap items-baseline gap-x-3">
-                        <span className="font-semibold text-slate-900">{nhanCau(c)}{c.yNho ? ` (${c.yNho.join(', ')})` : ''}</span>
-                        <span className="text-xs text-slate-500">{TEN_MUC[c.muc]} · {c.hinhThuc}{c.dang ? ` · ${TEN_DANG[c.dang] ?? c.dang}` : ''} · {fmtDiem(c.diem)} điểm</span>
-                        {cauDaXong(c) && <span className="text-xs text-emerald-700">Đã đủ</span>}
+                    <div key={c.khoa} id={`cau-${c.khoa}`} className={`rounded-xl border-2 bg-white p-4 space-y-2 scroll-mt-24 transition-shadow ${cauDaXong(c) ? 'border-slate-300' : 'border-amber-300'}`}>
+                      <div className={`-mx-4 -mt-4 mb-3 rounded-t-[10px] border-b px-4 py-2.5 ${cauDaXong(c) ? 'border-slate-300 bg-slate-100' : 'border-amber-300 bg-amber-50'}`}>
+                        <div className="flex flex-wrap items-baseline gap-x-3">
+                          <span className="text-base font-bold text-slate-900">{nhanCau(c)}{c.yNho ? ` (${c.yNho.join(', ')})` : ''}</span>
+                          <span className="text-xs text-slate-600">{TEN_MUC[c.muc]} · {c.hinhThuc}{c.dang ? ` · ${TEN_DANG[c.dang] ?? c.dang}` : ''} · {fmtDiem(c.diem)} điểm</span>
+                          <span className={`ml-auto text-xs font-semibold ${cauDaXong(c) ? 'text-emerald-700' : 'text-amber-800'}`}>{cauDaXong(c) ? 'Đã đủ' : 'Chưa xong'}</span>
+                        </div>
+                        <div className="mt-0.5 text-xs text-slate-600">YCCĐ: {c.yccd || 'chưa có'}</div>
                       </div>
-                      <div className="text-xs text-slate-500">YCCĐ: {c.yccd || 'chưa có'}</div>
                       {dangBaiCua(c) && <div className="text-xs text-indigo-800"><b>Dạng bài (đặc tả):</b> {dangBaiCua(c)}</div>}
                       {(() => { const l = lechTungCau(dacTaBan.duLieu, { ...de, cau: [c] })[c.khoa]?.filter((x) => /dạng|Mức|điểm, đặc tả|Hình thức/.test(x)); return l?.length ? <div className="text-xs text-red-700">{l.join(' ')}</div> : null; })()}
 
@@ -833,97 +753,24 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
                               </label>
                             );
                           })}
-                          <div className="text-xs text-slate-500">Chỉ đề đang chọn được in và xuất Word. Thầy cô vẫn sửa được chữ của đề ở ô bên dưới.</div>
+                          <div className="text-xs text-slate-500">Chỉ đề đang chọn được in và xuất Word.</div>
                         </div>
                       )}
                       <label className="block text-xs text-slate-500">Đề bài
-                        <textarea aria-label={`Đề bài ${nhanCau(c)}`} rows={3} className={`${o} mt-0.5 ${c.deBai.trim() ? '' : 'border-amber-400 bg-amber-50'}`} value={c.deBai} onChange={(e) => { conTro.current[c.khoa] = e.target.selectionStart; suaCau(c.khoa, { deBai: e.target.value }); }} onSelect={(e) => { conTro.current[c.khoa] = e.currentTarget.selectionStart; }} onBlur={(e) => { conTro.current[c.khoa] = e.currentTarget.selectionStart; }} />
+                        <textarea aria-label={`Đề bài ${nhanCau(c)}`} rows={3} className={`${o} mt-0.5 ${c.deBai.trim() ? '' : 'border-amber-400 bg-amber-50'}`} placeholder="Phân số viết 3/4, hỗn số viết 2 1/3" value={c.deBai} onChange={(e) => suaCau(c.khoa, { deBai: e.target.value })} />
                       </label>
 
-                      <div className="space-y-2 rounded-lg border border-dashed border-slate-300 p-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-semibold text-slate-700">Hình minh họa</span>
-                          <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => themKhung(c)}>
-                            <Square className="w-3.5 h-3.5" /> Thêm khung hình tại vị trí con trỏ
-                          </button>
-                          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
-                            <ImagePlus className="w-3.5 h-3.5" /> Tải hình từ máy
-                            <input type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" aria-label={`Thêm hình ${nhanCau(c)}`} onChange={(e) => { void themHinh(c, e.target.files); e.target.value = ''; }} />
-                          </label>
-                          <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-100" onClick={() => moVeAI(c, null)}>
-                            <Wand2 className="w-3.5 h-3.5" /> AI vẽ hình theo đề bài
-                          </button>
-                        </div>
-                        {c.yeuCauHinh && (
-                          <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
-                            Đặc tả yêu cầu: <b>{TEN_KIEU_HINH[c.yeuCauHinh.kieu]}</b>{c.yeuCauHinh.moTa ? ` (${c.yeuCauHinh.moTa})` : ''}. Bấm &quot;AI vẽ hình theo đề bài&quot;, AI sẽ vẽ đúng kiểu này và xếp vào đề.
-                            {c.yeuCauHinh.kieu === 'PHUONG_AN' && c.dang === 'NLC' && (
-                              <button type="button" className="ml-2 rounded border border-violet-300 bg-white px-2 py-0.5 font-medium" onClick={() => suaCau(c.khoa, { luaChon: ['Hình A', 'Hình B', 'Hình C', 'Hình D'] })}>Đổi phương án thành Hình A–D</button>
-                            )}
-                          </div>
-                        )}
-                        <p className="text-xs text-slate-500">Muốn hình nằm đúng chỗ: đặt con trỏ vào đề bài rồi bấm &quot;Thêm khung hình&quot;. Khung hiện thành dòng [Hình 1] trong đề bài, sau đó thầy tải hình hoặc nhờ AI vẽ vào khung. Hình không có khung sẽ in thành một hàng dưới đề bài. Tối đa {TOI_DA_HINH_MOT_CAU} hình, app tự chuyển đen trắng.</p>
-                        <p className="text-xs text-slate-500">Phân số viết dạng 3/4, số hỗn hợp viết 2 1/3 (số nguyên, cách một chữ, rồi phân số). Ở phần xem trước và bản Word, app tự hiện thành phân số tử trên mẫu dưới.</p>
-                        {loiHinh[c.khoa] && <div className="text-xs text-red-700">{loiHinh[c.khoa]}</div>}
-
-                        {veAI[c.khoa]?.mo && (
-                          <div className="rounded-lg border border-violet-200 bg-violet-50/60 p-3 space-y-2">
-                            <div className="text-xs font-semibold text-violet-900">AI vẽ hình{veAI[c.khoa]?.dich != null ? ` cho khung hình ${(veAI[c.khoa]!.dich as number) + 1}` : ''}</div>
-                            <textarea aria-label={`Mô tả hình ${nhanCau(c)}`} rows={2} className={o} placeholder="Mô tả hình cần vẽ (không bắt buộc). Ví dụ: 4 góc xếp một hàng, nhãn A, B, C, D: góc nhọn, góc vuông, góc tù, góc bẹt." value={veAI[c.khoa]?.moTa ?? ''} onChange={(e) => setVeAI((v) => ({ ...v, [c.khoa]: { ...v[c.khoa], moTa: e.target.value } }))} />
-                            <div className="flex flex-wrap gap-2">
-                              <button type="button" className={nutChinh} disabled={veAI[c.khoa]?.dang || (!c.deBai.trim() && !veAI[c.khoa]?.moTa.trim())} onClick={() => void veHinhAI(c)}>
-                                {veAI[c.khoa]?.dang ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} {veAI[c.khoa]?.xem ? 'Vẽ lại' : 'Vẽ hình'}
-                              </button>
-                              <button type="button" className={nutPhu} onClick={() => setVeAI((v) => ({ ...v, [c.khoa]: { moTa: v[c.khoa]?.moTa ?? '', dich: null } }))}>Đóng</button>
+                      {(c.hinh ?? []).some((h) => h.anh) && (
+                        <div className="flex flex-wrap items-start gap-2">
+                          {(c.hinh ?? []).map((h, i) => h.anh ? (
+                            <div key={i} className="rounded-lg border border-slate-200 bg-white p-1.5 text-center">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={h.anh} alt={h.chuThich || `Hình ${i + 1}`} className="mx-auto max-h-24 object-contain" />
+                              <button type="button" className="mt-1 inline-flex items-center gap-1 text-xs text-red-700" onClick={() => xoaHinh(c, i)}><Trash2 className="w-3 h-3" /> Xóa hình</button>
                             </div>
-                            {veAI[c.khoa]?.loi && <div className="text-xs text-amber-800">{veAI[c.khoa]?.loi}</div>}
-                            {veAI[c.khoa]?.xem && (
-                              <div className="space-y-2">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={veAI[c.khoa]!.xem!.anh} alt="Hình AI vẽ" className="mx-auto max-h-60 border border-slate-200 bg-white object-contain" />
-                                <div className="text-xs text-violet-900">Hình do AI vẽ. Thầy kiểm tra số lượng, số đo và nhãn có đúng đề bài không, chưa vừa ý thì bấm Vẽ lại (có thể ghi thêm mô tả).</div>
-                                <button type="button" className={nutChinh} onClick={() => dungHinhAI(c)}>Dùng hình này</button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {(c.hinh ?? []).length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {(c.hinh ?? []).map((h, i) => {
-                              const coKhung = soKhungTrongDeBai(c.deBai).includes(i + 1);
-                              return (
-                                <div key={i} className="rounded-lg border border-slate-200 bg-white p-2 space-y-1.5">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <b>Khung hình {i + 1}</b>
-                                    <span className={coKhung ? 'text-emerald-700' : 'text-slate-500'}>{coKhung ? `đã đặt ở [Hình ${i + 1}]` : 'in dưới đề bài'}</span>
-                                  </div>
-                                  {h.anh ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={h.anh} alt={h.chuThich || h.ten} className="mx-auto max-h-28 object-contain" />
-                                  ) : (
-                                    <div className="flex h-20 items-center justify-center rounded border-2 border-dashed border-slate-300 text-xs text-slate-500">Khung trống, chờ hình</div>
-                                  )}
-                                  <input aria-label={`Chú thích hình ${i + 1} ${nhanCau(c)}`} className={o} placeholder="Chú thích (vd: Hình A)" value={h.chuThich} onChange={(e) => suaHinh(c, i, { chuThich: e.target.value })} />
-                                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                                    <label className="cursor-pointer rounded border border-slate-300 px-2 py-1 hover:bg-slate-50">{h.anh ? 'Đổi hình' : 'Tải hình'}
-                                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" aria-label={`Tải hình vào khung ${i + 1} ${nhanCau(c)}`} onChange={(e) => { void taiVaoKhung(c, i, e.target.files?.[0]); e.target.value = ''; }} />
-                                    </label>
-                                    <button type="button" className="rounded border border-violet-300 bg-violet-50 px-2 py-1 text-violet-800" onClick={() => moVeAI(c, i)}>AI vẽ</button>
-                                    <label className="inline-flex items-center gap-1 rounded border border-slate-300 px-2 py-1">
-                                      <input type="checkbox" checked={h.canh === 'PHAI'} aria-label={`Đặt hình ${i + 1} bên phải chữ ${nhanCau(c)}`} onChange={(e) => suaHinh(c, i, { canh: e.target.checked ? 'PHAI' : null })} />
-                                      Bên phải chữ
-                                    </label>
-                                    <button type="button" className="rounded border px-1.5 py-1 disabled:opacity-40" disabled={i === 0} onClick={() => suaHinh(c, i, { doi: -1 })} aria-label="Dời khung lên trước">◀</button>
-                                    <button type="button" className="rounded border px-1.5 py-1 disabled:opacity-40" disabled={i === (c.hinh ?? []).length - 1} onClick={() => suaHinh(c, i, { doi: 1 })} aria-label="Dời khung ra sau">▶</button>
-                                    <button type="button" className="ml-auto inline-flex items-center gap-1 text-red-700" onClick={() => suaHinh(c, i, { xoa: true })}><Trash2 className="w-3 h-3" /> Xóa</button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                          ) : null)}
+                        </div>
+                      )}
 
                       {c.dang === 'DS' ? (
                         <div className="space-y-1.5">

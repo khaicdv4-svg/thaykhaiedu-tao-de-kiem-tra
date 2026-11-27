@@ -475,14 +475,14 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
               {nhom.map(([ten, dong]) => (
                 <div key={ten} className="the-tke p-4 space-y-3">
                   <h2 className="font-semibold text-slate-900">{ten}</h2>
-                  <div className="divide-y divide-slate-100">
+                  <div className="space-y-4">
                     {dong.map((r) => (
-                      <div key={r.khoa} id={`cau-${r.khoa}`} className="py-3 grid grid-cols-1 lg:grid-cols-[minmax(260px,1.2fr)_2fr] gap-3 transition-shadow">
+                      <div key={r.khoa} id={`cau-${r.khoa}`} className="rounded-xl border-2 border-slate-300 bg-white p-4 scroll-mt-24 grid grid-cols-1 lg:grid-cols-[minmax(260px,1.2fr)_2fr] gap-3 transition-shadow">
+                        <div className="-mx-4 -mt-4 rounded-t-[10px] border-b border-slate-300 bg-slate-100 px-4 py-2.5 lg:col-span-2">
+                          <span className="text-base font-bold text-slate-900">Câu {r.cau}{r.yNho ? ` (${r.yNho.join(', ')})` : ''}</span>
+                          <span className="ml-3 text-xs text-slate-600">{TEN_MUC[r.muc]} · {r.hinhThuc}{r.dang ? ` · ${TEN_DANG[r.dang] ?? r.dang}` : ''} · {fmtDiem(r.diem)} điểm</span>
+                        </div>
                         <div className="space-y-1">
-                          <div className="font-semibold text-slate-900">
-                            Câu {r.cau}{r.yNho ? ` (${r.yNho.join(', ')})` : ''}
-                            <span className="ml-2 text-xs font-normal text-slate-500">{TEN_MUC[r.muc]} · {r.hinhThuc}{r.dang ? ` · ${TEN_DANG[r.dang] ?? r.dang}` : ''} · {fmtDiem(r.diem)} điểm</span>
-                          </div>
                           <div className="text-xs text-slate-500">{r.noiDung ?? r.mach}</div>
                           <div className="text-sm text-slate-700 whitespace-pre-line">{r.yccd || <span className="text-amber-700">Chưa có YCCĐ</span>}</div>
                           <Link href={hrefMaTran()} className="text-xs text-indigo-700 underline">{nhung ? 'Đổi YCCĐ, mức, điểm ở ma trận' : 'Đổi YCCĐ, mức, điểm ở bước 2'}</Link>
