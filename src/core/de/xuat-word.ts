@@ -935,6 +935,13 @@ function chuKyHieuTruong(): Table {
 }
 
 /** Một tệp: Ma trận, Bản đặc tả, Đề, Hướng dẫn chấm. `dacTa` là bản đã xác nhận mà đề kế thừa. */
+/** Tệp riêng gồm ma trận và bản đặc tả (khổ ngang), tách khỏi tệp đề + hướng dẫn chấm. */
+export function dungMaTranDacTa(t: ThongTinDe, dacTa: DacTa): Document {
+  const maTran: ISectionOptions = { properties: TRANG_NGANG, children: [...tieuDeBangRong(t, dacTa, 'MA TRẬN ĐỀ'), bangMaTran(dacTa), doan('', { sau: 120 }), chuKyHieuTruong()] };
+  const dacTaPhan: ISectionOptions = { properties: TRANG_NGANG, children: [...tieuDeBangRong(t, dacTa, 'BẢN ĐẶC TẢ ĐỀ'), bangDacTa(dacTa)] };
+  return new Document({ ...TAI_LIEU, title: `Ma trận và đặc tả đề kiểm tra - ${t.tenMon}`, sections: [maTran, dacTaPhan] });
+}
+
 export function dungHoSoDe(t: ThongTinDe, dacTa: DacTa, de: DeKiemTra): Document {
   const maTran: ISectionOptions = { properties: TRANG_NGANG, children: [...tieuDeBangRong(t, dacTa, 'MA TRẬN ĐỀ'), bangMaTran(dacTa), doan('', { sau: 120 }), chuKyHieuTruong()] };
   const dacTaPhan: ISectionOptions = { properties: TRANG_NGANG, children: [...tieuDeBangRong(t, dacTa, 'BẢN ĐẶC TẢ ĐỀ'), bangDacTa(dacTa)] };

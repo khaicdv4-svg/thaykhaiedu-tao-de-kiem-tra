@@ -183,10 +183,10 @@ export default function KhoDePage() {
     return true;
   };
 
-  const xuatWord = (hoSo = false) => {
+  const xuatWord = (maTran = false) => {
     if (!de) return;
     const luu = (k: string, mac: string) => { try { return localStorage.getItem(k) || mac; } catch { return mac; } };
-    const q = new URLSearchParams({ id: de.id, truong: luu('tke.truong', 'TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN'), namHoc: luu('tke.namHoc', '2026 - 2027'), phut: luu('tke.phut', '35'), ...(hoSo ? { goi: 'hoso' } : {}) });
+    const q = new URLSearchParams({ id: de.id, truong: luu('tke.truong', 'TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN'), namHoc: luu('tke.namHoc', '2026 - 2027'), phut: luu('tke.phut', '35'), ...(maTran ? { goi: 'matran' } : {}) });
     window.location.href = `/api/de-kiem-tra/xuat?${q}`;
   };
 
@@ -331,7 +331,7 @@ export default function KhoDePage() {
             <div className="flex flex-wrap gap-2">
               {de?.laChuDe && <Link href={`/tao-de?mon=${de.maMon}&ky=${de.ky}`} className={nutPhu}><Pencil className="w-4 h-4" /> Mở để sửa</Link>}
               <button type="button" className={nutPhu} disabled={!de} onClick={() => xuatWord()}><Download className="w-4 h-4" /> Xuất Word</button>
-              <button type="button" className={nutPhu} disabled={!de} onClick={() => xuatWord(true)}><Download className="w-4 h-4" /> Xuất bộ hồ sơ</button>
+              <button type="button" className={nutPhu} disabled={!de} onClick={() => xuatWord(true)}><Download className="w-4 h-4" /> Xuất ma trận + đặc tả</button>
             </div>
           </div>
 

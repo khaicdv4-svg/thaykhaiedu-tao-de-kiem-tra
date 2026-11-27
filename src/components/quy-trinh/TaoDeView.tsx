@@ -520,13 +520,14 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     return true;
   };
 
-  const xuatWord = async (hoSo = false) => {
+  /** Hai tệp riêng: đề + hướng dẫn chấm; ma trận + đặc tả. */
+  const xuatWord = async (maTran = false) => {
     // Word xuất từ bản đã lưu: đang có thay đổi thì lưu trước, để file đúng với bản đang xem
     if (daSua && !(await gui('BAN_NHAP'))) return;
     setDangXuat(true);
     try {
       try { localStorage.setItem('tke.truong', truong); localStorage.setItem('tke.namHoc', namHoc); localStorage.setItem('tke.phut', String(phut)); } catch { /* bỏ qua */ }
-      const q = new URLSearchParams({ mon: maMon, ky, ...(deId ? { id: deId } : {}), truong, namHoc, phut: String(phut), ...(hoSo ? { goi: 'hoso' } : {}) });
+      const q = new URLSearchParams({ mon: maMon, ky, ...(deId ? { id: deId } : {}), truong, namHoc, phut: String(phut), ...(maTran ? { goi: 'matran' } : {}) });
       const r = await fetch(`/api/de-kiem-tra/xuat?${q}`);
       if (!r.ok) {
         const j = (await r.json().catch(() => ({}))) as { error?: string };
@@ -535,14 +536,14 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
         const url = URL.createObjectURL(await r.blob());
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${hoSo ? 'HoSo' : 'De'}-${maMon}-${ky}.docx`;
+        a.download = `${maTran ? 'MaTran-DacTa' : 'De'}-${maMon}-${ky}.docx`;
         a.click();
         URL.revokeObjectURL(url);
         const mau = decodeURIComponent(r.headers.get('X-Mau-De') ?? '');
         const ghiMau = mau.startsWith('da-dung:') ? ` Đầu bài theo mẫu đề của tổ (${mau.slice(8)}).`
           : mau.startsWith('loi:') ? ` Chưa dùng được mẫu đề của tổ (${mau.slice(4)}), đầu bài theo khung mặc định.`
           : mau === 'chua-co' ? ' Môn này chưa có mẫu đề của tổ, đầu bài theo khung mặc định.' : '';
-        setThongBao((hoSo ? 'Đã xuất bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm) đúng bản đang xem.' : 'Đã xuất tệp Word (đề và hướng dẫn chấm) đúng bản đang xem.') + ghiMau);
+        setThongBao(maTran ? 'Đã xuất tệp ma trận và bản đặc tả.' : `Đã xuất tệp Word (đề và hướng dẫn chấm) đúng bản đang xem.${ghiMau}`);
       }
     } catch {
       setThongBao('Chưa xuất được: không kết nối được hệ thống.');
@@ -945,7 +946,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
                 {dangXuat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Xuất Word (đề + hướng dẫn chấm)
               </button>
               <button type="button" className={nutPhu} disabled={dangXuat || dangGui} onClick={() => void xuatWord(true)}>
-                <Download className="w-4 h-4" /> Xuất bộ hồ sơ
+                <Download className="w-4 h-4" /> Xuất Word (ma trận + đặc tả)
               </button>
               {!GHI_CHU_KHOA[trangThai] && (
                 <button type="button" className={nutChinh} disabled={dangGui} onClick={() => { const kq = kiemTra(); if (kq?.hopLe) void gui('SAN_SANG_DUYET'); }}>

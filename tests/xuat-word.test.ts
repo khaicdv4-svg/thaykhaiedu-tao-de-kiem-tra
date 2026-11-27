@@ -5,7 +5,7 @@ import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
 import { kiemDinhDe, taoDeTuDacTa } from '../src/core/de/de';
-import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, gianCoDinh, phanBoChoTrong, uocLuongCaoCau, xepCauTheoSo } from '../src/core/de/xuat-word';
+import { dungHoSoDe, dungMaTranDacTa, dungTaiLieuDe, dungTaiLieuTiengViet, gianCoDinh, phanBoChoTrong, uocLuongCaoCau, xepCauTheoSo } from '../src/core/de/xuat-word';
 import { docChuTuDocx, docTepTrongZip } from '../src/core/utils/docx-text';
 
 const mtc = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'LS_DL')!;
@@ -45,6 +45,15 @@ describe('Xuất Word', () => {
     expect(xml.indexOf('MA TRẬN ĐỀ')).toBeLessThan(xml.indexOf('BẢN ĐẶC TẢ ĐỀ'));
     expect(xml.indexOf('BẢN ĐẶC TẢ ĐỀ')).toBeLessThan(xml.indexOf('PHẦN BÀI LÀM CỦA HỌC SINH'));
     expect(xml.indexOf('PHẦN BÀI LÀM CỦA HỌC SINH')).toBeLessThan(xml.indexOf('HƯỚNG DẪN CHẤM MÔN'));
+  });
+
+  it('tệp ma trận + đặc tả riêng, không có đề và hướng dẫn chấm', async () => {
+    const buf = await Packer.toBuffer(dungMaTranDacTa(tt, dacTa));
+    const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+    expect(xml).toContain('MA TRẬN ĐỀ');
+    expect(xml).toContain('BẢN ĐẶC TẢ ĐỀ');
+    expect(xml).not.toContain('PHẦN BÀI LÀM CỦA HỌC SINH');
+    expect(xml).not.toContain('HƯỚNG DẪN CHẤM MÔN');
   });
 
   it('xếp câu theo số thứ tự, câu không đánh số để cuối', () => {

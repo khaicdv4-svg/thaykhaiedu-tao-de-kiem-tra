@@ -2,7 +2,7 @@ import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import { NextRequest, NextResponse } from 'next/server';
 import { Packer } from 'docx';
 import { layDe, layDeTheoId, layDacTaCuaDe } from '@/lib/repositories/ma-tran-dac-ta.repository';
-import { dungHoSoDe, dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from '@/core/de/xuat-word';
+import { dungHoSoDe, dungMaTranDacTa, dungTaiLieuDe, dungTaiLieuTiengViet, type ThongTinDe } from '@/core/de/xuat-word';
 import { ghepDauBaiTheoMau } from '@/core/mau-de/ghep-mau';
 import { fileMauDangDung } from '@/lib/repositories/mau-de.repository';
 import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
@@ -29,7 +29,7 @@ async function theoMau(buf: Uint8Array, mon: string, coMau: boolean): Promise<{ 
 
 const loi = (e: unknown, ma = 400) => NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: ma });
 
-/** GET ?mon=&ky=&truong=&namHoc=&phut=[&goi=hoso][&mau=0: không dùng mẫu đề của tổ] → tệp Word: đề + hướng dẫn chấm, hoặc cả bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm). */
+/** GET ?mon=&ky=&truong=&namHoc=&phut=[&goi=matran|hoso][&mau=0: không dùng mẫu đề của tổ] → tệp Word: đề + hướng dẫn chấm, hoặc cả bộ hồ sơ (ma trận, đặc tả, đề, hướng dẫn chấm). */
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
@@ -50,6 +50,17 @@ export async function GET(req: NextRequest) {
       thoiGianPhut: phut,
       lop: await layKhoiLamViec(),
     };
+    if (sp.get('goi') === 'matran') {
+      // Ma trận + đặc tả: tệp riêng, không có đầu bài nên không ghép mẫu đề
+      const dt = await layDacTaCuaDe(mon, ky, de.dacTaId);
+      const tep = new Uint8Array(await Packer.toBuffer(dungMaTranDacTa(tt, dt.duLieu)));
+      return new NextResponse(tep as BodyInit, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'Content-Disposition': `attachment; filename="MaTran-DacTa-${mon}-${ky}.docx"`,
+        },
+      });
+    }
     if (sp.get('goi') === 'hoso') {
       const dt = await layDacTaCuaDe(mon, ky, de.dacTaId);
       const kq = await theoMau(new Uint8Array(await Packer.toBuffer(dungHoSoDe(tt, dt.duLieu, de.duLieu))), mon, coMau);
