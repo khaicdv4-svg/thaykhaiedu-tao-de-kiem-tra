@@ -72,7 +72,7 @@ describe('Xuất Word môn Tiếng Việt', () => {
   }));
   deTv.tiengViet = {
     baiDocHieu: { tieuDe: 'Cuộc phiêu lưu của bồ công anh', noiDung: `${doan(60)}\n${doan(60)}`, tacGia: 'Trương Huỳnh Như Trân', nguon: '(Nguồn: sách báo)' },
-    baiDocThanhTieng: [1, 2, 3, 4].map((i) => ({ tieuDe: `Bài số ${i}`, noiDung: doan(82), tacGia: 'Tác giả A', nguon: '(Nguồn: sách)', cauHoi: `Câu hỏi bài ${i}?`, traLoi: `Trả lời bài ${i}.` })),
+    baiDocThanhTieng: [1, 2, 3, 4].map((i) => ({ tieuDe: `Bài số ${i}`, noiDung: `${doan(82)} b${i}`, tacGia: 'Tác giả A', nguon: '(Nguồn: sách)', cauHoi: `Câu hỏi bài ${i}?`, traLoi: `Trả lời bài ${i}.` })),
   };
   const ttTv = { tenTruong: 'TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN', tieuDeKy: 'KTĐK CUỐI HKI - NĂM HỌC 2026 - 2027', tenMon: 'TIẾNG VIỆT', thoiGianPhut: 30 };
 
