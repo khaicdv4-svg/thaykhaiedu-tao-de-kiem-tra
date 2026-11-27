@@ -4,6 +4,8 @@
  * Sửa quy tắc ở đây thì mọi chỗ AI soạn, viết lại câu đều theo.
  */
 
+import { hoSoTrinhDo } from '@/core/de/trinh-do-lop';
+
 type Ky = 'GIUA_HK1' | 'CUOI_HK1' | 'GIUA_HK2' | 'CUOI_NAM' | string | null | undefined;
 
 const laHocKi2 = (ky: Ky, tuan?: number | null) => ky === 'GIUA_HK2' || ky === 'CUOI_NAM' || (!ky && (tuan ?? 0) > 18);
@@ -43,7 +45,10 @@ export function quyTacTheoMon(o: { maMon?: string | null; tenMon?: string; ky?: 
     `MỨC ĐỘ: ${moTaMuc(o.muc)}`,
     'NGÔN NGỮ: câu ngắn, mỗi câu hỏi một việc, dùng lệnh quen thuộc của SGK; từ ngữ gần gũi học sinh miền Nam (trái thơm, bắp, đậu phộng, chén, ly…); không đánh đố.',
   ];
-  // Quy tắc số liệu Toán theo kì là quy định riêng của tổ khối 4; khối khác chưa có thì không đưa vào
-  if (laToan && (o.khoi ?? 4) === 4) phan.push(quyTacToan(o.ky, o.muc, o.tuan));
+  // Trình độ lớp: đặc điểm học sinh, phạm vi kiến thức, số liệu theo lớp và học kì (mọi khối, mọi môn)
+  const khoi4Toan = laToan && (o.khoi ?? 4) === 4;
+  phan.push(hoSoTrinhDo({ khoi: o.khoi, maMon: o.maMon, tenMon: o.tenMon, ky: o.ky, tuan: o.tuan, boQuaSoLieuToan: khoi4Toan }));
+  // Quy tắc số liệu Toán theo kì là quy định riêng của tổ khối 4 (chi tiết hơn khung chung)
+  if (khoi4Toan) phan.push(quyTacToan(o.ky, o.muc, o.tuan));
   return phan.join('\n');
 }
