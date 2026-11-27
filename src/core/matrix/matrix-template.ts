@@ -49,6 +49,34 @@ export function khoaCau(bai: BaiKiemTraMaTran, phan: PhanMaTran, cau: CauHoiMaTr
 }
 
 /**
+ * Câu chia ý nằm ở nhiều dòng ma trận, ví dụ Câu 8 (a) ở mạch Hình học, Câu 8 (b, c, d) ở mạch Đo lường.
+ * Hợp lệ khi mọi phần đều ghi ý nhỏ và các ý không trùng nhau.
+ */
+export function laCauTachY(ds: Pick<CauHoiMaTran, 'y_nho'>[]): boolean {
+  if (ds.length < 2 || ds.some((c) => !c.y_nho?.length)) return false;
+  const tat = ds.flatMap((c) => c.y_nho!.map((y) => y.toLowerCase()));
+  return new Set(tat).size === tat.length;
+}
+
+/** Đặt khóa riêng cho từng phần của câu chia ý (8a, 8bcd) để mỗi phần có YCCĐ, đặc tả, nội dung riêng. */
+export function danhKhoaCauTach(mtc: MaTranChung): MaTranChung {
+  for (const bai of mtc.bai_kiem_tra) {
+    for (const phan of bai.phan) {
+      const cacTo = [phan.dong, ...(phan.lua_chon?.phuong_an ?? []).map((pa) => [...phan.dong, ...pa.dong])];
+      for (const dsDong of cacTo) {
+        const theoSo = new Map<string, CauHoiMaTran[]>();
+        for (const d of dsDong) for (const c of d.cau_hoi) theoSo.set(c.cau, [...(theoSo.get(c.cau) ?? []), c]);
+        for (const [so, ds] of theoSo) {
+          if (!laCauTachY(ds)) continue;
+          for (const c of ds) if (!c.khoa_goc) c.khoa_goc = `${so}${c.y_nho!.join('')}`;
+        }
+      }
+    }
+  }
+  return mtc;
+}
+
+/**
  * Áp những chỗ giáo viên sửa (số câu, mức, TN/TL, điểm) vào một bản sao ma trận chung.
  * Khóa câu giữ theo số câu gốc nên YCCĐ đã chọn không mất khi đánh lại số câu.
  */
@@ -249,6 +277,7 @@ function kiemDinhCauTruc(mtc: MaTranChung, lc: LuaChon, loi: string[], canhBao: 
       }
 
       const soThuTu: number[] = [];
+      const cacPhan = new Map<number, CauHoiMaTran[]>();
       for (const dong of dongCuaPhan(phan, lc)) {
         if (dong.tieu_chi_diem !== undefined && !laBoiSo05(dong.tieu_chi_diem)) {
           loi.push(`${tenPhan}: tiêu chí "${dong.yccd[0] ?? ''}" có điểm ${fmt(dong.tieu_chi_diem)}, không phải bội số của 0,5.`);
@@ -276,13 +305,16 @@ function kiemDinhCauTruc(mtc: MaTranChung, lc: LuaChon, loi: string[], canhBao: 
             canhBao.push(`${ten}: mỗi ý nhỏ dưới 0,5 điểm.`);
           }
           const n = Number(c.cau);
-          if (Number.isInteger(n)) soThuTu.push(n);
+          if (Number.isInteger(n)) { soThuTu.push(n); cacPhan.set(n, [...(cacPhan.get(n) ?? []), c]); }
         }
       }
 
       // 4. Số thứ tự câu liên tục từ 1, không trùng (bỏ qua phần bài viết)
       if ((phan.kieu ?? 'CAU_HOI') === 'CAU_HOI' && soThuTu.length > 0) {
-        const sapXep = [...soThuTu].sort((a, b) => a - b);
+        // Câu chia ý ở nhiều dòng (Câu 8 (a) và Câu 8 (b, c, d)) chỉ tính một số thứ tự
+        const sapXep = [...new Set(soThuTu.filter((x) => laCauTachY(cacPhan.get(x) ?? [])))]
+          .concat(soThuTu.filter((x) => !laCauTachY(cacPhan.get(x) ?? [])))
+          .sort((a, b) => a - b);
         const trung = sapXep.filter((x, i) => i > 0 && x === sapXep[i - 1]);
         if (trung.length) loi.push(`${tenPhan}${nhan}: trùng số thứ tự câu ${[...new Set(trung)].join(', ')}.`);
         const thieu = sapXep.length ? Array.from({ length: sapXep[sapXep.length - 1] }, (_, i) => i + 1).filter((x) => !sapXep.includes(x)) : [];

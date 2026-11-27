@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ListChecks, Pencil } from 'lucide-react';
 import { ChuPhanSo as PS } from '@/components/de/ChuPhanSo';
-import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laPhanCauTach, tachDeBaiTheoKhung, nhanCau, soDongTraLoi, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import { useAuth } from '@/core/contexts/AuthContext';
 
 const fmt = (x: number) => String(x).replace('.', ',');
@@ -43,9 +43,12 @@ function LuoiY({ y, datTinh }: { y: { nhan: string; nd: string }[]; datTinh: boo
   );
 }
 
-function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
+/** Phần sau của câu chia ý (Câu 8 b, c, d nối tiếp Câu 8 a): không in lại nhãn câu. */
+const noiTiep = (ds: CauDe[], i: number) => i > 0 && ds[i - 1].cau === ds[i].cau && laPhanCauTach(ds[i]);
+
+function MotCau({ c, maMon, tiep = false }: { c: CauDe; maMon: string; tiep?: boolean }) {
   const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
-  const doan = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
+  const doan = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || (tiep || laPhanCauTach(c) ? '' : 'Thực hiện các yêu cầu sau:') : c.deBai);
   const iPhai = (c.hinh ?? []).findIndex((h) => h.canh === 'PHAI' && h.anh);
   const conLai = chiSoHinhChuaGan(c).filter((i) => i !== iPhai).map((i) => (c.hinh ?? [])[i]).filter((h) => h?.anh);
   const hPhai = iPhai >= 0 ? (c.hinh ?? [])[iPhai] : undefined;
@@ -56,12 +59,13 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
       {h.chuThich.trim() && <figcaption className="text-[15px]">{h.chuThich}</figcaption>}
     </figure>
   ) : <div key={k} className="italic text-slate-400 border border-dashed border-slate-300 py-3 text-center">[Hình {doan[k]?.khung}: chưa có ảnh]</div>;
-  const nhanC = <b>{nhanCau(c)}{/^\d+$/.test(c.cau) ? '. ' : ': '}</b>;
+  const nhanC = tiep ? null : <b>{/^\d+$/.test(c.cau) ? `Câu ${c.cau}. ` : `${c.cau}: `}</b>;
   return (
     <div className="grid grid-cols-[84px_1fr] break-inside-avoid">
       <div className="pr-2 pt-1 border-r border-black">…/{fmt(c.diem)}đ</div>
       <div className="pl-3 pb-3 space-y-1.5 leading-[1.55]">
-        {doan.length === 0 && <div>{nhanC}<i className="text-slate-400">(chưa có đề bài)</i></div>}
+        {doan.length === 0 && nhieuY && nhanC && <div>{nhanC}</div>}
+        {doan.length === 0 && !nhieuY && <div>{nhanC}<i className="text-slate-400">(chưa có đề bài)</i></div>}
         {(() => {
           const cacDoan = doan.map((d, k) => d.khung !== undefined
             ? (hPhai && d.khung - 1 === iPhai ? null : manhHinh((c.hinh ?? [])[d.khung - 1], k))
@@ -174,10 +178,10 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
             <div className="whitespace-pre-line">{tv.baiDocHieu.noiDung}</div>
             {(tv.baiDocHieu.tacGia || tv.baiDocHieu.nguon) && <div className="text-right italic">{tv.baiDocHieu.tacGia}{tv.baiDocHieu.nguon ? ` (${tv.baiDocHieu.nguon})` : ''}</div>}
             </>}
-            {cauDoc.map((c) => (
+            {cauDoc.map((c, i) => (
               <div key={c.khoa} id={`xem-${c.khoa}`}>
                 {congCu && <ThanhSuaCau c={c} cc={congCu} />}
-                <MotCau c={c} maMon={de.ma_mon} />
+                <MotCau c={c} maMon={de.ma_mon} tiep={noiTiep(cauDoc, i)} />
               </div>
             ))}
             {cauViet.length > 0 && <div className="font-bold pt-2">B. KIỂM TRA VIẾT</div>}
@@ -190,10 +194,10 @@ export function XemTruocDe({ de, truong, tenMon, phut, congCu, tieuDe = 'Xem tr�
             {!chiPhan && <div className="text-center font-bold pt-2">HẾT ĐỀ</div>}
           </div>
         ) : tab === 'de' ? (
-          <div>{cau.map((c) => (
+          <div>{cau.map((c, i) => (
             <div key={c.khoa} id={`xem-${c.khoa}`}>
               {congCu && <ThanhSuaCau c={c} cc={congCu} />}
-              <MotCau c={c} maMon={de.ma_mon} />
+              <MotCau c={c} maMon={de.ma_mon} tiep={noiTiep(cau, i)} />
             </div>
           ))}<div className="text-center font-bold pt-2">HẾT ĐỀ</div></div>
         ) : (

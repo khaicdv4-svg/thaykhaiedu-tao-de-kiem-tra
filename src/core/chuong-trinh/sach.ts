@@ -138,6 +138,9 @@ export interface CauChoAI {
 /** Câu có từ hai ý trở lên: nhắc AI soạn đủ ý, chia điểm, ý ứng với YCCĐ nào. */
 function moTaYNho(c: CauChoAI): string {
   const y = c.yNho ?? [];
+  if (y.length === 1) {
+    return `\nĐây là ý ${y[0]}) của câu (các ý khác của câu được soạn riêng theo mạch kiến thức khác). Chỉ soạn đúng một ý, mở đầu bằng "${y[0]})", không thêm ý khác.`;
+  }
   if (y.length < 2) {
     if (c.dang === 'DS' || c.dang === 'VIET') return '';
     return '\nCâu này là MỘT câu hỏi duy nhất với MỘT yêu cầu. KHÔNG chia thành các ý a), b), c)…, không gộp hai yêu cầu vào một câu.';

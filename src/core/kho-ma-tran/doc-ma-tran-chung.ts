@@ -15,6 +15,7 @@
  * kết quả vẫn qua kiemDinhMaTranChung và bước xem trước, xác nhận như cũ.
  */
 
+import { danhKhoaCauTach } from '@/core/matrix/matrix-template';
 import type { KhoiVanBan, OBang } from '@/core/utils/docx-bang';
 import type {
   BaiKiemTraMaTran,
@@ -126,7 +127,8 @@ export function docSo(s: string): number | null {
 export function docOCau(s: string, soTronLaSoCau = true): { cau: string[]; yNho: string[] | null; soDau: number | null; dang: DangCau | null } {
   const t = s.replace(/\s+/g, ' ').trim();
   // Ý nhỏ: "(a,b,c,d)" hoặc "(Câu 8 a,b,c,d)"
-  const mY = t.match(/(?<![\p{L}\d])([a-h](?:\s*[,;]\s*[a-h])+)(?![\p{L}\d])/iu);
+  // Một ý trong ngoặc: "Câu 8 (a)" (câu chia ý ở nhiều dòng ma trận)
+  const mY = t.match(/(?<![\p{L}\d])([a-h](?:\s*[,;]\s*[a-h])+)(?![\p{L}\d])/iu) ?? t.match(/\(\s*([a-h])\s*\)/i);
   const yNho = mY ? mY[1].split(/[,;]/).map((x) => x.trim().toLowerCase()).filter(Boolean) : null;
   const boY = mY ? t.replace(mY[0], ' ') : t;
   const n = chuan(boY);
@@ -637,6 +639,12 @@ function tiLeTheoDiem(ds: DongMaTran[]): Record<'1' | '2' | '3', number> {
 }
 
 export function docMaTranChungTuBang(khoi: KhoiVanBan[], f: ThongTinFile): KetQuaDocMaTran {
+  const kq = docMaTranChungTuBangGoc(khoi, f);
+  if (kq.mtc) danhKhoaCauTach(kq.mtc);
+  return kq;
+}
+
+function docMaTranChungTuBangGoc(khoi: KhoiVanBan[], f: ThongTinFile): KetQuaDocMaTran {
   const canhBao: string[] = [];
   const bang = khoi.map((k, i) => ({ k, i })).filter((x): x is { k: Extract<KhoiVanBan, { loai: 'bang' }>; i: number } => x.k.loai === 'bang');
 

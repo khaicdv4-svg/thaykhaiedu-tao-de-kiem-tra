@@ -36,7 +36,7 @@ import {
   VerticalAlign,
   WidthType,
 } from 'docx';
-import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, nhanCau, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laPhanCauTach, nhanCau, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 import { tachPhanSo } from '@/core/de/phan-so';
 
@@ -263,12 +263,23 @@ function bangChuHinhPhai(trai: Paragraph[], h: NonNullable<CauDe['hinh']>[number
   });
 }
 
-function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0): (Paragraph | Table)[] {
+/** Nhãn in đầu câu: "Câu 8. ". Phần sau của câu chia ý (Câu 8 b, c, d nối tiếp Câu 8 a) không in lại nhãn. */
+function nhanIn(c: CauDe, tiep: boolean): string {
+  if (tiep) return '';
+  return /^\d+$/.test(c.cau) ? `Câu ${c.cau}. ` : `${c.cau}: `;
+}
+
+/** Câu thứ i là phần nối tiếp của câu chia ý đứng ngay trước (cùng số câu). */
+export function laPhanNoiTiep(cau: CauDe[], i: number): boolean {
+  return i > 0 && cau[i - 1].cau === cau[i].cau && laPhanCauTach(cau[i]);
+}
+
+function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false): (Paragraph | Table)[] {
   const kq: (Paragraph | Table)[] = [];
   const iPhai = (c.hinh ?? []).findIndex((h) => h.canh === 'PHAI' && h.anh && /^data:image\/(jpeg|png);base64,/.test(h.anh));
   const nhieuY = c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
-  const doanDau = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : c.deBai);
-  const nhan = tr(`${nhanCau(c)}${/^\d+$/.test(c.cau) ? '. ' : ': '}`, { bold: true });
+  const doanDau = tachDeBaiTheoKhung(nhieuY ? nhieuY.dau || (tiep || laPhanCauTach(c) ? '' : 'Thực hiện các yêu cầu sau:') : c.deBai);
+  const nhan = tr(nhanIn(c, tiep), { bold: true });
   let daNhan = false;
   const trai: Paragraph[] = [];
   const sauBang: Table[] = [];
@@ -288,7 +299,7 @@ function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0): (Paragraph |
       daNhan = true;
     }
   }
-  if (!daNhan) dich.push(doan([nhan], { dong: DAN_CAU }));
+  if (!daNhan && !tiep) dich.push(doan([nhan], { dong: DAN_CAU }));
   if (iPhai >= 0) {
     const b = bangChuHinhPhai(trai, c.hinh![iPhai]);
     if (b) { kq.push(b, ...sauBang); } else { kq.push(...trai, ...sauBang); }
@@ -444,7 +455,7 @@ function bangCau(cau: CauDe[], inDam = false, maMon = '', choTrong?: ChoTrong[])
       cantSplit: true,
       children: [
         o2([...dem, doan([tr(`…/${fmtDiem(c.diem)}đ`)], { align: AlignmentType.LEFT })], RONG_DIEM, { ...CAC_VIEN_KHONG, right: VIEN_DEN }),
-        o2([...dem, ...(noiDungCau(c, inDam, maMon, them) as Paragraph[])], RONG_NOI_DUNG),
+        o2([...dem, ...(noiDungCau(c, inDam, maMon, them, laPhanNoiTiep(cau, i)) as Paragraph[])], RONG_NOI_DUNG),
       ],
     });
   });

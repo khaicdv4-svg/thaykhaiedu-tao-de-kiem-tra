@@ -159,8 +159,16 @@ export function doiKhungTrongDeBai(deBai: string, a: number, b: number): string 
   }).join('\n');
 }
 
-export function nhanCau(c: Pick<CauDe, 'cau'>): string {
-  return /^\d+$/.test(c.cau) ? `Câu ${c.cau}` : c.cau;
+export function nhanCau(c: Pick<CauDe, 'cau'> & Partial<Pick<CauDe, 'khoa' | 'yNho'>>): string {
+  if (!/^\d+$/.test(c.cau)) return c.cau;
+  // Phần của câu chia ý ở nhiều dòng ma trận (khóa 8a, 8bcd): ghi rõ ý
+  return laPhanCauTach(c) ? `Câu ${c.cau} (${c.yNho!.join(', ')})` : `Câu ${c.cau}`;
+}
+
+/** Câu là một phần của câu chia ý (khóa cuối khác số câu, ví dụ ".../8bcd" với câu "8"). */
+export function laPhanCauTach(c: Pick<CauDe, 'cau'> & Partial<Pick<CauDe, 'khoa' | 'yNho'>>): boolean {
+  const cuoi = c.khoa?.split('/').pop();
+  return !!c.yNho?.length && !!cuoi && cuoi !== c.cau && cuoi === `${c.cau}${c.yNho.join('')}`;
 }
 
 // ---------------------------------------------------------------------------
