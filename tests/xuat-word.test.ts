@@ -164,4 +164,21 @@ describe('Dàn trang đề môn thường', () => {
       expect(uocLuongCaoCau(c, de.ma_mon, pb[i].dongThem) + pb[i].cachTruoc).toBeLessThan(16838 - 567 * 2);
     });
   });
+  it('đề Toán nhiều hình, nhiều câu tự luận vẫn gói trong 3 trang', () => {
+    const anh = { ten: 'h', chuThich: '', anh: 'data:image/png;base64,AA==', rong: 760, cao: 500 };
+    const cau = Array.from({ length: 13 }, (_, i) => ({
+      ...de.cau[0], khoa: `k${i}`, cau: String(i + 1), dang: null, yNho: null, luaChon: [] as string[], hinhThuc: 'TL' as const, diem: 1,
+      deBai: i % 3 === 0 ? 'Quan sát hình.\n[Hình 1]\nHỏi xe còn chở thêm được bao nhiêu ki-lô-gam hàng?' : 'Một cửa hàng có 38 500 hộp sữa. Hỏi cửa hàng có bao nhiêu hộp sữa tươi, hộp sữa chua?',
+      hinh: i % 3 === 0 ? [anh] : [],
+    }));
+    const pb = phanBoChoTrong(cau, 'TOAN');
+    let trang = 1;
+    let dung = 3700;
+    cau.forEach((c, i) => {
+      const h = uocLuongCaoCau(c, 'TOAN', pb[i].dongThem, pb[i].anhCao) + pb[i].cachTruoc;
+      if (dung + h > 16838 - 567 * 2) { trang++; dung = 0; }
+      dung += h;
+    });
+    expect(trang).toBeLessThanOrEqual(3);
+  });
 });

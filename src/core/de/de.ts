@@ -226,10 +226,21 @@ export function soDongTraLoi(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: s
   if (c.dang === 'VIET') return 18;
   if (laDienChoCham(c)) return 0;
   const toan = maMon === 'TOAN';
-  const goc = toan ? Math.ceil(c.diem * 5) + 1 : Math.ceil(c.diem * 4) + 1;
-  let n = Math.max(3, Math.min(toan ? 10 : 8, goc));
-  if (/đặt tính|giải bài toán|bài giải|lời giải/i.test(c.deBai)) n = Math.max(n, 6);
+  // Toán: 0,5 điểm 3 dòng, 1 điểm 4 dòng, 1,5 điểm 6 dòng (tổ giới hạn đề Toán 3 trang)
+  const goc = toan ? Math.ceil(c.diem * 3) + 1 : Math.ceil(c.diem * 4) + 1;
+  let n = Math.max(3, Math.min(toan ? 7 : 8, goc));
+  if (/đặt tính|giải bài toán|bài giải|lời giải/i.test(c.deBai)) n = Math.max(n, toan ? 5 : 6);
+  // Câu vẽ trực tiếp lên hình hoặc chỉ cần ghi một tên, một số: 2 dòng là đủ
+  if (toan && /(^|[\s,.])vẽ(?=[\s,.:]|$)|viết tên|ghi tên/i.test(c.deBai) && !/giải|tính/i.test(c.deBai)) n = 2;
   return n;
+}
+
+/** Số dòng kẻ tối thiểu khi phải nén đề cho vừa số trang tổ quy định */
+export function soDongToiThieu(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: string): number {
+  const n = soDongTraLoi(c, maMon);
+  if (n === 0) return 0;
+  if (/giải bài toán|bài giải|lời giải/i.test(c.deBai) || (maMon === 'TOAN' && c.diem >= 1.5)) return Math.min(n, 4);
+  return Math.min(n, 2);
 }
 
 export interface DeBaiNhieuY { dau: string; y: { nhan: string; nd: string }[]; datTinh: boolean }

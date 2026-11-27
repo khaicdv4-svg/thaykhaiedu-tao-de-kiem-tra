@@ -173,12 +173,15 @@ describe('Thứ tự câu và số dòng chấm', () => {
     const so = taoDeTuDacTa(dacTa, 1).cau.map((c) => (/^\d+$/.test(c.cau) ? Number(c.cau) : Infinity));
     expect(so).toEqual([...so].sort((a, b) => a - b));
   });
-  it('Toán chừa nhiều dòng hơn; đặt tính thì ít nhất 6 dòng; bài viết 18 dòng', () => {
+  it('Toán chừa dòng vừa đủ (đề giới hạn 3 trang); đặt tính, giải toán đủ dòng; câu vẽ, viết tên 2 dòng; bài viết 18 dòng', () => {
     const c = (diem: number, deBai = 'x', dang: 'VIET' | null = null) => ({ diem, deBai, dang });
-    expect(soDongTraLoi(c(1), 'TOAN')).toBe(6);
-    expect(soDongTraLoi(c(0.5), 'TOAN')).toBe(4);
+    expect(soDongTraLoi(c(1), 'TOAN')).toBe(4);
+    expect(soDongTraLoi(c(0.5), 'TOAN')).toBe(3);
     expect(soDongTraLoi(c(0.5, 'Đặt tính rồi tính'), 'KHOA_HOC')).toBe(6);
-    expect(soDongTraLoi(c(1.5), 'TOAN')).toBe(9);
+    expect(soDongTraLoi(c(0.5, 'Giải bài toán sau'), 'TOAN')).toBe(5);
+    expect(soDongTraLoi(c(1.5), 'TOAN')).toBe(6);
+    expect(soDongTraLoi(c(1, 'Đoạn thẳng nào song song với AB? Viết tên đoạn thẳng đó.'), 'TOAN')).toBe(2);
+    expect(soDongTraLoi(c(0.5, 'Dùng ê ke vẽ đường thẳng đi qua M'), 'TOAN')).toBe(2);
     expect(soDongTraLoi(c(5, 'x', 'VIET'), 'TIENG_VIET')).toBe(18);
   });
 });

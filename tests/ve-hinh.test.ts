@@ -81,4 +81,11 @@ describe('yêu cầu hình từ đặc tả', () => {
     expect(de.cau.filter((c) => c.yeuCauHinh)).toHaveLength(1);
     expect(loiNhacVeHinh({ tenMon: 'Toán', deBai: 'x', luaChon: [], moTa: '', kieu: 'PHUONG_AN' })).toContain('4 hình');
   });
+  it('làm mảnh nét quá đậm, giữ nguyên kích thước hình', () => {
+    const r = lamSachSvg('<svg viewBox="0 0 400 200"><polygon points="10,10 100,10 90,90" fill="none" stroke="#000" stroke-width="3"/><line x1="0" y1="0" x2="5" y2="5" stroke="#000" stroke-width="1"/></svg>');
+    expect(r.svg).toContain('stroke-width="1.5"');
+    expect(r.svg).toContain('stroke-width="1"');
+    expect(r.svg).not.toContain('stroke-width="3"');
+    expect([r.rong, r.cao]).toEqual([400, 200]);
+  });
 });

@@ -7,7 +7,7 @@
 export const HE_THONG_VE_HINH = `Bạn là họa sĩ vẽ hình minh họa cho đề kiểm tra tiểu học Việt Nam, vẽ bằng mã SVG.
 Quy tắc bắt buộc:
 - Chỉ vẽ phần hình mà đề bài cần cho học sinh nhìn. TUYỆT ĐỐI không vẽ hay đánh dấu đáp án, không viết đáp án vào hình.
-- Hình ĐEN TRẮNG vì đề in trắng đen: nền trắng (một rect trắng phủ toàn hình), nét đen đậm (stroke="#000", stroke-width từ 2 đến 3). Mặc định KHÔNG tô nền (fill="none"); chỉ tô xám rất nhạt (#e6e6e6) khi đề thật sự cần phân biệt vùng (ví dụ phần tô màu của phân số). Không dùng màu khác.
+- Hình ĐEN TRẮNG vì đề in trắng đen: nền trắng (một rect trắng phủ toàn hình), nét đen vừa phải (stroke="#000", stroke-width="1.5", không đậm hơn). Mặc định KHÔNG tô nền (fill="none"); chỉ tô xám rất nhạt (#e6e6e6) khi đề thật sự cần phân biệt vùng (ví dụ phần tô màu của phân số). Không dùng màu khác.
 - Dùng viewBox="0 0 W H" với W không quá 480 và H không quá 300. Chữ, số, nhãn (A, B, C, D, 1, 2…) dùng font-family="Times New Roman" cỡ từ 16 trở lên.
 - Số lượng đồ vật trong hình phải ĐÚNG như đề bài (đề nói 5 quả táo thì vẽ đúng 5 quả). Xếp thẳng hàng, đều đặn, không chồng lên nhau.
 - Lớp 1-2: hình rất đơn giản, to, rõ, đồ vật quen thuộc (quả, hoa, con vật, hình khối cơ bản) vẽ bằng các hình cơ bản.
@@ -39,6 +39,9 @@ ${p.kieu && HUONG_DAN_KIEU[p.kieu] ? HUONG_DAN_KIEU[p.kieu] + '\n' : ''}Vẽ hì
 const THE_CHO_PHEP = new Set(['svg', 'g', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'path', 'text', 'tspan']);
 const THUOC_TINH = new Set(['x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'width', 'height', 'viewBox', 'points', 'd', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'transform', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'opacity', 'fill-opacity', 'stroke-opacity', 'dx', 'dy']);
 const CAM = /<\s*(script|foreignObject|image|use|style|iframe|animate|set)\b|javascript:|url\s*\(|<!\s*(ENTITY|DOCTYPE)|\bon\w+\s*=|href\s*=|xlink/i;
+
+/** Độ dày nét tối đa (đơn vị viewBox, hình rộng khoảng 480): 1,5 cho nét rõ mà không đậm */
+const NET_TOI_DA = 1.5;
 
 export interface KetQuaSvg { svg?: string; rong?: number; cao?: number; lyDo?: string }
 
@@ -77,6 +80,12 @@ export function lamSachSvg(traLoi: string): KetQuaSvg {
     for (const a of tk[3].matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
       if (!THUOC_TINH.has(a[1])) continue;
       const gt = (a[2] ?? a[3] ?? '').replace(/"/g, '&quot;').replace(/</g, '');
+      // Nét vừa phải: AI hay vẽ nét 2–3 làm hình in ra quá đậm; giữ kích thước hình, chỉ làm mảnh nét
+      if (a[1] === 'stroke-width') {
+        const so = parseFloat(gt);
+        tt += ` stroke-width="${Number.isFinite(so) ? Math.min(so, NET_TOI_DA) : NET_TOI_DA}"`;
+        continue;
+      }
       if (ten === 'svg' && (a[1] === 'width' || a[1] === 'height')) continue;
       if (ten === 'svg' && a[1] === 'viewBox') viewBox = gt.trim().split(/[\s,]+/).map(Number);
       tt += ` ${a[1]}="${gt}"`;

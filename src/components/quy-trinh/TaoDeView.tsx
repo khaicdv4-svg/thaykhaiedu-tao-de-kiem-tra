@@ -385,10 +385,18 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     if (!r.ok || !r.j.ketQua) { setSach((g) => ({ ...g, [c.khoa]: { loi: r.j.error ?? 'AI chưa đối chiếu được.', thieu: r.j.thieu } })); return; }
     setSach((g) => ({ ...g, [c.khoa]: { doi: r.j.ketQua, thieu: r.j.thieu, trang: moTaTrang(r.j.khoang, r.j.trangDaDung) } }));
   };
-  const dungCauSach = (c: CauDe, x: NonNullable<KetQuaSach['soan']>) => {
+  const dungCauSach = async (c: CauDe, x: NonNullable<KetQuaSach['soan']>) => {
     const lc = [...x.luaChon]; while (lc.length < c.luaChon.length) lc.push('');
-    suaCau(c.khoa, { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) });
+    const p: Partial<NoiDungCau> = { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) };
+    suaCau(c.khoa, p);
     setSach((g) => ({ ...g, [c.khoa]: {} }));
+    // Đặc tả yêu cầu hình mà câu chưa có hình (hoặc vừa xóa hình cũ): AI vẽ lại theo đề bài mới
+    if (c.yeuCauHinh && !(c.hinh ?? []).some((h) => h.anh)) {
+      try {
+        const ve = await veHinhTuDong(c, x.deBai, lc, x.moTaHinh ?? '');
+        if (ve.p) suaCau(c.khoa, { ...p, ...ve.p });
+      } catch { /* chưa vẽ được thì câu vẫn dùng được */ }
+    }
   };
 
   /**
@@ -854,7 +862,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
                             {sach[c.khoa]!.soan!.huongDanCham && <div className="text-sm text-slate-700 whitespace-pre-line">Hướng dẫn chấm: <ChuPhanSo chu={sach[c.khoa]!.soan!.huongDanCham} /></div>}
                             {sach[c.khoa]!.soan!.ghiChu && <div className="text-xs text-slate-600">{sach[c.khoa]!.soan!.ghiChu}</div>}
                             <div className="flex gap-2">
-                              <button type="button" className={nutChinh} onClick={() => dungCauSach(c, sach[c.khoa]!.soan!)}>Dùng câu này</button>
+                              <button type="button" className={nutChinh} onClick={() => void dungCauSach(c, sach[c.khoa]!.soan!)}>Dùng câu này</button>
                               <button type="button" className={nutPhu} onClick={() => setSach((g) => ({ ...g, [c.khoa]: {} }))}>Bỏ</button>
                             </div>
                           </div>
