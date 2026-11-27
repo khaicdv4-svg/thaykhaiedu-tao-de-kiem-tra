@@ -182,7 +182,7 @@ function phuongAn(c: CauDe): (Paragraph | Table)[] {
   const rong = Math.floor((RONG_NOI_DUNG - 300) / 2);
   const dai = ds.some((x) => x.v.length > 34);
   if (dai || ds.length < 4) return ds.map((x) => doan(`${x.n}. ${x.v}`, { thut: 300, dong: DAN_CAU, truoc: 20 }));
-  const o = (x: { n: string; v: string }) => o2([doan([tr(`${x.n}. `, { bold: true }), tr(x.v)], { dong: DAN_CAU })], rong);
+  const o = (x: { n: string; v: string }) => o2([doan([tr(`${x.n}. `), tr(x.v)], { dong: DAN_CAU })], rong);
   const hang = (a: { n: string; v: string }, b: { n: string; v: string }) => new TableRow({ cantSplit: true, children: [o(a), o(b)] });
   return [new Table({
     width: { size: rong * 2, type: WidthType.DXA },

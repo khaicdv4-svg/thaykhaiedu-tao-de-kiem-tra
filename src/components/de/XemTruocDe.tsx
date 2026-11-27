@@ -21,7 +21,7 @@ function PhuongAn({ c }: { c: CauDe }) {
   const dai = ds.some((x) => x.v.length > 34) || ds.length < 4;
   return (
     <div className={dai ? 'pl-4 space-y-1' : 'pl-4 grid grid-cols-2 gap-x-4 gap-y-1.5'}>
-      {ds.map((x) => <div key={x.n}><b>{x.n}.</b> <PS chu={x.v} /></div>)}
+      {ds.map((x) => <div key={x.n}>{x.n}. <PS chu={x.v} /></div>)}
     </div>
   );
 }
@@ -65,7 +65,7 @@ function MotCau({ c, maMon }: { c: CauDe; maMon: string }) {
         {(() => {
           const cacDoan = doan.map((d, k) => d.khung !== undefined
             ? (hPhai && d.khung - 1 === iPhai ? null : manhHinh((c.hinh ?? [])[d.khung - 1], k))
-            : <div key={k}>{k === 0 && nhanC}<PS chu={d.chu ?? ''} /></div>);
+            : <div key={k} className="font-bold">{k === 0 && nhanC}<PS chu={d.chu ?? ''} /></div>);
           if (!hPhai) return cacDoan;
           return (
             <div className="grid grid-cols-[1fr_auto] gap-3 items-start">

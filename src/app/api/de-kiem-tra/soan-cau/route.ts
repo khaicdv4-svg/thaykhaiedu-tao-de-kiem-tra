@@ -66,11 +66,14 @@ export async function POST(req: NextRequest) {
       lechDang = kiemTraDangBai(d.dangBai, x);
       const co = soY ? soYTrongCau(x.deBai, x.luaChon, d.dang ?? null) : 0;
       const thieuY = soY > 0 && co < soY;
+      // Câu một yêu cầu mà AI tự chia a), b): bắt soạn lại thành một câu
+      const thuaY = !soY && d.dang !== 'DS' && d.dang !== 'VIET' && soYTrongCau(x.deBai ?? '', [], d.dang ?? null) >= 2;
       const trungSgk = viet ? (x.cacDe ?? [x]).map((e) => deSgkBiTrung(e.deBai ?? '', viet!.deSgk)).find(Boolean) ?? null : null;
       const thieuDe = !!viet && (x.cacDe?.length ?? 0) < 2;
-      if (!lechDang.length && !thieuY && !trungSgk && !thieuDe) break;
+      if (!lechDang.length && !thieuY && !thuaY && !trungSgk && !thieuDe) break;
       nhac = [
         lechDang.length ? `Lần trước SAI DẠNG BÀI: ${lechDang.join(' ')} Soạn lại đúng dạng "${d.dangBai}".` : '',
+        thuaY ? 'Lần trước tự chia câu thành nhiều ý a), b). Câu này chỉ có MỘT yêu cầu: soạn lại thành một câu hỏi duy nhất, không chia ý.' : '',
         thieuDe ? 'Lần trước chưa có đủ HAI đề trong "cacDe". Soạn đủ hai đề khác nhau.' : '',
         trungSgk ? `Lần trước đề TRÙNG đề SGK học sinh đã làm: "${trungSgk}". Ra đề khác hẳn: đổi đối tượng, tình huống và câu chữ.` : '',
         thieuY ? `Lần trước chỉ có ${co} ý, thiếu ý. Câu này phải có đủ ${soY} ý: ${d.yNho!.map((y) => `${y})`).join(', ')}. Soạn lại đủ ${soY} ý.` : '',

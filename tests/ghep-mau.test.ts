@@ -148,3 +148,26 @@ describe('Xuất đề theo mẫu của tổ', () => {
     expect(() => ghepDauBaiTheoMau(tepDe, mauLoi)).toThrow(/chưa có đầu bài/);
   });
 });
+
+describe('Đầu bài theo mẫu thẳng mép trang', () => {
+  it('bảng mẫu rộng hơn lề, thụt lề âm: đưa về đúng bề ngang trang, không thụt lề', async () => {
+    const o = (t: string, w: number) => new TableCell({ width: { size: w, type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun(t)] })] });
+    const bangTen = new Table({ width: { size: 10400, type: WidthType.DXA }, columnWidths: [6000, 4400], indent: { size: -300, type: WidthType.DXA },
+      rows: [new TableRow({ children: [o('TRƯỜNG TH TRẦN VĂN ƠN HỌ TÊN HS: … LỚP: …', 6000), o('KTĐK CUỐI HKI MÔN TIẾNG VIỆT GV coi KT1', 4400)] })] });
+    const bangDiem = new Table({ width: { size: 10200, type: WidthType.DXA }, columnWidths: [1700, 5500, 3000],
+      rows: [new TableRow({ children: [o('Điểm', 1700), o('Nhận xét', 5500), o('GV chấm KT1', 3000)] })] });
+    const mau = new Uint8Array(await Packer.toBuffer(new Document({ sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { left: 1134, right: 850 } } }, children: [bangTen, new Paragraph(''), bangDiem] }] })));
+    const { de } = deLsdl();
+    const kq = ghepDauBaiTheoMau(new Uint8Array(await Packer.toBuffer(dungTaiLieuDe(tt, de))), mau);
+    const xml = strFromU8(unzipSync(kq.tep)['word/document.xml']);
+    const dau = xml.slice(0, xml.indexOf('PHẦN BÀI LÀM'));
+    const bangs = [...dau.matchAll(/<w:tbl>[\s\S]*?<\/w:tblGrid>/g)].map((m) => m[0]);
+    expect(bangs.length).toBe(2);
+    for (const b of bangs) {
+      const tong = [...b.matchAll(/<w:gridCol w:w="(\d+)"/g)].reduce((s2, m) => s2 + Number(m[1]), 0);
+      expect(Math.abs(tong - 10772)).toBeLessThanOrEqual(3);
+      expect(b).toContain('<w:tblW w:w="10772" w:type="dxa"/>');
+      expect(b).toContain('<w:tblInd w:w="0" w:type="dxa"/>');
+    }
+  });
+});

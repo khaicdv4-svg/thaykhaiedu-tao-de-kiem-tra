@@ -138,7 +138,10 @@ export interface CauChoAI {
 /** Câu có từ hai ý trở lên: nhắc AI soạn đủ ý, chia điểm, ý ứng với YCCĐ nào. */
 function moTaYNho(c: CauChoAI): string {
   const y = c.yNho ?? [];
-  if (y.length < 2) return '';
+  if (y.length < 2) {
+    if (c.dang === 'DS' || c.dang === 'VIET') return '';
+    return '\nCâu này là MỘT câu hỏi duy nhất với MỘT yêu cầu. KHÔNG chia thành các ý a), b), c)…, không gộp hai yêu cầu vào một câu.';
+  }
   const nhan = y.map((x) => `${x})`).join(', ');
   const moiY = Math.round((c.diem / y.length) * 100) / 100;
   const nhieuYccd = c.yccd.includes(';');

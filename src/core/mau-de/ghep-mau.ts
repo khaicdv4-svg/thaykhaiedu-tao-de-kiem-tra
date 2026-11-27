@@ -216,6 +216,39 @@ function coGian(xml: string, heSo: number): string {
     });
 }
 
+/**
+ * Đưa từng bảng ngoài cùng của đầu bài về đúng bề ngang trang chữ của tệp xuất và bỏ thụt lề,
+ * để bảng tên trường và bảng Điểm thẳng mép với nhau và với bảng câu hỏi. Mẫu của tổ thường có bảng
+ * rộng hơn lề hoặc thụt lề âm, co giãn theo tỉ lệ trang vẫn bị tràn hoặc lệch.
+ */
+function khopBeNgang(xml: string, rong: number): string {
+  let out = '';
+  let truoc = 0;
+  for (const b of cacPhanTu(xml, 'tbl')) {
+    let bang = xml.slice(b.batDau, b.ketThuc);
+    // Lưới cột của chính bảng ngoài (tblGrid đầu tiên, trước hàng đầu tiên)
+    const luoi = bang.slice(0, Math.max(0, bang.search(/<w:tr[\s>]/))).match(/<w:tblGrid>[\s\S]*?<\/w:tblGrid>/)?.[0] ?? '';
+    const tong = [...luoi.matchAll(/<w:gridCol\b[^>]*\bw:w="(\d+)"/g)].reduce((s2, m) => s2 + Number(m[1]), 0);
+    if (tong > 0) bang = coGian(bang, rong / tong);
+    // tblPr của bảng ngoài: bề rộng đúng trang, không thụt lề, không canh giữa/canh phải
+    const moTblPr = bang.indexOf('<w:tblPr>');
+    const kt = moTblPr >= 0 ? bang.indexOf('</w:tblPr>', moTblPr) : -1;
+    if (moTblPr >= 0 && kt > moTblPr && moTblPr < bang.search(/<w:tr[\s>]/)) {
+      let pr = bang.slice(moTblPr + '<w:tblPr>'.length, kt);
+      const cachO = pr.match(/<w:tblCellSpacing\b[^>]*\/>/)?.[0] ?? '';
+      pr = pr.replace(/<w:(tblW|tblInd|jc|tblpPr|tblCellSpacing)\b[^>]*\/>/g, '');
+      // Giữ đúng thứ tự phần tử của tblPr (Word báo lỗi tệp nếu sai thứ tự)
+      const chen = `<w:tblW w:w="${rong}" w:type="dxa"/>${cachO}<w:tblInd w:w="0" w:type="dxa"/>`;
+      const viTri = pr.search(/<w:(tblBorders|shd|tblLayout|tblCellMar|tblLook|tblCaption|tblDescription|tblPrChange)\b/);
+      pr = viTri >= 0 ? pr.slice(0, viTri) + chen + pr.slice(viTri) : pr + chen;
+      bang = `${bang.slice(0, moTblPr)}<w:tblPr>${pr}${bang.slice(kt)}`;
+    }
+    out += xml.slice(truoc, b.batDau) + bang;
+    truoc = b.ketThuc;
+  }
+  return out + xml.slice(truoc);
+}
+
 /** Bỏ những phần không mang sang được: ngắt mục, đánh số tự động, bình luận, chú thích. */
 function donDep(xml: string): string {
   return xml
@@ -335,6 +368,7 @@ export function ghepDauBaiTheoMau(tepDe: Uint8Array, tepMau: Uint8Array): KetQua
   const nMau = beNgangChu(docMau);
   const nRa = beNgangChu(docRa);
   if (nMau && nRa) dauBai = coGian(dauBai, nRa / nMau);
+  if (nRa) dauBai = khopBeNgang(dauBai, nRa);
   dauBai = chepQuanHe(dauBai, mau, ra);
   chepKieu(dauBai, mau, ra);
 
