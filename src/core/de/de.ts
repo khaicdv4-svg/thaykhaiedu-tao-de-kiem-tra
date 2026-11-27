@@ -61,7 +61,11 @@ export interface NoiDungCau {
   ghiChuHinh: string;
   /** Hình thật đi kèm câu. Đề cũ chưa có trường này. */
   hinh?: HinhCau[];
+  /** Bài Viết Tiếng Việt: các đề AI soạn để giáo viên chọn. Chỉ đề đang dùng (deBai) được in và xuất Word. */
+  deLuaChon?: DeVietLuaChon[];
 }
+
+export interface DeVietLuaChon { deBai: string; huongDanCham: string }
 
 /** Yêu cầu hình lấy từ đặc tả (không sửa ở bước tạo đề). */
 export interface YeuCauHinh { kieu: Exclude<KieuHinhKem, 'KHONG'>; moTa: string }
@@ -244,7 +248,7 @@ export function dapAnHienThi(c: CauDe): string {
 
 export function layNoiDung(d: DeKiemTra): Record<string, NoiDungCau> {
   const kq: Record<string, NoiDungCau> = {};
-  for (const c of d.cau) kq[c.khoa] = { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham, ghiChuHinh: c.ghiChuHinh, hinh: c.hinh ?? [] };
+  for (const c of d.cau) kq[c.khoa] = { deBai: c.deBai, luaChon: c.luaChon, dapAn: c.dapAn, huongDanCham: c.huongDanCham, ghiChuHinh: c.ghiChuHinh, hinh: c.hinh ?? [], ...(c.deLuaChon?.length ? { deLuaChon: c.deLuaChon } : {}) };
   return kq;
 }
 

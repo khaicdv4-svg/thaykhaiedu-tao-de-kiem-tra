@@ -143,7 +143,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   const conTro = useRef<Record<string, number>>({});
   const [veAI, setVeAI] = useState<Record<string, { mo?: boolean; moTa: string; dich: number | null; dang?: boolean; loi?: string; xem?: HinhCau }>>({});
   const [goiY, setGoiY] = useState<Record<string, { dang?: boolean; text?: string; canh?: string }>>({});
-  type KetQuaSach = { dang?: 'soan' | 'doi'; loi?: string; thieu?: string[]; trang?: string; soan?: { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string }; doi?: { trongPhamVi: string; khopSach: string; dapAnDung: string; chepNguyenSach: string; nhanXet: string[]; goiY: string } };
+  type KetQuaSach = { dang?: 'soan' | 'doi'; loi?: string; thieu?: string[]; trang?: string; soan?: { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string; cacDe?: { deBai: string; huongDanCham: string }[] }; doi?: { trongPhamVi: string; khopSach: string; dapAnDung: string; chepNguyenSach: string; nhanXet: string[]; goiY: string } };
   const [sach, setSach] = useState<Record<string, KetQuaSach>>({});
   // Bài đọc Tiếng Việt chọn ở bước 1 (null: chưa chọn ở bước 1, đề giữ bài đang có)
   const [baiDocChon, setBaiDocChon] = useState<BaiDocChon | null>(null);
@@ -370,7 +370,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   };
   const dungCauSach = (c: CauDe, x: NonNullable<KetQuaSach['soan']>) => {
     const lc = [...x.luaChon]; while (lc.length < c.luaChon.length) lc.push('');
-    suaCau(c.khoa, { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}) });
+    suaCau(c.khoa, { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(c.hinhThuc === 'TL' && x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) });
     setSach((g) => ({ ...g, [c.khoa]: {} }));
   };
 
@@ -402,7 +402,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
       if (x.khongDuCanCu || !x.deBai) { loi.push(`${nhanCau(c)}: ${x.ghiChu || 'sách chưa đủ căn cứ'}`); return; }
       const lc = [...x.luaChon];
       while (lc.length < c.luaChon.length) lc.push('');
-      const p: Partial<NoiDungCau> = { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}) };
+      const p: Partial<NoiDungCau> = { deBai: x.deBai, luaChon: lc.length ? lc : c.luaChon, dapAn: x.dapAn || c.dapAn, ...(x.huongDanCham ? { huongDanCham: x.huongDanCham } : {}), ...(x.cacDe?.length ? { deLuaChon: x.cacDe } : {}) };
       deTam = { ...deTam, cau: deTam.cau.map((y) => (y.khoa === c.khoa ? { ...y, ...p } : y)) };
       suaCau(c.khoa, p);
     };
@@ -761,6 +761,22 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
                       {moNganHang === c.khoa && (
                         <div className="rounded-lg border border-sky-200 bg-sky-50/40 p-3">
                           <NganHangCauHoi mon={maMon} muc={c.muc} hinhThuc={c.hinhThuc} dang={c.dang} onChon={(x) => dungTuNganHang(c, x.noiDung)} />
+                        </div>
+                      )}
+                      {c.dang === 'VIET' && (c.deLuaChon?.length ?? 0) > 1 && (
+                        <div className="rounded-lg border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
+                          <div className="text-sm font-semibold text-slate-800">AI soạn {c.deLuaChon!.length} đề. Chọn một đề để in vào bài kiểm tra:</div>
+                          {c.deLuaChon!.map((e, i) => {
+                            const dangDung = e.deBai.trim() === c.deBai.trim();
+                            return (
+                              <label key={i} className={`flex items-start gap-2 rounded-lg border p-2.5 text-sm cursor-pointer ${dangDung ? 'border-indigo-500 bg-white' : 'border-slate-200 bg-white/60 hover:bg-white'}`}>
+                                <input type="radio" className="mt-1" name={`de-viet-${c.khoa}`} checked={dangDung} aria-label={`Dùng đề ${i + 1}`}
+                                  onChange={() => suaCau(c.khoa, { deBai: e.deBai, huongDanCham: e.huongDanCham || c.huongDanCham })} />
+                                <span><b>Đề {i + 1}:</b> <span className="whitespace-pre-line">{e.deBai}</span>{dangDung && <span className="ml-2 text-xs font-semibold text-indigo-700">(đang dùng)</span>}</span>
+                              </label>
+                            );
+                          })}
+                          <div className="text-xs text-slate-500">Chỉ đề đang chọn được in và xuất Word. Thầy cô vẫn sửa được chữ của đề ở ô bên dưới.</div>
                         </div>
                       )}
                       <label className="block text-xs text-slate-500">Đề bài

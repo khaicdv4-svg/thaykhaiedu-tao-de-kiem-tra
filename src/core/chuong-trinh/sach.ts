@@ -190,14 +190,17 @@ function layJson(t: string): Record<string, unknown> | null {
 const chu = (x: unknown) => (typeof x === 'string' ? chuanHoaPhanSo(x.replace(/\*\*/g, '')).trim() : '');
 const phuongAn = (x: unknown) => boNhanPhuongAn(chu(x));
 
-export interface CauAISoan { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string }
+export interface CauAISoan { deBai: string; luaChon: string[]; dapAn: string; huongDanCham: string; khongDuCanCu: boolean; ghiChu: string; cacDe?: { deBai: string; huongDanCham: string }[] }
 export function docCauAISoan(traLoi: string): CauAISoan | null {
   const j = layJson(traLoi);
   if (!j) return null;
   const khong = j.khongDuCanCu === true;
   const deBai = chu(j.deBai);
   if (!khong && !deBai) return null;
-  return { deBai, luaChon: Array.isArray(j.luaChon) ? j.luaChon.map(phuongAn) : [], dapAn: chu(j.dapAn), huongDanCham: chu(j.huongDanCham), khongDuCanCu: khong, ghiChu: chu(j.ghiChu) };
+  const cacDe = Array.isArray(j.cacDe)
+    ? (j.cacDe as unknown[]).map((x) => (x && typeof x === 'object' ? x as Record<string, unknown> : {})).map((x) => ({ deBai: chu(x.deBai), huongDanCham: chu(x.huongDanCham) })).filter((x) => x.deBai).slice(0, 2)
+    : [];
+  return { deBai, luaChon: Array.isArray(j.luaChon) ? j.luaChon.map(phuongAn) : [], dapAn: chu(j.dapAn), huongDanCham: chu(j.huongDanCham), khongDuCanCu: khong, ghiChu: chu(j.ghiChu), ...(cacDe.length ? { cacDe } : {}) };
 }
 
 export type KetLuan = 'co' | 'khong' | 'khong_du_can_cu';

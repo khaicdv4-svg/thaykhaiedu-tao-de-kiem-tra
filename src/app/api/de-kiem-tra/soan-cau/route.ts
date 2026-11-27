@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { goiAITheoViec, trangThaiViecAI } from '@/lib/repositories/cai-dat-ai.repository';
 import { nguCanhBaiViet, nguCanhChoCau } from '@/lib/repositories/sach.repository';
-import { TUAN_CUOI_KY, deSgkBiTrung, loiNhacDeViet, tuKhoaKieuBai, type NguCanhViet } from '@/core/de/de-viet-tv';
+import { TUAN_CUOI_KY, boGoiYDeViet, deSgkBiTrung, loiNhacDeViet, tuKhoaKieuBai, type NguCanhViet } from '@/core/de/de-viet-tv';
 import type { KyKiemTra } from '@/types/matrix-template';
 import { HE_THONG_SOAN_CAU_TU_SACH, docCauAISoan, loiNhacSoanCau, soYTrongCau } from '@/core/chuong-trinh/sach';
 import { TEN_MON } from '@/core/chuong-trinh/mon';
@@ -51,22 +51,33 @@ export async function POST(req: NextRequest) {
       const kq = await goiAITheoViec('SOAN_DE', { heThong: HE_THONG_SOAN_CAU_TU_SACH, noiDung: nhac ? `${noiDung}\n\n${nhac}` : noiDung, toiDaToken: 2500 + 400 * soY, timWeb: false });
       const x = docCauAISoan(kq.traLoi);
       if (!x) { nhac = 'Lần trước chưa trả đúng khối JSON. Trả lại đúng định dạng.'; continue; }
+      if (viet && !x.khongDuCanCu) {
+        // Đề viết: chỉ giữ câu yêu cầu (bỏ gợi ý), luôn có danh sách đề để chọn
+        const ds = (x.cacDe?.length ? x.cacDe : [{ deBai: x.deBai, huongDanCham: x.huongDanCham }]).map((e) => ({ deBai: boGoiYDeViet(e.deBai), huongDanCham: e.huongDanCham || x.huongDanCham }));
+        x.cacDe = ds;
+        x.deBai = ds[0].deBai;
+        x.huongDanCham = ds[0].huongDanCham;
+        x.luaChon = [];
+        x.dapAn = '';
+      }
       cau = x;
       if (x.khongDuCanCu) break;
       // Sai dạng bài giáo viên chọn ở đặc tả (ví dụ đặc tả là đổi đơn vị đo mà AI ra bài toán có lời văn): bắt soạn lại
       lechDang = kiemTraDangBai(d.dangBai, x);
       const co = soY ? soYTrongCau(x.deBai, x.luaChon, d.dang ?? null) : 0;
       const thieuY = soY > 0 && co < soY;
-      const trungSgk = viet ? deSgkBiTrung(x.deBai ?? '', viet.deSgk) : null;
-      if (!lechDang.length && !thieuY && !trungSgk) break;
+      const trungSgk = viet ? (x.cacDe ?? [x]).map((e) => deSgkBiTrung(e.deBai ?? '', viet!.deSgk)).find(Boolean) ?? null : null;
+      const thieuDe = !!viet && (x.cacDe?.length ?? 0) < 2;
+      if (!lechDang.length && !thieuY && !trungSgk && !thieuDe) break;
       nhac = [
         lechDang.length ? `Lần trước SAI DẠNG BÀI: ${lechDang.join(' ')} Soạn lại đúng dạng "${d.dangBai}".` : '',
+        thieuDe ? 'Lần trước chưa có đủ HAI đề trong "cacDe". Soạn đủ hai đề khác nhau.' : '',
         trungSgk ? `Lần trước đề TRÙNG đề SGK học sinh đã làm: "${trungSgk}". Ra đề khác hẳn: đổi đối tượng, tình huống và câu chữ.` : '',
         thieuY ? `Lần trước chỉ có ${co} ý, thiếu ý. Câu này phải có đủ ${soY} ý: ${d.yNho!.map((y) => `${y})`).join(', ')}. Soạn lại đủ ${soY} ý.` : '',
       ].filter(Boolean).join('\n');
     }
     if (!cau) return NextResponse.json({ error: 'AI chưa trả về câu hợp lệ. Thầy bấm soạn lại.' }, { status: 422 });
-    const trungCuoi = viet && cau.deBai ? deSgkBiTrung(cau.deBai, viet.deSgk) : null;
+    const trungCuoi = viet ? (cau.cacDe ?? [cau]).map((e) => deSgkBiTrung(e.deBai ?? '', viet!.deSgk)).find(Boolean) ?? null : null;
     return NextResponse.json({ success: true, cau, lechDang, ...(viet ? { deSgk: viet.deSgk, nguonViet: viet.nguon, trungSgk: trungCuoi } : {}), khoang: ngu.khoang, trangDaDung: ngu.trangSgkCoChu, thieu: viet ? (viet.nguon.length ? [] : ['Kho SGK chưa có tiết Viết cùng kiểu bài này; AI soạn theo yêu cầu cần đạt.']) : ngu.thieu, coSgv: !!ngu.sgv, model: tt.model });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });

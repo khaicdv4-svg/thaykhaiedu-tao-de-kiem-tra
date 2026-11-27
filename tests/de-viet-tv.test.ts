@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { deBaiTrongDoan, deSgkBiTrung, ganNguCanhViet, tachPhanViet, tuKhoaKieuBai, type MucSgkViet } from '@/core/de/de-viet-tv';
+import { docCauAISoan } from '@/core/chuong-trinh/sach';
+import { boGoiYDeViet, deBaiTrongDoan, deSgkBiTrung, ganNguCanhViet, tachPhanViet, tuKhoaKieuBai, type MucSgkViet } from '@/core/de/de-viet-tv';
 
 const bai29 = `[Trang 128 – đã soát]\nLUYỆN TỪ VÀ CÂU\nDấu gạch ngang.\n\nVIẾT BÀI VĂN MIÊU TẢ CON VẬT\n\nChọn 1 trong 2 đề dưới đây:\nĐề 1: Miêu tả một con vật mà em đã chăm sóc và gắn bó.\n\nĐề 2: Miêu tả một con vật mà em đã được quan sát trên ti vi hoặc trong\nphim ảnh.\n\n1. Dựa vào dàn ý đã lập, viết bài văn.`;
 const onTap18 = `A. ĐỌC\nCâu hỏi gì?\n\nB. VIẾT\nChọn 1 trong 2 đề dưới đây:\nĐề 1: Viết bài văn miêu tả một con vật mà em từng nuôi hoặc từng nhìn thấy và có ấn tượng đặc biệt.\nĐề 2: Viết đoạn văn tưởng tượng dựa vào một câu chuyện thú vị mà em đã đọc hoặc đã nghe.`;
@@ -37,5 +38,19 @@ describe('Đề bài Viết Tiếng Việt', () => {
     const ds = deBaiTrongDoan(tachPhanViet(bai29, /con vật/i)!, /con vật/i);
     expect(deSgkBiTrung('Miêu tả một con vật mà em đã chăm sóc và gắn bó nhất.', ds)).not.toBeNull();
     expect(deSgkBiTrung('Hãy tả chú gà trống trong xóm em vào một buổi sáng sớm.', ds)).toBeNull();
+  });
+});
+
+describe('Đề Viết: bỏ gợi ý, hai đề để chọn', () => {
+  it('bỏ phần gợi ý khỏi đề bài', () => {
+    const de = 'Em hãy tả chú chó nhà em hoặc nhà hàng xóm.\nGợi ý:\n- Bài văn có đủ ba phần.\n- Tả hình dáng.';
+    expect(boGoiYDeViet(de)).toBe('Em hãy tả chú chó nhà em hoặc nhà hàng xóm.');
+    expect(boGoiYDeViet('Tả một con vật em yêu thích.')).toBe('Tả một con vật em yêu thích.');
+  });
+
+  it('đọc được hai đề AI trả về', () => {
+    const x = docCauAISoan(JSON.stringify({ deBai: 'Đề A', huongDanCham: 'HDC A', cacDe: [{ deBai: 'Đề A', huongDanCham: 'HDC A' }, { deBai: 'Đề B', huongDanCham: 'HDC B' }], luaChon: [], dapAn: '', khongDuCanCu: false, ghiChu: '' }))!;
+    expect(x.cacDe).toHaveLength(2);
+    expect(x.cacDe![1].deBai).toBe('Đề B');
   });
 });

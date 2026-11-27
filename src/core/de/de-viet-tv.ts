@@ -144,10 +144,17 @@ export function loiNhacDeViet(kieuBai: string, ngu: NguCanhViet): string {
 Câu này là đề bài Tập làm văn. Không cần trang SGK cụ thể; KHÔNG trả "khongDuCanCu" vì thiếu trang sách, "luaChon" để mảng rỗng, "dapAn" để trống. Tham khảo các tiết Viết và tiết Ôn tập dưới đây để nắm dạng đề, phạm vi, mức yêu cầu học sinh đã luyện, rồi ra MỘT đề MỚI:
 - Cùng kiểu bài, cùng mức độ, sát chương trình đã học.
 - Diễn đạt yêu cầu (câu đề) khác SGK: đổi đối tượng, tình huống hoặc góc nhìn (ví dụ con vật khác, hoàn cảnh gặp khác, câu chuyện khác), không lặp lại câu chữ của đề trong sách.
-- Có thể cho chọn 1 trong 2 đề như SGK; mỗi đề đều phải khác đề trong sách.
-- Đề ngắn gọn, rõ ràng, từ ngữ quen thuộc với học sinh miền Nam; có thể kèm 2–3 dòng gợi ý ngắn.
-- "huongDanCham" theo thang 10 điểm của bài viết: bố cục, nội dung, dùng từ đặt câu, chữ viết – chính tả, sáng tạo; ghi điểm từng phần.${cam}
+- Soạn HAI đề khác nhau (khác đối tượng hoặc tình huống) để giáo viên chọn một; cả hai đều phải khác đề trong sách.
+- Mỗi đề chỉ là câu yêu cầu, ngắn gọn, rõ ràng, từ ngữ quen thuộc với học sinh miền Nam. KHÔNG kèm gợi ý, dàn ý, lưu ý hay câu hỏi gợi mở.
+- "huongDanCham" của từng đề theo thang 10 điểm của bài viết: bố cục, nội dung, dùng từ đặt câu, chữ viết – chính tả, sáng tạo; ghi điểm từng phần.
+- Trả thêm trường "cacDe": [{"deBai": "...", "huongDanCham": "..."}, {"deBai": "...", "huongDanCham": "..."}]. "deBai" và "huongDanCham" ở ngoài lấy đúng đề thứ nhất.${cam}
 
 TƯ LIỆU SGK THAM KHẢO (chỉ để nắm dạng đề, không chép):
 ${ngu.thamKhao || '(Kho SGK chưa có chữ tiết Viết của kiểu bài này; soạn theo yêu cầu cần đạt.)'}`;
+}
+
+/** Bỏ phần gợi ý, dàn ý, lưu ý mà AI lỡ kèm vào đề bài viết: chỉ giữ câu yêu cầu. */
+export function boGoiYDeViet(deBai: string): string {
+  const i = deBai.search(/(^|\n)\s*(gợi ý|goi y|dàn ý|lưu ý|chú ý|em có thể|tham khảo)(?=[\s:.,\-–]|$)[^\n]*/i);
+  return (i >= 0 ? deBai.slice(0, i) : deBai).replace(/\n{2,}/g, '\n').trim();
 }
