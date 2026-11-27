@@ -35,27 +35,34 @@ interface Props {
   /** Thông tin thêm của bước, ví dụ "ma trận riêng phiên bản 2" */
   ghiChu?: string;
   dangTai?: boolean;
+  /** Trạng thái của bước (nháp, đã xác nhận…) hiện thành nhãn nhỏ */
+  trangThai?: { ten: string; mau: string } | null;
+  /** Thanh công cụ của bước, gom chung một thẻ với hồ sơ đề cho gọn */
+  children?: React.ReactNode;
 }
 
-export function ThanhHoSoDe({ mon, ky, ghiChu, dangTai }: Props) {
+/** Kiểu nút chuyển chế độ gọn dùng chung ở các bước (Soạn / Xem…) */
+export const nutCheDo = (dangChon: boolean) =>
+  `inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${dangChon ? 'text-white bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow-sm' : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'}`;
+
+export function ThanhHoSoDe({ mon, ky, ghiChu, dangTai, trangThai, children }: Props) {
   const { khoiLamViec } = useAuth();
   return (
-    <div className="the-tke px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="p-2 rounded-lg bg-indigo-50 text-indigo-700 shrink-0"><FolderOpen className="w-5 h-5" /></span>
-        <div className="min-w-0">
-          <div className="text-xs font-medium text-slate-500">Hồ sơ đề đang làm</div>
-          <div className="font-bold text-slate-900">Lớp {khoiLamViec} · {tenMonHoSo(mon)} · {tenKyHoSo(ky)}</div>
-        </div>
+    <div className="the-tke divide-y divide-slate-100">
+      <div className="px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <FolderOpen className="w-5 h-5 text-indigo-600 shrink-0" aria-hidden />
+        <span className="font-bold text-slate-900">Lớp {khoiLamViec} · {tenMonHoSo(mon)} · {tenKyHoSo(ky)}</span>
+        {ghiChu && <span className="text-sm text-slate-500">{ghiChu}</span>}
+        {trangThai && <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${trangThai.mau}`}>{trangThai.ten}</span>}
+        {dangTai && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" aria-label="Đang tải" />}
+        <Link
+          href={ganHoSo('/test-builder', { mon, ky: ky as HoSoDe['ky'] })}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <RefreshCw className="w-4 h-4" /> Đổi môn, kì
+        </Link>
       </div>
-      {ghiChu && <span className="text-sm text-slate-500">{ghiChu}</span>}
-      {dangTai && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" aria-label="Đang tải" />}
-      <Link
-        href={ganHoSo('/test-builder', { mon, ky: ky as HoSoDe['ky'] })}
-        className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-      >
-        <RefreshCw className="w-4 h-4" /> Đổi môn, kì
-      </Link>
+      {children && <div className="px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">{children}</div>}
     </div>
   );
 }

@@ -144,13 +144,13 @@ export default function TestBuilderPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-8">
+    <div className="space-y-4 max-w-4xl mx-auto pb-8">
       <TienTrinh5Buoc buocHienTai={1} choBam />
 
-      <div className="the-tke p-6 space-y-4">
+      <div className="the-tke p-5 space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Bước 1. Thiết lập đề kiểm tra</h1>
-          <p className="text-sm text-slate-600 mt-1">Chọn môn và kì kiểm tra của Lớp {khoiLamViec} (đổi khối ở trang Tổng quan). Mỗi thầy cô có bộ riêng, đi lần lượt: <b>Ma trận riêng</b> (chọn từ ma trận chung của tổ) <b>→ Đặc tả → Soạn đề → Duyệt</b>. Bấm Lưu ở mỗi bước là dùng ngay; bước sau tự đổi theo bước trước.</p>
+          <h1 className="text-lg font-bold text-slate-900 tracking-tight">Chọn môn và kì kiểm tra</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Lớp {khoiLamViec} (đổi khối ở trang Tổng quan).</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select aria-label="Môn" className={`${o} min-w-44`} value={maMon} onChange={(e) => setMaMon(e.target.value)}>
@@ -188,7 +188,7 @@ export default function TestBuilderPage() {
       </div>
 
 
-      <div className="the-tke p-6 space-y-3">
+      <div className="the-tke p-5 space-y-3">
         <h2 className="font-semibold text-slate-900">Bộ đề của thầy cô: {tenMon}, {tenKy}</h2>
         {dangTai && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Đang đọc trạng thái…</div>}
         {tt?.loi && <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><TriangleAlert className="w-4 h-4 mt-0.5" />{tt.loi}</div>}

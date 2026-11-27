@@ -234,15 +234,13 @@ export default function KhoDePage() {
   const nguoiKhac = thanhVien;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-8">
+    <div className="space-y-4 max-w-6xl mx-auto pb-8">
       <TienTrinh5Buoc buocHienTai={5} daXong={[1, 2, 3, 4]} choBam />
 
-      <div className="the-tke p-6 flex items-start gap-4">
-        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0"><ClipboardCheck className="w-7 h-7" /></div>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Kho đề kiểm tra · Duyệt đề</h1>
-          <p className="text-sm text-slate-600 mt-1">Mỗi giáo viên soạn đề riêng, gửi kiểm tra chéo. Người kiểm tra góp ý, người soạn sửa, rồi người kiểm tra duyệt chéo. Tổ trưởng, tổ phó duyệt cấp tổ theo môn được giao và chọn tối đa 3 đề chính mỗi môn nộp Ban giám hiệu. Không ai tự duyệt đề của mình. Bạn chỉ thấy đề mình được phép xem và các nút mình được phép bấm.</p>
-        </div>
+      <div className="the-tke px-4 py-3 flex items-center gap-3">
+        <ClipboardCheck className="w-5 h-5 text-indigo-600 shrink-0" aria-hidden />
+        <h1 className="font-bold text-slate-900">Kho đề kiểm tra · Duyệt đề</h1>
+        <span className="text-sm text-slate-500">Chỉ hiện đề và nút thầy cô được phép dùng.</span>
       </div>
 
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}

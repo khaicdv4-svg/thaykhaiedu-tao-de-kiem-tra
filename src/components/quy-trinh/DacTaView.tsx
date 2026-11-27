@@ -37,7 +37,7 @@ import {
 import type { MaTranChung, MaTranRieng } from '@/types/matrix-template';
 import { cauTrenDiaChi, cuonToiCau, docHoSoDe, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
 import { goiYDangBai, yccdRong } from '@/core/de/dang-bai';
-import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
+import { ThanhHoSoDe, nutCheDo } from '@/components/ui/ThanhHoSoDe';
 import { khoaThuocPhan, type NhungTV } from '@/components/quy-trinh/nhung';
 
 interface BanMaTranRieng { id: string; phienBan: number | null; xacNhanLuc: string | null; duLieu: { ma_tran_chung: MaTranChung; ma_tran_rieng: MaTranRieng } }
@@ -383,22 +383,32 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
   };
   const daXacNhan = trangThai === 'DA_XAC_NHAN';
 
+  // Thanh công cụ gọn: chế độ Sửa/Xem, tổng điểm, tuần kiểm tra, điền lại
+  const thanhCongCu = dacTa ? (<>
+    <div className="flex gap-1.5" role="tablist" aria-label="Chế độ đặc tả">
+      {([['sua', 'Sửa đặc tả', ListChecks], ['xem', 'Xem bản đặc tả', Eye]] as const).map(([k, t, Icon]) => (
+        <button key={k} type="button" role="tab" aria-selected={cheDo === k} onClick={() => { if (k === 'xem') xemTruoc(); else setCheDo('sua'); }} className={nutCheDo(cheDo === k)}>
+          <Icon className="w-4 h-4" /> {t}
+        </button>
+      ))}
+    </div>
+    <span>{dacTa.dong.length} câu · <b>{fmtDiem(tongDiem)}</b> điểm</span>
+    <label className="flex items-center gap-1.5" title="Bài dạy sau tuần này là chưa học">
+      Tuần kiểm tra
+      <input aria-label="Tuần kiểm tra" type="number" min={1} max={40} className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-sm" disabled={cheDo === 'xem'}
+        value={dacTa.tuan_kiem_tra ?? ''} onChange={(e) => sua((d) => ({ ...d, tuan_kiem_tra: e.target.value ? Number(e.target.value) : null }))} />
+    </label>
+    {dangTuLuu && <span className="text-xs text-slate-500">Đang tự lưu…</span>}
+    {!daXacNhan && cheDo === 'sua' && <button type="button" className="ml-auto inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-50" disabled={dangGhep} onClick={dienLai}>{dangGhep ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} {dangGhep ? 'Đang tự điền…' : 'Điền lại bài, tuần, trang'}</button>}
+  </>) : null;
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-8">
+    <div className="space-y-4 max-w-6xl mx-auto pb-8">
       {!nhung && <TienTrinh5Buoc buocHienTai={3} daXong={[1, 2]} choBam />}
 
-      {!nhung && <div className="the-tke p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0"><ListChecks className="w-7 h-7" /></div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Bản đặc tả đề kiểm tra</h1>
-            <p className="text-sm text-slate-600 mt-1">Kế thừa ma trận riêng đã xác nhận. Mỗi câu một dòng: YCCĐ, mức, hình thức, điểm, kèm bài, tuần, trang SGK làm minh chứng.</p>
-          </div>
-        </div>
-        {dacTa && <span className={`self-start md:self-auto rounded-full border px-3 py-1 text-sm font-medium ${nhan.mau}`}>{nhan.ten}</span>}
-      </div>}
-
-      {!nhung && <ThanhHoSoDe mon={maMon} ky={ky} ghiChu={mtrBan?.phienBan ? `Ma trận riêng phiên bản ${mtrBan.phienBan}` : undefined} dangTai={dangTai} />}
+      {!nhung && <ThanhHoSoDe mon={maMon} ky={ky} ghiChu={mtrBan?.phienBan ? `Ma trận riêng phiên bản ${mtrBan.phienBan}` : undefined} dangTai={dangTai} trangThai={dacTa ? nhan : null}>
+        {dacTa && !baiCu ? thanhCongCu : null}
+      </ThanhHoSoDe>}
       {nhung && dacTa && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
           <span>Bản đặc tả dùng chung cho cả đề; ở đây chỉ hiện {nhung.phan === 'viet' ? 'bài viết' : 'các câu đọc hiểu'}. <span className={`rounded-full border px-2 py-0.5 text-xs ${nhan.mau}`}>{nhan.ten}</span></span>
@@ -441,33 +451,7 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
 
       {dacTa && !baiCu && (
         <>
-          <div className="the-tke p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
-            <span>{dacTa.dong.length} dòng · tổng <b>{fmtDiem(tongDiem)}</b> điểm</span>
-            <label className="flex items-center gap-2">
-              Tuần kiểm tra:
-              <input
-                aria-label="Tuần kiểm tra"
-                type="number" min={1} max={40}
-                className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm"
-                disabled={cheDo === 'xem'}
-                value={dacTa.tuan_kiem_tra ?? ''}
-                onChange={(e) => sua((d) => ({ ...d, tuan_kiem_tra: e.target.value ? Number(e.target.value) : null }))}
-              />
-              <span className="text-xs text-slate-500">Bài dạy sau tuần này là chưa học.</span>
-            </label>
-            {!daXacNhan && cheDo === 'sua' && <button type="button" className={nutPhu} disabled={dangGhep} onClick={dienLai}>{dangGhep ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {dangGhep ? 'Đang tự điền bài…' : 'Điền lại bài, tuần, trang'}</button>}
-            {phienBanXacNhan !== null && <span className="text-emerald-700">Đã có phiên bản xác nhận: {phienBanXacNhan}</span>}
-          </div>
-
-          <div className="the-tke p-2 flex flex-wrap items-center gap-2" role="tablist" aria-label="Chế độ đặc tả">
-            {([['sua', 'Sửa đặc tả', ListChecks], ['xem', 'Xem bản đặc tả', Eye]] as const).map(([k, t, Icon]) => (
-              <button key={k} type="button" role="tab" aria-selected={cheDo === k} onClick={() => { if (k === 'xem') xemTruoc(); else setCheDo('sua'); }}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${cheDo === k ? 'text-white bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow' : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'}`}>
-                <Icon className="w-4 h-4" /> {t}
-              </button>
-            ))}
-            <span className="text-xs text-slate-500 px-2">{cheDo === 'sua' ? 'Điền, sửa từng câu. App tự lưu nháp.' : 'Xem cả bảng như bản in.'}{dangTuLuu ? ' Đang tự lưu…' : ''}</span>
-          </div>
+          {nhung && <div className="the-tke px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">{thanhCongCu}</div>}
 
           {cheDo === 'sua' ? (
             <div className="space-y-4">

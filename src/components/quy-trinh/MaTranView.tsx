@@ -15,7 +15,7 @@
 import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, Grid, ListChecks, Loader2, Plus, RotateCcw, Save, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, ListChecks, Loader2, Plus, RotateCcw, Save, X } from 'lucide-react';
 import { MAU_MA_TRAN_CHUNG } from '@/core/matrix/templates';
 import {
   apDungSuaCau,
@@ -37,6 +37,7 @@ import type { YccdChuongTrinh } from '@/core/chuong-trinh/mon';
 import type { HinhThucCau, MaTranChung, MaTranRieng, MucDo, SuaCauMaTranRieng, TrangThaiMaTran } from '@/types/matrix-template';
 import { MatrixPreview } from '@/components/matrices/MatrixPreview';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
+import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { DungTuChuongTrinh } from '@/components/matrices/DungTuChuongTrinh';
 import { DungTiengViet } from '@/components/matrices/DungTiengViet';
@@ -94,14 +95,13 @@ const ganSanYccdDuyNhat = (mtc: MaTranChung, mtr: MaTranRieng): MaTranRieng => g
 function Stepper({ buoc, xong }: { buoc: number; xong: boolean[] }) {
   return (
     <div>
-      <div className="text-xs font-medium text-slate-500 mb-2">Bước {buoc + 1}/{BUOC.length}</div>
-      <ol className="flex flex-wrap gap-2">
+      <ol className="flex flex-wrap gap-1.5" aria-label={`Bước ${buoc + 1}/${BUOC.length}`}>
         {BUOC.map((ten, i) => {
           const hienTai = i === buoc;
           return (
             <li
               key={ten}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${
+              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-sm ${
                 hienTai ? 'border-blue-600 bg-blue-600 text-white' : xong[i] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500'
               }`}
             >
@@ -541,25 +541,13 @@ export function MaTranView({ nhung, baiDocHieuNgoai = null }: { nhung?: NhungTV;
   const trangThai = mtr ? NHAN_TRANG_THAI[mtr.trang_thai] : null;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-8">
+    <div className="space-y-4 max-w-6xl mx-auto pb-8">
       {!nhung && <TienTrinh5Buoc buocHienTai={2} daXong={[1]} choBam />}
-      {!nhung && <div className="the-tke p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0">
-            <Grid className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Ma trận đề kiểm tra</h1>
-            <p className="text-sm text-slate-600 mt-1">Lập ma trận riêng từ ma trận chung của tổ khối {khoiLamViec}, kiểm tra rồi xác nhận trước khi sang bản đặc tả.</p>
-          </div>
-        </div>
-        {trangThai && (
-          <span className={`self-start md:self-auto rounded-full border px-3 py-1 text-sm font-medium ${trangThai.mau}`}>{trangThai.ten}</span>
-        )}
-      </div>}
-
-      {buoc >= 2 && (
-        <div className="the-tke p-4">
+      {!nhung && maMon && <ThanhHoSoDe mon={maMon} ky={kyDung} trangThai={trangThai}>
+        {buoc >= 2 ? <Stepper buoc={buoc === 3 ? 1 : 0} xong={xong} /> : null}
+      </ThanhHoSoDe>}
+      {(nhung || !maMon) && buoc >= 2 && (
+        <div className="the-tke px-4 py-2.5">
           <Stepper buoc={buoc === 3 ? 1 : 0} xong={xong} />
         </div>
       )}

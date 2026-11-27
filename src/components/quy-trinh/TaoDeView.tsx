@@ -25,7 +25,7 @@ import { ChuPhanSo } from '@/components/de/ChuPhanSo';
 import { DANH_SACH_KY, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import { xepDongTheoCau, type DacTa } from '@/core/dac-ta/dac-ta';
 import { cauTrenDiaChi, cuonToiCau, docHoSoDe, duongDanCau, luuHoSoDe } from '@/core/ho-so-de/ho-so-de';
-import { ThanhHoSoDe } from '@/components/ui/ThanhHoSoDe';
+import { ThanhHoSoDe, nutCheDo } from '@/components/ui/ThanhHoSoDe';
 import { khoaThuocPhan, mucCuaCau, type MucTV, type NhungTV } from '@/components/quy-trinh/nhung';
 import {
   NHAN_LUA_CHON,
@@ -565,22 +565,40 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   }, [de, dacTaBan]);
   const tongDiem = Math.round((de?.cau.reduce((s, c) => s + c.diem, 0) ?? 0) * 100) / 100;
 
+  // Thanh công cụ gọn: chế độ Soạn/Xem, tiến độ, làm lại, xóa nháp
+  const thanhCongCu = de ? (<>
+    {!nhung && <div className="flex gap-1.5" role="tablist" aria-label="Chế độ làm đề">
+      {([['soan', 'Soạn đề', PenLine], ['xem', 'Xem đề', Eye]] as const).map(([k, t, Icon]) => (
+        <button key={k} type="button" role="tab" aria-selected={cheDo === k} onClick={() => { setCheDo(k); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={nutCheDo(cheDo === k)}>
+          <Icon className="w-4 h-4" /> {t}
+        </button>
+      ))}
+    </div>}
+    <span>{de.cau.length} câu · <b>{fmtDiem(tongDiem)}</b> điểm · soạn xong <b>{tienDo.xong}/{tienDo.tong}</b></span>
+    <div className="h-1.5 w-24 rounded-full bg-slate-200 overflow-hidden" aria-hidden>
+      <div className="h-full bg-emerald-500" style={{ width: `${tienDo.tong ? (tienDo.xong / tienDo.tong) * 100 : 0}%` }} />
+    </div>
+    {daSua && <span className="text-xs text-amber-700">Có thay đổi chưa lưu</span>}
+    <span className="ml-auto flex gap-1.5">
+      <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-slate-700 hover:bg-slate-50" onClick={taoMoi} title="Bỏ nội dung đang soạn, làm khung đề trống theo đặc tả mới nhất">
+        <RefreshCw className="w-4 h-4" /> Làm lại đề trống
+      </button>
+      {xoaDuoc && (
+        <button type="button" disabled={dangXoa} onClick={() => void xoaDeNhap()} title="Xóa hẳn đề nháp này, không dùng lại"
+          className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 disabled:opacity-50 ${hoiXoa ? 'border-red-600 bg-red-600 text-white hover:bg-red-700' : 'border-red-300 bg-white text-red-700 hover:bg-red-50'}`}>
+          {dangXoa ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} {hoiXoa ? 'Bấm lần nữa để xóa' : 'Xóa đề nháp'}
+        </button>
+      )}
+    </span>
+  </>) : null;
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-8">
+    <div className="space-y-4 max-w-6xl mx-auto pb-8">
       {!nhung && <TienTrinh5Buoc buocHienTai={4} daXong={[1, 2, 3]} choBam />}
 
-      {!nhung && <div className="the-tke p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 shrink-0"><Sparkles className="w-7 h-7" /></div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Tạo đề kiểm tra</h1>
-            <p className="text-sm text-slate-600 mt-1">Mỗi dòng đặc tả là một câu. Thầy nhập đề bài, phương án, đáp án và hướng dẫn chấm; mức, dạng câu và điểm lấy từ đặc tả.</p>
-          </div>
-        </div>
-        {de && <span className={`self-start md:self-auto rounded-full border px-3 py-1 text-sm font-medium ${nhan.mau}`}>{nhan.ten}</span>}
-      </div>}
-
-      {!nhung && <ThanhHoSoDe mon={maMon} ky={ky} ghiChu={dacTaBan?.phienBan ? `Đặc tả phiên bản ${dacTaBan.phienBan}` : undefined} dangTai={dangTai} />}
+      {!nhung && <ThanhHoSoDe mon={maMon} ky={ky} ghiChu={dacTaBan?.phienBan ? `Đặc tả phiên bản ${dacTaBan.phienBan}` : undefined} dangTai={dangTai} trangThai={de ? nhan : null}>
+        {de && dacTaBan ? thanhCongCu : null}
+      </ThanhHoSoDe>}
 
       {thongBao && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{thongBao}</div>}
       {loiTai && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{loiTai}</div>}
@@ -616,73 +634,42 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
 
       {de && dacTaBan && (
         <>
-          {!nhung && <div className="the-tke p-2 flex flex-wrap items-center gap-2" role="tablist" aria-label="Chế độ làm đề">
-            {([['soan', 'Soạn đề', PenLine], ['xem', 'Xem đề', Eye]] as const).map(([k, t, Icon]) => (
-              <button key={k} type="button" role="tab" aria-selected={cheDo === k} onClick={() => { setCheDo(k); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${cheDo === k ? 'text-white bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow' : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'}`}>
-                <Icon className="w-4 h-4" /> {t}
-              </button>
-            ))}
-            <span className="text-xs text-slate-500 px-2">{cheDo === 'soan' ? 'Soạn, sửa từng câu. Xong thì sang Xem đề để kiểm tra cả đề và xuất Word.' : 'Xem cả đề như bản in. Câu đánh dấu đỏ cần xem lại; bấm "Sửa câu này" hoặc "Sửa ở bước Đặc tả".'}{daSua ? ' Có thay đổi chưa lưu.' : ''}</span>
-          </div>}
-          {coXemPhan && <div className="the-tke p-2 flex flex-wrap items-center gap-2" role="tablist" aria-label="Soạn hoặc xem trước phần này">
+          {coXemPhan && <div className="the-tke px-3 py-2 flex flex-wrap items-center gap-2" role="tablist" aria-label="Soạn hoặc xem trước phần này">
             {([[false, nhung!.phan === 'viet' ? 'Soạn đề bài viết' : 'Soạn câu hỏi', PenLine], [true, 'Xem trước phần này', Eye]] as const).map(([k, t, Icon]) => (
               <button key={String(k)} type="button" role="tab" aria-selected={xemPhan === k} onClick={() => { setXemPhan(k); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold ${xemPhan === k ? 'text-white bg-linear-to-r from-violet-600 via-indigo-600 to-blue-600 shadow' : 'text-slate-700 bg-white border border-slate-200 hover:bg-slate-50'}`}>
+                className={nutCheDo(xemPhan === k)}>
                 <Icon className="w-4 h-4" /> {t}
               </button>
             ))}
-            <span className="text-xs text-slate-500 px-2">{xemPhan ? 'Xem phần này như bản in, kèm đáp án. Câu nào sai thì bấm "Sửa câu này".' : 'Soạn, sửa từng câu. Xong bấm "Xem trước phần này" để đọc lại.'}{daSua ? ' Có thay đổi chưa lưu.' : ''}</span>
+            {daSua && <span className="text-xs text-amber-700">Có thay đổi chưa lưu</span>}
           </div>}
-          {(!nhung || nhung.phan === 'hoanChinh') && <div className="the-tke p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
-            <span>{de.cau.length} câu · tổng <b>{fmtDiem(tongDiem)}</b> điểm</span>
-            <span>Đã soạn xong <b>{tienDo.xong}/{tienDo.tong}</b> câu</span>
-            <span>Theo đặc tả phiên bản <b>{de.phien_ban_dac_ta}</b></span>
-            <div className="h-2 w-40 rounded-full bg-slate-200 overflow-hidden" aria-hidden>
-              <div className="h-full bg-emerald-500" style={{ width: `${tienDo.tong ? (tienDo.xong / tienDo.tong) * 100 : 0}%` }} />
-            </div>
-            <button type="button" className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50" onClick={taoMoi} title="Bỏ nội dung đang soạn, làm khung đề trống theo đặc tả mới nhất">
-              <RefreshCw className="w-4 h-4" /> Làm lại đề trống
-            </button>
-            {xoaDuoc && (
-              <button type="button" disabled={dangXoa} onClick={() => void xoaDeNhap()} title="Xóa hẳn đề nháp này, không dùng lại"
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50 ${hoiXoa ? 'border-red-600 bg-red-600 text-white hover:bg-red-700' : 'border-red-300 bg-white text-red-700 hover:bg-red-50'}`}>
-                {dangXoa ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} {hoiXoa ? 'Bấm lần nữa để xóa hẳn' : 'Xóa đề nháp'}
-              </button>
-            )}
-          </div>}
+          {nhung?.phan === 'hoanChinh' && <div className="the-tke px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">{thanhCongCu}</div>}
 
           {cheDo === 'soan' && (<>
-          {nhung?.phan !== 'thanhTieng' && <div className="the-tke p-4 flex flex-wrap items-center gap-3 border-2 border-indigo-200">
-            <button type="button" className={nutChinh} disabled={!!taoDeAI?.dang || !de.cau.some((c) => trongPhan(c.khoa) && !c.deBai.trim())} onClick={() => void taoDeBangAI()}>
-              {taoDeAI?.dang ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-              {taoDeAI?.dang ? `AI đang soạn… ${taoDeAI.xong}/${taoDeAI.tong} câu` : nhung?.phan === 'docHieu' ? 'Tạo câu hỏi đọc hiểu' : nhung?.phan === 'viet' ? 'Tạo đề bài viết' : 'Tạo đề'}
-            </button>
-            <span className="text-sm text-slate-600 flex-1 min-w-60">
-              {de.cau.some((c) => trongPhan(c.khoa) && !c.deBai.trim())
-                ? nhung?.phan === 'viet'
-                  ? 'AI tham khảo dạng đề ở các tiết Viết và tiết Ôn tập cùng kiểu bài trong SGK, rồi ra đề mới diễn đạt khác, không trùng đề học sinh đã làm trên lớp. Kèm hướng dẫn chấm. Không cần trang SGK.'
-                  : `AI viết đề bài, phương án, đáp án và hướng dẫn chấm cho ${de.cau.filter((c) => trongPhan(c.khoa) && !c.deBai.trim()).length} câu còn trống, theo đúng bài, trang SGK, YCCĐ, mức và điểm trong đặc tả. Thầy cô chỉ cần xem, sửa và gửi duyệt.`
-                : 'Các câu đã có nội dung. Muốn AI viết lại toàn bộ thì bấm "Viết lại tất cả".'}
-            </span>
-            {!de.cau.some((c) => trongPhan(c.khoa) && !c.deBai.trim()) && !taoDeAI?.dang && (
-              <button type="button" className={nutPhu} onClick={() => void taoDeBangAI(true)}><RefreshCw className="w-4 h-4" /> Viết lại tất cả</button>
-            )}
-            {taoDeAI && !taoDeAI.dang && taoDeAI.loi.length > 0 && (
-              <ul className="w-full text-xs text-amber-800 list-disc pl-5 space-y-0.5">
-                {taoDeAI.loi.map((l) => <li key={l}>{l}</li>)}
-              </ul>
-            )}
-          </div>}
-
-          {nhung?.phan !== 'thanhTieng' && de.cau.some((c) => trongPhan(c.khoa) && !c.deBai.trim()) && (
-            <div className="the-tke p-4 space-y-3">
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <button type="button" className={nutPhu} disabled={dangGoiYNH} onClick={() => void layGoiYNH()}>
-                  {dangGoiYNH ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Gợi ý câu từ ngân hàng cho các câu còn trống
+          {nhung?.phan !== 'thanhTieng' && (() => {
+            const conTrong = de.cau.filter((c) => trongPhan(c.khoa) && !c.deBai.trim()).length;
+            return (
+            <div className="the-tke px-4 py-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <button type="button" className={nutChinh} disabled={!!taoDeAI?.dang || !conTrong} onClick={() => void taoDeBangAI()}>
+                  {taoDeAI?.dang ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                  {taoDeAI?.dang ? `AI đang soạn… ${taoDeAI.xong}/${taoDeAI.tong} câu` : nhung?.phan === 'docHieu' ? 'Tạo câu hỏi đọc hiểu' : nhung?.phan === 'viet' ? 'Tạo đề bài viết' : 'Tạo đề'}
                 </button>
-                <span className="text-slate-500">Chỉ gợi ý, thầy xem rồi chọn câu nào dùng.</span>
+                {!conTrong && !taoDeAI?.dang && (
+                  <button type="button" className={nutPhu} onClick={() => void taoDeBangAI(true)}><RefreshCw className="w-4 h-4" /> Viết lại tất cả</button>
+                )}
+                {conTrong > 0 && nhung?.phan !== 'viet' && (
+                  <button type="button" className={nutPhu} disabled={dangGoiYNH} onClick={() => void layGoiYNH()}>
+                    {dangGoiYNH ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Lấy từ ngân hàng
+                  </button>
+                )}
+                <span className="text-slate-500">{conTrong ? `AI soạn ${conTrong} câu còn trống theo đặc tả.` : 'Các câu đã có nội dung.'}</span>
               </div>
+              {taoDeAI && !taoDeAI.dang && taoDeAI.loi.length > 0 && (
+                <ul className="text-xs text-amber-800 list-disc pl-5 space-y-0.5">
+                  {taoDeAI.loi.map((l) => <li key={l}>{l}</li>)}
+                </ul>
+              )}
               {goiYNH?.tin && <div className="text-sm text-slate-600">{goiYNH.tin}</div>}
               {goiYNH && goiYNH.ds.length > 0 && (
                 <div className="space-y-2">
@@ -708,7 +695,8 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
 
           {de.tiengViet && (!nhung || nhung.phan === 'docHieu' || nhung.phan === 'thanhTieng') && (
             <BaiDocTiengViet ky={ky as KyKiemTraBaiDoc} gia={de.tiengViet} onDoi={suaTiengViet}
