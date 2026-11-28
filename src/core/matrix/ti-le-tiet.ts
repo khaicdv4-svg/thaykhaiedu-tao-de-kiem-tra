@@ -230,7 +230,7 @@ export function tinhTiLeMach(p: { tiet: TietTiLe[]; mucLuc: MucLucTiLe[]; tuyCho
   for (const n of cacNhomLuaChon(p.mtc)) if (n.phuong_an[0]) lc[n.ma] = n.phuong_an[0].ma;
   const cau = danhSachCau(p.mtc, lc);
   const tongDiem = lam2(cau.reduce((s, c) => s + c.cau.diem, 0));
-  const tongCau = cau.reduce((s, c) => s + (c.cau.so_cau_tinh ?? 1), 0);
+  const tongCau = new Set(cau.map((c) => `${c.bai.ma}|${c.cau.cau}`)).size;
 
   const ds = [...machMaTran];
   for (const b of bai) if (b.mach && !ds.some((x) => chuan(x) === chuan(b.mach!))) ds.push(b.mach);
@@ -251,7 +251,7 @@ export function tinhTiLeMach(p: { tiet: TietTiLe[]; mucLuc: MucLucTiLe[]; tuyCho
       diemGoiY: lam2(diem[i]),
       cauGoiY: cauGoiY[i],
       diemMaTran: dm,
-      cauMaTran: cuaMach.reduce((s, c) => s + (c.cau.so_cau_tinh ?? 1), 0),
+      cauMaTran: new Set(cuaMach.map((c) => `${c.bai.ma}|${c.cau.cau}`)).size,
       tiLeMaTran: tongDiem ? lam1((dm / tongDiem) * 100) : 0,
     };
   });

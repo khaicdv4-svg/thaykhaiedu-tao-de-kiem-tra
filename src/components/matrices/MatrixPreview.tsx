@@ -82,16 +82,21 @@ function BangToan({ m }: { m: MaTranChung }) {
   const rows = m.bai_kiem_tra[0].phan[0].dong;
   const rsM = rowSpans(rows, (r) => r.mach);
   const rsN = rowSpans(rows, (r) => `${r.mach}|${r.noi_dung}`);
-  const tot = { TN: 0, TL: 0, nTN: 0, nTL: 0, 1: 0, 2: 0, 3: 0 } as Record<string, number>;
+  const tot = { TN: 0, TL: 0, 1: 0, 2: 0, 3: 0 } as Record<string, number>;
+  const nTNSet = new Set<string>();
+  const nTLSet = new Set<string>();
   const mach: Record<string, number> = {};
   rows.forEach((r) =>
     r.cau_hoi.forEach((c) => {
       tot[c.hinh_thuc] += c.diem;
-      tot[`n${c.hinh_thuc}`] += c.so_cau_tinh;
+      if (c.hinh_thuc === 'TN') nTNSet.add(c.cau);
+      else nTLSet.add(c.cau);
       tot[c.muc] += c.diem;
       mach[r.mach] = (mach[r.mach] ?? 0) + c.diem;
     }),
   );
+  tot.nTN = nTNSet.size;
+  tot.nTL = nTLSet.size;
   const tenMuc: Record<MucDo, string> = { 1: 'Nhận biết (mức 1)', 2: 'Kết nối (mức 2)', 3: 'Vận dụng (mức 3)' };
   return (
     <>
@@ -123,9 +128,9 @@ function BangToan({ m }: { m: MaTranChung }) {
                 {rsM[i] > 0 && <td rowSpan={rsM[i]} className={`${cell} font-bold`}>{r.mach}</td>}
                 {rsN[i] > 0 && <td rowSpan={rsN[i]} className={`${cell} font-bold`}>{r.noi_dung}</td>}
                 <td className={cellL}><Yccd r={r} /></td>
-                <td className={cell}>{c && <>{c.so_cau_tinh}<br />{nhanCau(c)}</>}</td>
-                <td className={cell}>{c?.hinh_thuc === 'TN' ? c.so_cau_tinh : ''}</td>
-                <td className={cell}>{c?.hinh_thuc === 'TL' ? c.so_cau_tinh : ''}</td>
+                <td className={cell}>{c && <>{r.cau_hoi.length}<br />{r.cau_hoi.map(nhanCau).join(', ')}</>}</td>
+                <td className={cell}>{c?.hinh_thuc === 'TN' ? r.cau_hoi.length : ''}</td>
+                <td className={cell}>{c?.hinh_thuc === 'TL' ? r.cau_hoi.length : ''}</td>
                 {[1, 2, 3].map((k) => (
                   <td key={k} className={cell}>{c?.muc === k ? `${fmt(c.diem)}đ` : ''}</td>
                 ))}
@@ -190,17 +195,19 @@ function BangBai({ m }: { m: MaTranChung }) {
   const rs = rowSpans(rows, (r) => (theoNoiDung ? r.noi_dung : r.mach));
   type K = `${1 | 2 | 3 | 'T'}${'TN' | 'TL'}`;
   const keys: K[] = ['1TN', '1TL', '2TN', '2TL', '3TN', '3TL', 'TTN', 'TTL'];
-  const cnt: Record<string, number> = {};
+  const cntSet: Record<string, Set<string>> = {};
   const pts: Record<string, number> = {};
   rows.forEach((r) =>
     r.cau_hoi.forEach((c) => {
       for (const k of [`${c.muc}${c.hinh_thuc}`, `T${c.hinh_thuc}`]) {
-        cnt[k] = (cnt[k] ?? 0) + 1;
+        if (!cntSet[k]) cntSet[k] = new Set();
+        cntSet[k].add(c.cau);
         pts[k] = (pts[k] ?? 0) + c.diem;
       }
     }),
   );
-  const tongCau = (cnt.TTN ?? 0) + (cnt.TTL ?? 0);
+  const cnt: Record<string, number> = Object.fromEntries(Object.entries(cntSet).map(([k, s]) => [k, s.size]));
+  const tongCau = new Set(rows.flatMap((r) => r.cau_hoi.map((c) => c.cau))).size;
   return (
     <>
       <table className="w-full border-collapse">

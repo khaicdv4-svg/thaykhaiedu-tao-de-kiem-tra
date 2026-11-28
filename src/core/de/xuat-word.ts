@@ -616,20 +616,20 @@ function bangDapAnTN(cauTN: CauDe[]): Table {
   const n = cauTN.length;
   const cCau = Math.floor(conLai / n);
   const w = [c0, ...Array.from({ length: n }, (_, i) => (i === n - 1 ? conLai - cCau * (n - 1) : cCau))];
-  const oDapAn = (chu: string, rong: number, bold = false, align: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.LEFT) =>
-    o2([doan([tr(chu, { bold })], { align })], rong, VIEN_DU, 1, 1, VerticalAlign.CENTER);
+  const oDapAn = (chu: string, rong: number, bold = false) =>
+    o2([doan([tr(chu, { bold })], { align: AlignmentType.LEFT })], rong, VIEN_DU, 1, 1, VerticalAlign.CENTER);
   const hangCau = new TableRow({
     cantSplit: true,
     children: [
-      oDapAn('Câu', w[0], true, AlignmentType.CENTER),
-      ...cauTN.map((c, i) => oDapAn(nhanCau(c).replace(/^Câu /, ''), w[i + 1], true, AlignmentType.CENTER)),
+      oDapAn('Câu', w[0], true),
+      ...cauTN.map((c, i) => oDapAn(nhanCau(c).replace(/^Câu /, ''), w[i + 1], true)),
     ],
   });
   const hangDapAn = new TableRow({
     cantSplit: true,
     children: [
-      oDapAn('Đáp án', w[0], true, AlignmentType.CENTER),
-      ...cauTN.map((c, i) => oDapAn(c.dang !== 'DS' && /^[A-D]$/i.test(c.dapAn.trim()) ? c.dapAn.trim().toUpperCase() : dapAnHienThi(c).trim(), w[i + 1], false, AlignmentType.LEFT)),
+      oDapAn('Đáp án', w[0], true),
+      ...cauTN.map((c, i) => oDapAn(c.dang !== 'DS' && /^[A-D]$/i.test(c.dapAn.trim()) ? c.dapAn.trim().toUpperCase() : dapAnHienThi(c).trim(), w[i + 1])),
     ],
   });
   return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows: [hangCau, hangDapAn] });
@@ -1002,20 +1002,38 @@ interface NhomMaTran { ten: string; mach: string; yccd: string[]; cau: string[];
 
 /** Gom các dòng đặc tả theo (phần, mạch, nội dung) để dựng bảng ma trận. */
 function gomMaTran(dacTa: DacTa): NhomMaTran[] {
-  const ds = new Map<string, NhomMaTran>();
+  const ds = new Map<string, NhomMaTran & { dem: Record<1 | 2 | 3, { tn: Set<string>; tl: Set<string> }>; cauSet: Set<string> }>();
   for (const r of dacTa.dong) {
     const khoa = `${r.baiKiemTra}|${r.phan ?? ''}|${r.mach}|${r.noiDung ?? ''}`;
     let n = ds.get(khoa);
     if (!n) {
-      n = { ten: [r.phan ?? r.baiKiemTra].join(''), mach: [r.mach, r.noiDung].filter(Boolean).join(' – '), yccd: [], cau: [], m: { 1: { tn: 0, tl: 0 }, 2: { tn: 0, tl: 0 }, 3: { tn: 0, tl: 0 } }, diem: 0 };
+      n = {
+        ten: [r.phan ?? r.baiKiemTra].join(''),
+        mach: [r.mach, r.noiDung].filter(Boolean).join(' – '),
+        yccd: [],
+        cau: [],
+        cauSet: new Set<string>(),
+        m: { 1: { tn: 0, tl: 0 }, 2: { tn: 0, tl: 0 }, 3: { tn: 0, tl: 0 } },
+        dem: { 1: { tn: new Set(), tl: new Set() }, 2: { tn: new Set(), tl: new Set() }, 3: { tn: new Set(), tl: new Set() } },
+        diem: 0,
+      };
       ds.set(khoa, n);
     }
     if (r.yccd && !n.yccd.includes(r.yccd)) n.yccd.push(r.yccd);
-    n.cau.push(r.cau);
-    n.m[r.muc][r.hinhThuc === 'TN' ? 'tn' : 'tl'] += r.soCauTinh;
+    const nhan = r.yNho?.length ? `${r.cau} (${r.yNho.join(', ')})` : r.cau;
+    if (!n.cau.includes(nhan)) n.cau.push(nhan);
+    n.cauSet.add(`${r.baiKiemTra}|${r.cau}`);
+    n.dem[r.muc][r.hinhThuc === 'TN' ? 'tn' : 'tl'].add(`${r.baiKiemTra}|${r.cau}`);
     n.diem += r.diem;
   }
-  return [...ds.values()];
+  return [...ds.values()].map(({ dem, cauSet: _cs, ...rest }) => ({
+    ...rest,
+    m: {
+      1: { tn: dem[1].tn.size, tl: dem[1].tl.size },
+      2: { tn: dem[2].tn.size, tl: dem[2].tl.size },
+      3: { tn: dem[3].tn.size, tl: dem[3].tl.size },
+    },
+  }));
 }
 
 function bangMaTran(dacTa: DacTa): Table {
@@ -1029,7 +1047,14 @@ function bangMaTran(dacTa: DacTa): Table {
       { t: ['Số câu'], w: w[9], b: true, a: giua }, { t: ['Điểm'], w: w[10], b: true, a: giua }]),
   ];
   const so = (n: number) => (n ? String(n) : '');
-  let tong = { c: 0, d: 0, m: { 1: 0, 2: 0, 3: 0 } as Record<1 | 2 | 3, number> };
+  const tongCauSet = new Set<string>();
+  const tongMucSet: Record<1 | 2 | 3, Set<string>> = { 1: new Set(), 2: new Set(), 3: new Set() };
+  for (const r of dacTa.dong) {
+    const id = `${r.baiKiemTra}|${r.cau}`;
+    tongCauSet.add(id);
+    tongMucSet[r.muc].add(id);
+  }
+  let tongDiem = 0;
   let phanHienTai = '';
   for (const n of gomMaTran(dacTa)) {
     if (n.ten !== phanHienTai) {
@@ -1037,9 +1062,7 @@ function bangMaTran(dacTa: DacTa): Table {
       rows.push(hang([{ t: [n.ten], w: RONG_NGANG, b: true, span: 11 }]));
     }
     const soCau = ([1, 2, 3] as const).reduce((a, k) => a + n.m[k].tn + n.m[k].tl, 0);
-    tong.c += soCau;
-    tong.d += n.diem;
-    ([1, 2, 3] as const).forEach((k) => { tong.m[k] += n.m[k].tn + n.m[k].tl; });
+    tongDiem += n.diem;
     rows.push(hang([
       { t: [n.mach], w: w[0] }, { t: n.yccd, w: w[1] }, { t: [n.cau.join(', ')], w: w[2], a: giua },
       { t: [so(n.m[1].tn)], w: w[3], a: giua }, { t: [so(n.m[1].tl)], w: w[4], a: giua },
@@ -1050,8 +1073,8 @@ function bangMaTran(dacTa: DacTa): Table {
   }
   rows.push(hang([
     { t: ['Tổng số câu'], w: w[0] + w[1] + w[2], b: true, a: AlignmentType.RIGHT, span: 3 },
-    { t: [String(tong.m[1])], w: w[3] + w[4], b: true, a: giua, span: 2 }, { t: [String(tong.m[2])], w: w[5] + w[6], b: true, a: giua, span: 2 }, { t: [String(tong.m[3])], w: w[7] + w[8], b: true, a: giua, span: 2 },
-    { t: [String(tong.c)], w: w[9], b: true, a: giua }, { t: [fmtDiem(Math.round(tong.d * 100) / 100)], w: w[10], b: true, a: giua },
+    { t: [String(tongMucSet[1].size)], w: w[3] + w[4], b: true, a: giua, span: 2 }, { t: [String(tongMucSet[2].size)], w: w[5] + w[6], b: true, a: giua, span: 2 }, { t: [String(tongMucSet[3].size)], w: w[7] + w[8], b: true, a: giua, span: 2 },
+    { t: [String(tongCauSet.size)], w: w[9], b: true, a: giua }, { t: [fmtDiem(Math.round(tongDiem * 100) / 100)], w: w[10], b: true, a: giua },
   ]));
   return new Table({ width: { size: RONG_NGANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows });
 }

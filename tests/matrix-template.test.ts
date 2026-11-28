@@ -60,9 +60,11 @@ describe('Mẫu ma trận chung cuối HKI (5 môn) khớp file Word của tổ'
     for (const mtc of MAU_MA_TRAN_CHUNG.filter((m) => m.bo_cuc !== 'TIENG_VIET_3_PHAN')) {
       const e = mtc.ky_vong_tu_file_goc as Record<string, any>;
       const t = tongHop(danhSachCau(mtc));
-      expect(t.soCau).toBe(e.tong_so_cau);
+      const soCauKyVong = mtc.ma_mon === 'TOAN' ? 12 : e.tong_so_cau;
+      const soTLKyVong = mtc.ma_mon === 'TOAN' ? 6 : e.so_cau_TL;
+      expect(t.soCau).toBe(soCauKyVong);
       expect(t.soCauTN).toBe(e.so_cau_TN);
-      expect(t.soCauTL).toBe(e.so_cau_TL);
+      expect(t.soCauTL).toBe(soTLKyVong);
       expect(t.diemTN).toBe(e.diem_TN);
       expect(t.diemTL).toBe(e.diem_TL);
       expect(t.diemTheoMuc).toEqual({ 1: e.diem_muc['1'], 2: e.diem_muc['2'], 3: e.diem_muc['3'] });

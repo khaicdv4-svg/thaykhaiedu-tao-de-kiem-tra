@@ -86,9 +86,9 @@ describe('Toán (điểm ghi ở cột mức)', () => {
     expect(kq.loi).toBeUndefined();
     const th = tongHopPhanCauHoi(mtc);
     expect(th.tongDiem).toBe(10);
-    expect(th.soCau).toBe(15);
+    expect(th.soCau).toBe(12);
     expect(th.soCauTN).toBe(6);
-    expect(th.soCauTL).toBe(9);
+    expect(th.soCauTL).toBe(6);
     expect(th.diemTN).toBe(3);
     expect(th.diemTL).toBe(7);
     expect(th.diemTheoMuc).toEqual({ 1: 5, 2: 3, 3: 2 });
@@ -314,11 +314,11 @@ describe('Bảng thật của tổ (rút gọn chữ)', () => {
   const doc = (ma: string, tenMon: string, ky: 'CUOI_HK1' | 'CUOI_NAM') =>
     docMaTranChungTuBang(moRutGon((thatRutGon as unknown as Record<string, unknown[]>)[ma]), { maMon: ma.split('/')[0], tenMon, ky, phienBan: 1 });
 
-  it('Toán cuối năm: 16 câu, TN 6 / TL 10, điểm 3 / 7, mức 5 – 3 – 2 như hàng Tổng', () => {
+  it('Toán cuối năm: 12 câu (theo số thứ tự), TN 6 / TL 6, điểm 3 / 7, mức 5 – 3 – 2', () => {
     const kq = doc('TOAN/CUOI_NAM', 'Toán', 'CUOI_NAM');
     const th = tongHopPhanCauHoi(kq.mtc!);
     expect({ tong: th.tongDiem, soCau: th.soCau, tn: th.soCauTN, tl: th.soCauTL, dTN: th.diemTN, dTL: th.diemTL, muc: th.diemTheoMuc })
-      .toEqual({ tong: 10, soCau: 16, tn: 6, tl: 10, dTN: 3, dTL: 7, muc: { 1: 5, 2: 3, 3: 2 } });
+      .toEqual({ tong: 10, soCau: 12, tn: 6, tl: 6, dTN: 3, dTL: 7, muc: { 1: 5, 2: 3, 3: 2 } });
     expect(danhSachCau(kq.mtc!).map((c) => c.cau.cau).sort((a, b) => +a - +b)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']);
     expect(kiemDinhMaTranChung(kq.mtc!).hopLe).toBe(true);
   });

@@ -194,17 +194,26 @@ export function tongHop(cauList: CauTrongMaTran[]): TongHop {
     tongDiem: 0, soCau: 0, soCauTN: 0, soCauTL: 0, diemTN: 0, diemTL: 0,
     diemTheoMuc: { 1: 0, 2: 0, 3: 0 }, soCauTheoMuc: { 1: 0, 2: 0, 3: 0 }, diemTheoMach: {},
   };
-  for (const { dong, cau } of cauList) {
+  const daDem = new Set<string>();
+  const daDemTN = new Set<string>();
+  const daDemTL = new Set<string>();
+  const daDemMuc: Record<MucDo, Set<string>> = { 1: new Set(), 2: new Set(), 3: new Set() };
+  for (const { bai, dong, cau } of cauList) {
+    const id = `${bai.ma}|${cau.cau}`;
     t.tongDiem += cau.diem;
-    t.soCau += cau.so_cau_tinh;
-    if (cau.hinh_thuc === 'TN') { t.soCauTN += cau.so_cau_tinh; t.diemTN += cau.diem; }
-    else { t.soCauTL += cau.so_cau_tinh; t.diemTL += cau.diem; }
+    daDem.add(id);
+    if (cau.hinh_thuc === 'TN') { daDemTN.add(id); t.diemTN += cau.diem; }
+    else { daDemTL.add(id); t.diemTL += cau.diem; }
     if (cau.muc in t.diemTheoMuc) {
       t.diemTheoMuc[cau.muc] += cau.diem;
-      t.soCauTheoMuc[cau.muc] += cau.so_cau_tinh;
+      daDemMuc[cau.muc].add(id);
     }
     t.diemTheoMach[dong.mach] = (t.diemTheoMach[dong.mach] ?? 0) + cau.diem;
   }
+  t.soCau = daDem.size;
+  t.soCauTN = daDemTN.size;
+  t.soCauTL = daDemTL.size;
+  for (const k of [1, 2, 3] as MucDo[]) t.soCauTheoMuc[k] = daDemMuc[k].size;
   t.tongDiem = lamTron(t.tongDiem);
   t.diemTN = lamTron(t.diemTN);
   t.diemTL = lamTron(t.diemTL);
@@ -319,6 +328,12 @@ function kiemDinhCauTruc(mtc: MaTranChung, lc: LuaChon, loi: string[], canhBao: 
         if (trung.length) loi.push(`${tenPhan}${nhan}: trùng số thứ tự câu ${[...new Set(trung)].join(', ')}.`);
         const thieu = sapXep.length ? Array.from({ length: sapXep[sapXep.length - 1] }, (_, i) => i + 1).filter((x) => !sapXep.includes(x)) : [];
         if (thieu.length) loi.push(`${tenPhan}${nhan}: thiếu Câu ${thieu.join(', ')} (số thứ tự câu phải liên tục từ 1).`);
+        for (const [so, ds] of cacPhan) {
+          if (ds.length < 2) continue;
+          if (new Set(ds.map((c) => c.hinh_thuc)).size > 1) {
+            canhBao.push(`${tenPhan}${nhan}, Câu ${so}: các ý đang khác hình thức (TN và TL). Cần dùng cùng một hình thức.`);
+          }
+        }
       }
     }
   }

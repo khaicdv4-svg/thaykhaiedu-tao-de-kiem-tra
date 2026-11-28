@@ -165,6 +165,11 @@ export function nhanCau(c: Pick<CauDe, 'cau'> & Partial<Pick<CauDe, 'khoa' | 'yN
   return laPhanCauTach(c) ? `Câu ${c.cau} (${c.yNho!.join(', ')})` : `Câu ${c.cau}`;
 }
 
+/** Đếm số câu theo số thứ tự câu duy nhất (các ý cùng số câu chỉ tính là 1 câu). */
+export function demSoCauDe(cau: Pick<CauDe, 'cau'>[]): number {
+  return new Set(cau.map((c) => c.cau)).size;
+}
+
 /** Câu là một phần của câu chia ý (khóa cuối khác số câu, ví dụ ".../8bcd" với câu "8"). */
 export function laPhanCauTach(c: Pick<CauDe, 'cau'> & Partial<Pick<CauDe, 'khoa' | 'yNho'>>): boolean {
   const cuoi = c.khoa?.split('/').pop();
@@ -350,8 +355,31 @@ export function cauDaXong(c: CauDe): boolean {
   return kiemDinhMotCau(c).length === 0;
 }
 
+/**
+ * Nhóm các ô của đề theo câu. Các ý cùng số câu trong cùng một phần (ví dụ "Câu 8 (a)" và
+ * "Câu 8 (b, c, d)", khóa chinh/p1/8a và chinh/p1/8bcd) là một câu.
+ */
+export function nhomOTheoCau<T extends Pick<CauDe, 'cau' | 'khoa'>>(cau: T[]): T[][] {
+  const nhom = new Map<string, T[]>();
+  for (const c of cau) {
+    const phan = c.khoa.includes('/') ? c.khoa.slice(0, c.khoa.lastIndexOf('/')) : '';
+    const k = `${phan}|${c.cau}`;
+    const ds = nhom.get(k);
+    if (ds) ds.push(c);
+    else nhom.set(k, [c]);
+  }
+  return [...nhom.values()];
+}
+
+/** Tiến độ tính theo câu: một câu chỉ tính là xong khi mọi ý (mọi ô) của câu đó đã đủ. */
 export function tienDoDe(d: DeKiemTra): { xong: number; tong: number } {
-  return { xong: d.cau.filter(cauDaXong).length, tong: d.cau.length };
+  const nhom = nhomOTheoCau(d.cau);
+  return { xong: nhom.filter((ds) => ds.every(cauDaXong)).length, tong: nhom.length };
+}
+
+/** Số câu còn ô trống (chưa có đề bài). Câu chia ý chỉ tính một lần. */
+export function demCauConTrong<T extends Pick<CauDe, 'cau' | 'khoa' | 'deBai'>>(cau: T[]): number {
+  return nhomOTheoCau(cau).filter((ds) => ds.some((c) => !c.deBai.trim())).length;
 }
 
 function kiemDinhMotCau(c: CauDe): string[] {
@@ -448,6 +476,18 @@ export function kiemDinhDe(dacTaDu: DacTa, deDu: DeKiemTra, tuyChon: TuyChonKiem
   }
 
   for (const c of xepDongTheoCau(de.cau)) loi.push(...kiemDinhMotCau(c));
+
+  const hinhThucTheoCau = new Map<string, Set<HinhThucCau>>();
+  for (const c of de.cau) {
+    const s = hinhThucTheoCau.get(c.cau) ?? new Set<HinhThucCau>();
+    s.add(c.hinhThuc);
+    hinhThucTheoCau.set(c.cau, s);
+  }
+  for (const [so, s] of hinhThucTheoCau) {
+    if (s.size > 1) {
+      canhBao.push(`Câu ${so}: các ý đang khác hình thức (TN và TL). Cần dùng cùng một hình thức.`);
+    }
+  }
 
   if (dacTa.ma_mon === 'TIENG_VIET') {
     const tv = phan === 'viet' ? { loi: [], canhBao: [] } : kiemDinhTiengViet(dacTa.ky_kiem_tra as KyKiemTraBaiDoc, de.tiengViet, phan);

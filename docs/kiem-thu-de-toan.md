@@ -11,7 +11,7 @@
 ## 1. Kết quả chạy kiểm thử tự động và build
 
 - `npm run typecheck`: đạt (0 lỗi TypeScript)
-- `npm test`: **64/64 file test đạt, 556/556 tests đạt (0 fail)**
+- `npm test`: **64/64 file test đạt, 558/558 tests đạt (0 fail)**
 - `npm run build`: **thành công** (`next build` hoàn tất 101/101 trang)
 
 ---
@@ -27,10 +27,10 @@
 | 5 | Bảng Điểm / Nhận xét / GV chấm KT1 / KT2 & dòng PHẦN BÀI LÀM | Đạt | TABLE 1 (1×4) và đoạn `PHẦN BÀI LÀM CỦA HỌC SINH` |
 | 6 | Phần I Trắc nghiệm & Phần II Tự luận | Đạt | Có `PHẦN I. TRẮC NGHIỆM (3 điểm)`, `Khoanh vào chữ đặt trước câu trả lời đúng.`, `PHẦN II. TỰ LUẬN (7 điểm)` |
 | 7 | Ô điểm `…/0,5đ` bên trái, kẻ dọc | Đạt | TABLE 2 (6×2) và TABLE 3 (6×2) |
-| 8 | Điểm tính theo bước 0,5, tổng 10 điểm | Đạt | 6 câu TN × 0,5đ = 3đ; 6 câu TL = 1 + 2 + 1 + 1 + 1,5 + 0,5 = 7đ |
+| 8 | Điểm tính theo bước 0,5, tổng 10 điểm, đúng 12 câu | Đạt | Ma trận (`MaTran-DacTa-TOAN-CUOI_HK1.docx`) ghi `Tổng số câu` = `12` (Mức 1: 7, Mức 2: 3, Mức 3: 2), tổng điểm `10`; Đề (`De-TOAN-CUOI_HK1.docx`) gồm 6 câu TN × 0,5đ = 3đ và 6 câu TL = 7đ (tổng 12 câu, 10đ) |
 | 9 | Đủ dòng kẻ làm bài, đặt tính & in sẵn `Bài giải` | Đạt | Câu 8 đặt tính chia lưới 2 cột có dòng chấm; Câu 11 (bài toán lời văn) tự động chèn `Bài giải` trước dòng kẻ |
 | 10 | Dòng kết thúc đề | Đạt | In `HẾT` (thay cho `HẾT ĐỀ`) |
-| 11 | Bảng đáp án TN dạng ngang, căn trái & giữa dọc | Đạt | TABLE 4 (2×7): hàng tiêu đề (`Câu`, `1`..`6`) và nhãn `Đáp án` căn giữa & in đậm; các ô đáp án (`A`, `C`, `C`, `B`, `A`, `D`) căn trái (`LEFT`) & căn giữa dọc (`CENTER`) |
+| 11 | Bảng đáp án TN dạng ngang, căn trái & giữa dọc | Đạt | TABLE 4 (2×7): tất cả các ô (kể cả `Câu`, `1`..`6`, `Đáp án` và `A`..`D`) đều căn trái (`LEFT`) và căn giữa theo chiều dọc (`CENTER`) |
 | 12 | HDC ghi biểu điểm từng ý & cách chấm khác đúng | Đạt | TABLE 5 (7×3): dòng tiêu đề (`Câu`, `Đáp án`, `Biểu điểm`) căn giữa & in đậm; tất cả ô nội dung căn trái & căn giữa dọc (`CENTER`); có ghi quy tắc khoanh nhiều đáp án TN và `Học sinh diễn đạt khác mà đúng ý vẫn cho điểm.` |
 | 13 | Điểm toàn bài làm tròn thành số nguyên | Đạt | Có ghi `Điểm toàn bài là tổng điểm các câu, làm tròn thành số nguyên theo quy định (không cho điểm thập phân).` |
 | 14 | Khối chữ ký cuối đề/HDC | Đạt | TABLE 6 (1×2): `DUYỆT CỦA BAN GIÁM HIỆU` và `……, ngày … tháng … năm 2026 / GIÁO VIÊN RA ĐỀ` |

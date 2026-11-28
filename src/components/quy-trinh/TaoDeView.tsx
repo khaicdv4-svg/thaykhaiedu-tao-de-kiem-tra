@@ -9,7 +9,7 @@
 import { tenMon as tenMonKT } from '@/core/ho-so-de/mon-ky';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, Download, Eye, FilePlus2, Lock, PenLine, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Download, Eye, FilePlus2, Lock, MoreHorizontal, PenLine, Trash2, Loader2, RefreshCw, Save, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { BaiDocTiengViet } from '@/components/de/BaiDocTiengViet';
@@ -17,7 +17,7 @@ import { XemTruocDe } from '@/components/de/XemTruocDe';
 import { NganHangCauHoi } from '@/components/de/NganHangCauHoi';
 import { VietLaiCauAI } from '@/components/de/VietLaiCauAI';
 import { goiYTuNganHang, type GoiYMotCau } from '@/core/de/goi-y-ngan-hang';
-import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
+import { demSoCauDacTa, TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
 import { svgSangHinh } from '@/core/utils/anh-de';
 import { apBaiDocChon, baiDocChonCoGi, taoNoiDungTiengVietRong, type BaiDocChon, type NoiDungTiengViet } from '@/core/de/tieng-viet';
 import type { KyKiemTraBaiDoc } from '@/core/reading-passages/quy-dinh';
@@ -39,6 +39,8 @@ import {
   nhanCau,
   taoDeTuDacTa,
   tienDoDe,
+  demCauConTrong,
+  nhomOTheoCau,
   trangThaiDeSauKhiSua,
   trangThaiDeSauKiemDinh,
   type CauDe,
@@ -78,6 +80,25 @@ const GHI_CHU_KHOA: Partial<Record<TrangThaiDe, string>> = {
   DA_PHAT_HANH: 'Đề đã phát hành. Sửa đề sẽ tạo phiên bản mới, bản đã phát hành cũ vẫn giữ nguyên.',
   DA_LUU_TRU: 'Đề đã lưu trữ.',
 };
+
+/** Lọc danh sách câu cần AI điền: chỉ lấy câu còn trống (trừ khi chọn viết lại tất cả). */
+export function layCauTrongDeAI<T extends { khoa: string; deBai: string }>(
+  cau: T[],
+  trongPhan: (khoa: string) => boolean,
+  vietLaiTatCa = false,
+): T[] {
+  return cau.filter((c) => trongPhan(c.khoa) && (vietLaiTatCa || !c.deBai.trim()));
+}
+
+/** Chỉ xóa đề nháp khi người dùng đã xác nhận. */
+export async function thucHienXoaDeNhap(
+  xacNhan: () => boolean,
+  xoa: () => Promise<void>,
+): Promise<boolean> {
+  if (!xacNhan()) return false;
+  await xoa();
+  return true;
+}
 
 const nutChinh = 'nut-tke text-sm';
 const nutPhu = 'inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50';
@@ -195,7 +216,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
         const moi = taoDeTuDacTa(moiNhat.duLieu, moiNhat.phienBan ?? 1);
         setDe(maMon === 'TIENG_VIET' && !moi.tiengViet ? { ...moi, tiengViet: taoNoiDungTiengVietRong() } : moi);
         setTrangThai('BAN_NHAP');
-        setThongBao(`Đề mới theo đặc tả phiên bản ${moiNhat.phienBan}: ${moiNhat.duLieu.dong.length} câu, nội dung để trống. Đề cũ đã duyệt vẫn giữ trong kho đề. Soạn xong bấm Lưu.`);
+        setThongBao(`Đề mới theo đặc tả phiên bản ${moiNhat.phienBan}: ${demSoCauDacTa(moiNhat.duLieu.dong)} câu, nội dung để trống. Đề cũ đã duyệt vẫn giữ trong kho đề. Soạn xong bấm Lưu.`);
       } else if (ban.phienBanDacTa < (moiNhat.phienBan ?? 0) || ban.dacTaId !== moiNhat.id) {
         // Đặc tả đã có bản mới: tự dựng lại đề theo đặc tả mới, không hiện đề cũ.
         // Chỉ giữ câu còn y nguyên yêu cầu; câu đổi YCCĐ, mức, dạng thì để trống cho thầy soạn lại.
@@ -263,30 +284,34 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     setThongBao('Đã tạo khung đề từ đặc tả. Nhập đề bài, phương án và đáp án cho từng câu rồi lưu bản nháp.');
   };
 
-  // Xóa hẳn đề nháp đang dang dở (không dùng lại). Bấm hai lần để chắc chắn, không dùng hộp thoại của trình duyệt.
-  const [hoiXoa, setHoiXoa] = useState(false);
+  // Xóa hẳn đề nháp đang dang dở (không dùng lại). Phải hỏi xác nhận trước khi xóa.
+  const [moMenuKhac, setMoMenuKhac] = useState(false);
   const [dangXoa, setDangXoa] = useState(false);
   const xoaDuoc = !GHI_CHU_KHOA[trangThai] && trangThai !== 'SAN_SANG_DUYET';
   const xoaDeNhap = async () => {
-    if (!hoiXoa) { setHoiXoa(true); window.setTimeout(() => setHoiXoa(false), 6000); return; }
-    setHoiXoa(false);
-    if (deId) {
-      setDangXoa(true);
-      const r = await goiJson<{ success?: boolean }>(`/api/de-kiem-tra?id=${encodeURIComponent(deId)}`, { method: 'DELETE' });
-      setDangXoa(false);
-      if (!r.ok) { setThongBao(`Chưa xóa được: ${r.j.error ?? 'lỗi không rõ'}`); return; }
-    }
-    setDe(null);
-    setDeId(null);
-    setTrangThai('BAN_NHAP');
-    setDaSua(false);
-    setKetQua(null);
-    setSach({});
-    setThongBao('Đã xóa đề nháp. Muốn làm đề mới thì bấm "Tạo khung đề từ đặc tả".');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMoMenuKhac(false);
+    await thucHienXoaDeNhap(
+      () => window.confirm('Xóa hẳn đề nháp này? Nội dung đang soạn sẽ mất và không thể khôi phục.'),
+      async () => {
+        if (deId) {
+          setDangXoa(true);
+          const r = await goiJson<{ success?: boolean }>(`/api/de-kiem-tra?id=${encodeURIComponent(deId)}`, { method: 'DELETE' });
+          setDangXoa(false);
+          if (!r.ok) { setThongBao(`Chưa xóa được: ${r.j.error ?? 'lỗi không rõ'}`); return; }
+        }
+        setDe(null);
+        setDeId(null);
+        setTrangThai('BAN_NHAP');
+        setDaSua(false);
+        setKetQua(null);
+        setSach({});
+        setThongBao('Đã xóa đề nháp. Muốn làm đề mới thì bấm "Tạo khung đề từ đặc tả".');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+    );
   };
 
-  // Chưa có đề: tự dựng khung đề từ đặc tả để thầy cô bấm "Tạo đề" ngay
+  // Chưa có đề: tự dựng khung đề từ đặc tả để thầy cô bấm "AI hỗ trợ tạo đề" hoặc tự nhập ngay
   const daTuDung = useRef('');
   useEffect(() => {
     if (!dacTaBan || de || dangTai || loiTai || dacTaDangSua) return;
@@ -296,7 +321,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
     setDe(taoDeTuDacTa(dacTaBan.duLieu, dacTaBan.phienBan ?? 1));
     setTrangThai('BAN_NHAP');
     setDaSua(true);
-    setThongBao(`Đã dựng khung ${dacTaBan.duLieu.dong.length} câu theo đặc tả phiên bản ${dacTaBan.phienBan}. Bấm "Tạo đề" để AI soạn tất cả các câu và đáp án.`);
+    setThongBao(`Đã dựng khung ${demSoCauDacTa(dacTaBan.duLieu.dong)} câu theo đặc tả phiên bản ${dacTaBan.phienBan}. Bấm "AI hỗ trợ tạo đề" để AI điền các câu còn trống hoặc tự soạn từng câu.`);
   }, [dacTaBan, de, dangTai, loiTai, maMon, ky, dacTaDangSua]);
 
   const [goiYNH, setGoiYNH] = useState<{ ds: GoiYMotCau[]; chon: Record<string, boolean>; tin?: string } | null>(null);
@@ -424,7 +449,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   };
   const taoDeBangAI = async (vietLaiTatCa = false) => {
     if (!de || !dacTaBan) return;
-    const ds = de.cau.filter((c) => trongPhan(c.khoa) && (vietLaiTatCa || !c.deBai.trim()));
+    const ds = layCauTrongDeAI(de.cau, trongPhan, vietLaiTatCa);
     if (!ds.length) return;
     if (vietLaiTatCa && !window.confirm(`AI viết lại cả ${ds.length} câu? Nội dung đang có sẽ được thay.`)) return;
     const baiDoc = de.tiengViet?.baiDocHieu;
@@ -567,30 +592,65 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
   const tongDiem = Math.round((de?.cau.reduce((s, c) => s + c.diem, 0) ?? 0) * 100) / 100;
 
   // Thanh công cụ gọn: chế độ Soạn/Xem, tiến độ, làm lại, xóa nháp
+  // Đếm theo câu: Câu 8 (a) và Câu 8 (b, c, d) là một câu
+  const conTrong = de ? demCauConTrong(de.cau.filter((c) => trongPhan(c.khoa))) : 0;
   const thanhCongCu = de ? (<>
-    {!nhung && <div className="flex gap-1.5" role="tablist" aria-label="Chế độ làm đề">
-      {([['soan', 'Soạn đề', PenLine], ['xem', 'Xem đề', Eye]] as const).map(([k, t, Icon]) => (
-        <button key={k} type="button" role="tab" aria-selected={cheDo === k} onClick={() => { setCheDo(k); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={nutCheDo(cheDo === k)}>
-          <Icon className="w-4 h-4" /> {t}
-        </button>
-      ))}
+    {!nhung && <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Thanh hành động tạo đề">
+      <button type="button" onClick={() => { setCheDo('soan'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`${nutCheDo(cheDo === 'soan')} whitespace-nowrap shrink-0`}>
+        <PenLine className="w-4 h-4 shrink-0" /> Soạn đề thủ công
+      </button>
+      <button type="button" disabled={!!taoDeAI?.dang || !conTrong} onClick={() => { setCheDo('soan'); void taoDeBangAI(); }} className={`${nutChinh} whitespace-nowrap shrink-0`}>
+        {taoDeAI?.dang ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Wand2 className="w-4 h-4 shrink-0" />}
+        {taoDeAI?.dang ? `AI đang soạn… ${taoDeAI.xong}/${taoDeAI.tong}` : 'AI hỗ trợ tạo đề'}
+      </button>
+      <button type="button" disabled={dangGoiYNH || !conTrong} onClick={() => { setCheDo('soan'); void layGoiYNH(); }} className={`${nutPhu} whitespace-nowrap shrink-0`}>
+        {dangGoiYNH ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Sparkles className="w-4 h-4 shrink-0" />} Lấy từ ngân hàng
+      </button>
+      <button type="button" onClick={() => { setCheDo('xem'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`${nutCheDo(cheDo === 'xem')} whitespace-nowrap shrink-0`}>
+        <Eye className="w-4 h-4 shrink-0" /> Xem đề
+      </button>
     </div>}
-    <span>{de.cau.length} câu · <b>{fmtDiem(tongDiem)}</b> điểm · soạn xong <b>{tienDo.xong}/{tienDo.tong}</b></span>
-    <div className="h-1.5 w-24 rounded-full bg-slate-200 overflow-hidden" aria-hidden>
+    <span className="whitespace-nowrap">{nhomOTheoCau(de.cau).length} câu · <b>{fmtDiem(tongDiem)}</b> điểm · soạn xong <b>{tienDo.xong}/{tienDo.tong}</b></span>
+    <div className="h-1.5 w-24 rounded-full bg-slate-200 overflow-hidden shrink-0" aria-hidden>
       <div className="h-full bg-emerald-500" style={{ width: `${tienDo.tong ? (tienDo.xong / tienDo.tong) * 100 : 0}%` }} />
     </div>
-    {daSua && <span className="text-xs text-amber-700">Có thay đổi chưa lưu</span>}
-    <span className="ml-auto flex gap-1.5">
-      <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-slate-700 hover:bg-slate-50" onClick={taoMoi} title="Bỏ nội dung đang soạn, làm khung đề trống theo đặc tả mới nhất">
-        <RefreshCw className="w-4 h-4" /> Làm lại đề trống
+    {daSua && <span className="text-xs text-amber-700 whitespace-nowrap">Có thay đổi chưa lưu</span>}
+    <div className="relative ml-auto shrink-0">
+      <button
+        type="button"
+        aria-label="Thao tác khác"
+        aria-expanded={moMenuKhac}
+        aria-haspopup="menu"
+        onClick={() => setMoMenuKhac((m) => !m)}
+        className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-slate-700 hover:bg-slate-50"
+        title="Thao tác khác"
+      >
+        <MoreHorizontal className="w-4 h-4" />
       </button>
-      {xoaDuoc && (
-        <button type="button" disabled={dangXoa} onClick={() => void xoaDeNhap()} title="Xóa hẳn đề nháp này, không dùng lại"
-          className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 disabled:opacity-50 ${hoiXoa ? 'border-red-600 bg-red-600 text-white hover:bg-red-700' : 'border-red-300 bg-white text-red-700 hover:bg-red-50'}`}>
-          {dangXoa ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} {hoiXoa ? 'Bấm lần nữa để xóa' : 'Xóa đề nháp'}
-        </button>
+      {moMenuKhac && (
+        <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => { setMoMenuKhac(false); taoMoi(); }}
+          >
+            <RefreshCw className="w-4 h-4 shrink-0" /> Làm lại đề trống
+          </button>
+          {xoaDuoc && (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={dangXoa}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+              onClick={() => void xoaDeNhap()}
+            >
+              {dangXoa ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Trash2 className="w-4 h-4 shrink-0" />} Xóa đề nháp
+            </button>
+          )}
+        </div>
       )}
-    </span>
+    </div>
   </>) : null;
 
   return (
@@ -628,7 +688,7 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
       {dacTaBan && !de && !dangTai && !loiTai && !dacTaDangSua && (
         <div className="the-tke p-6 space-y-3">
           <h2 className="text-lg font-semibold text-slate-900">Tạo khung đề cho {tenMon}</h2>
-          <p className="text-sm text-slate-600">Ứng dụng dựng sẵn {dacTaBan.duLieu.dong.length} câu theo đặc tả phiên bản {dacTaBan.phienBan}. Nội dung để trống, thầy nhập từng câu.</p>
+          <p className="text-sm text-slate-600">Ứng dụng dựng sẵn {demSoCauDacTa(dacTaBan.duLieu.dong)} câu theo đặc tả phiên bản {dacTaBan.phienBan}. Nội dung để trống, thầy nhập từng câu.</p>
           <button type="button" className={nutChinh} onClick={taoMoi}><FilePlus2 className="w-4 h-4" /> Tạo khung đề từ đặc tả</button>
         </div>
       )}
@@ -647,24 +707,32 @@ export function TaoDeView({ nhung }: { nhung?: NhungTV } = {}) {
           {nhung?.phan === 'hoanChinh' && <div className="the-tke px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">{thanhCongCu}</div>}
 
           {cheDo === 'soan' && (<>
-          {nhung?.phan !== 'thanhTieng' && (() => {
-            const conTrong = de.cau.filter((c) => trongPhan(c.khoa) && !c.deBai.trim()).length;
+          {nhung?.phan !== 'thanhTieng' && (!!nhung || !conTrong || (taoDeAI && !taoDeAI.dang && taoDeAI.loi.length > 0) || !!goiYNH?.tin || (goiYNH && goiYNH.ds.length > 0)) && (() => {
+            const daCo = nhomOTheoCau(de.cau.filter((c) => trongPhan(c.khoa))).filter((ds) => ds.every((c) => c.deBai.trim())).length;
             return (
             <div className="the-tke px-4 py-3 space-y-2">
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <button type="button" className={nutChinh} disabled={!!taoDeAI?.dang || !conTrong} onClick={() => void taoDeBangAI()}>
-                  {taoDeAI?.dang ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                  {taoDeAI?.dang ? `AI đang soạn… ${taoDeAI.xong}/${taoDeAI.tong} câu` : nhung?.phan === 'docHieu' ? 'Tạo câu hỏi đọc hiểu' : nhung?.phan === 'viet' ? 'Tạo đề bài viết' : 'Tạo đề'}
-                </button>
+                {nhung && nhung.phan !== 'hoanChinh' && (
+                  <>
+                    <button type="button" className={nutChinh} disabled={!!taoDeAI?.dang || !conTrong} onClick={() => void taoDeBangAI()}>
+                      {taoDeAI?.dang ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                      {taoDeAI?.dang ? `AI đang soạn… ${taoDeAI.xong}/${taoDeAI.tong} câu` : nhung.phan === 'docHieu' ? 'AI hỗ trợ tạo đề đọc hiểu' : 'AI hỗ trợ tạo đề bài viết'}
+                    </button>
+                    {conTrong > 0 && nhung.phan !== 'viet' && (
+                      <button type="button" className={nutPhu} disabled={dangGoiYNH} onClick={() => void layGoiYNH()}>
+                        {dangGoiYNH ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Lấy từ ngân hàng
+                      </button>
+                    )}
+                  </>
+                )}
                 {!conTrong && !taoDeAI?.dang && (
                   <button type="button" className={nutPhu} onClick={() => void taoDeBangAI(true)}><RefreshCw className="w-4 h-4" /> Viết lại tất cả</button>
                 )}
-                {conTrong > 0 && nhung?.phan !== 'viet' && (
-                  <button type="button" className={nutPhu} disabled={dangGoiYNH} onClick={() => void layGoiYNH()}>
-                    {dangGoiYNH ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Lấy từ ngân hàng
-                  </button>
-                )}
-                <span className="text-slate-500">{conTrong ? `AI soạn ${conTrong} câu còn trống theo đặc tả.` : 'Các câu đã có nội dung.'}</span>
+                <span className="text-slate-500">
+                  {conTrong
+                    ? (daCo > 0 ? `Còn ${conTrong} câu trống (${daCo} câu đã soạn sẽ được giữ nguyên).` : `AI điền ${conTrong} câu còn trống theo đặc tả.`)
+                    : 'Các câu đã có nội dung.'}
+                </span>
               </div>
               {taoDeAI && !taoDeAI.dang && taoDeAI.loi.length > 0 && (
                 <ul className="text-xs text-amber-800 list-disc pl-5 space-y-0.5">

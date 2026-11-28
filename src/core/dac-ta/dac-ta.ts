@@ -194,6 +194,11 @@ export function dungLaiDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, phienBanMoi:
 
 const tenDong = (r: DongDacTa) => `${r.phan ?? r.baiKiemTra}, Câu ${r.cau}`;
 
+/** Đếm số câu theo số thứ tự câu duy nhất (các ý cùng số câu chỉ tính là 1 câu). */
+export function demSoCauDacTa(dong: Pick<DongDacTa, 'baiKiemTra' | 'cau'>[]): number {
+  return new Set(dong.map((r) => `${r.baiKiemTra}|${r.cau}`)).size;
+}
+
 export interface TuyChonKiemDinhDacTa {
   /** Kho SGK đã duyệt thì bắt buộc có trang SGK; chưa thì chỉ cảnh báo. */
   batBuocTrangSgk?: boolean;
@@ -237,10 +242,24 @@ export function kiemDinhDacTa(mtcGoc: MaTranChung, mtr: MaTranRieng, d: DacTa, t
   }
   for (const r of d.dong) if (!khoaMa.has(r.khoa)) loi.push(`${tenDong(r)}: có trong đặc tả nhưng không còn trong ma trận riêng.`);
 
-  // 2. Tổng điểm
+  // 2. Tổng điểm & kiểm tra cùng hình thức cho các ý cùng số câu
   const diemMa = lamTron(cauMa.reduce((s, c) => s + c.cau.diem, 0));
   const diemDt = lamTron(d.dong.reduce((s, r) => s + r.diem, 0));
   if (Math.abs(diemMa - diemDt) > 1e-9) loi.push(`Tổng điểm đặc tả ${diemDt} khác tổng điểm ma trận ${diemMa}.`);
+
+  const hinhThucTheoCau = new Map<string, Set<HinhThucCau>>();
+  for (const r of d.dong) {
+    const k = `${r.baiKiemTra}|${r.cau}`;
+    const s = hinhThucTheoCau.get(k) ?? new Set<HinhThucCau>();
+    s.add(r.hinhThuc);
+    hinhThucTheoCau.set(k, s);
+  }
+  for (const [k, s] of hinhThucTheoCau) {
+    if (s.size > 1) {
+      const [, so] = k.split('|');
+      canhBao.push(`Câu ${so}: các ý đang khác hình thức (TN và TL). Cần dùng cùng một hình thức.`);
+    }
+  }
 
   // 3. Minh chứng từng câu
   for (const r of xepDongTheoCau(d.dong)) {

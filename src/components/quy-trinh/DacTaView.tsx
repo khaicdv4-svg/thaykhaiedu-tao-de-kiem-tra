@@ -16,6 +16,7 @@ import { TienTrinh5Buoc } from '@/components/ui/TienTrinh5Buoc';
 import { ValidationPanel } from '@/components/matrices/ValidationPanel';
 import { DANH_SACH_KY, khoangTuanTheoKy, type KyDung } from '@/core/matrix/dung-tu-chuong-trinh';
 import {
+  demSoCauDacTa,
   dienLaiTuPpct,
   dungLaiDacTa,
   kiemDinhDacTa,
@@ -392,7 +393,7 @@ export function DacTaView({ nhung }: { nhung?: NhungTV } = {}) {
         </button>
       ))}
     </div>
-    <span>{dacTa.dong.length} câu · <b>{fmtDiem(tongDiem)}</b> điểm</span>
+    <span>{demSoCauDacTa(dacTa.dong)} câu · <b>{fmtDiem(tongDiem)}</b> điểm</span>
     <label className="flex items-center gap-1.5" title="Bài dạy sau tuần này là chưa học">
       Tuần kiểm tra
       <input aria-label="Tuần kiểm tra" type="number" min={1} max={40} className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-sm" disabled={cheDo === 'xem'}
