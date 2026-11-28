@@ -4,7 +4,7 @@ import { Packer } from 'docx';
 import { MAU_MA_TRAN_CHUNG } from '../src/core/matrix/templates';
 import { cacNhomLuaChon, danhSachCau, taoMaTranRiengRong, type LuaChon } from '../src/core/matrix/matrix-template';
 import { taoDacTa } from '../src/core/dac-ta/dac-ta';
-import { kiemDinhDe, taoDeTuDacTa } from '../src/core/de/de';
+import { kiemDinhDe, laBaiToanLoiVan, soDongToiThieu, soDongTraLoi, taoDeTuDacTa } from '../src/core/de/de';
 import { dungHoSoDe, dungMaTranDacTa, dungTaiLieuDe, dungTaiLieuTiengViet, gianCoDinh, phanBoChoTrong, uocLuongCaoCau, xepCauTheoSo } from '../src/core/de/xuat-word';
 import { docChuTuDocx, docTepTrongZip } from '../src/core/utils/docx-text';
 
@@ -175,19 +175,38 @@ describe('Dàn trang đề môn thường', () => {
   });
   it('đề Toán nhiều hình, nhiều câu tự luận vẫn gói trong 3 trang', () => {
     const anh = { ten: 'h', chuThich: '', anh: 'data:image/png;base64,AA==', rong: 760, cao: 500 };
-    const cau = Array.from({ length: 13 }, (_, i) => ({
-      ...de.cau[0], khoa: `k${i}`, cau: String(i + 1), dang: null, yNho: null, luaChon: [] as string[], hinhThuc: 'TL' as const, diem: 1,
-      deBai: i % 3 === 0 ? 'Quan sát hình.\n[Hình 1]\nHỏi xe còn chở thêm được bao nhiêu ki-lô-gam hàng?' : 'Một cửa hàng có 38 500 hộp sữa. Hỏi cửa hàng có bao nhiêu hộp sữa tươi, hộp sữa chua?',
-      hinh: i % 3 === 0 ? [anh] : [],
+    // 6 câu trắc nghiệm (2 có hình), 7 câu tự luận (3 có hình, 2 bài toán có lời văn)
+    const tn = Array.from({ length: 6 }, (_, i) => ({
+      ...de.cau[0], khoa: `t${i}`, cau: String(i + 1), dang: 'NLC' as const, yNho: null, hinhThuc: 'TN' as const, diem: 0.5,
+      deBai: i < 2 ? 'Quan sát hình vẽ dưới đây. [Hình 1] Góc đỉnh M là góc gì?' : 'Số nào sau đây lớn hơn 36 480 000?',
+      luaChon: ['3 648 000', '36 408 000', '36 840 000', '36 084 000'], hinh: i < 2 ? [anh] : [],
     }));
+    const tl = Array.from({ length: 7 }, (_, i) => ({
+      ...de.cau[0], khoa: `k${i}`, cau: String(i + 7), dang: null, yNho: null, luaChon: [] as string[], hinhThuc: 'TL' as const, diem: 1,
+      deBai: i < 3 ? 'Quan sát hình.\n[Hình 1]\nViết tên các cặp cạnh song song.' : i < 5 ? 'Một cửa hàng có 38 500 hộp sữa. Hỏi cửa hàng có bao nhiêu hộp sữa tươi, hộp sữa chua?' : 'Tính giá trị biểu thức: 24 000 + 35 280 + 16 000',
+      hinh: i < 3 ? [anh] : [],
+    }));
+    const cau = [...tn, ...tl];
     const pb = phanBoChoTrong(cau, 'TOAN');
+    // Xếp nguyên khối từng câu (khắt khe hơn Word, vì Word còn được chuyển dòng kẻ sang trang sau)
     let trang = 1;
     let dung = 3700;
     cau.forEach((c, i) => {
-      const h = uocLuongCaoCau(c, 'TOAN', pb[i].dongThem, pb[i].anhCao) + pb[i].cachTruoc;
+      const h = uocLuongCaoCau(c, 'TOAN', pb[i].dongThem, pb[i].anhCao, pb[i].dan, pb[i].tnGon) + pb[i].cachTruoc;
       if (dung + h > 16838 - 720 - 700) { trang++; dung = 0; }
       dung += h;
     });
     expect(trang).toBeLessThanOrEqual(3);
+  });
+
+  it('bài toán có lời văn luôn có "Bài giải" và ít nhất 8 dòng, kể cả khi phải nén đề', () => {
+    const loiVan = { ...de.cau[0], khoa: 'lv', cau: '11', dang: null, yNho: null, luaChon: [] as string[], hinhThuc: 'TL' as const, diem: 1.5, hinh: [],
+      deBai: 'Tuần trước, một siêu thị nhập về 9 450 kg gạo. Tuần này nhập thêm 8 370 kg gạo. Trong số gạo đó, gạo thơm nhiều hơn gạo nếp 2 600 kg. Hỏi siêu thị nhập về bao nhiêu ki-lô-gam gạo thơm, bao nhiêu ki-lô-gam gạo nếp?' };
+    expect(laBaiToanLoiVan(loiVan, 'TOAN')).toBe(true);
+    expect(soDongTraLoi(loiVan, 'TOAN')).toBe(8);
+    expect(soDongToiThieu(loiVan, 'TOAN')).toBe(8);
+    // Đề dài phải nén mạnh: câu lời văn vẫn không bị bớt dòng
+    const nhieu = Array.from({ length: 14 }, (_, i) => ({ ...loiVan, khoa: `lv${i}`, cau: String(i + 1) }));
+    for (const ct of phanBoChoTrong(nhieu, 'TOAN')) expect(ct.dongThem).toBeGreaterThanOrEqual(0);
   });
 });

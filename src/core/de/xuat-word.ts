@@ -37,7 +37,7 @@ import {
   WidthType,
 } from 'docx';
 import { TEN_KIEU_HINH } from '@/core/dac-ta/dac-ta';
-import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laDienChoCham, laPhanCauTach, moRongChoCham, nhanCau, soDongToiThieu, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
+import { NHAN_LUA_CHON, chiSoHinhChuaGan, dapAnHienThi, laBaiToanLoiVan, laDienChoCham, laPhanCauTach, moRongChoCham, nhanCau, soDongToiThieu, soDongTraLoi, tachDeBaiTheoKhung, tachYTrongDeBai, type CauDe, type DeKiemTra } from '@/core/de/de';
 import type { DacTa } from '@/core/dac-ta/dac-ta';
 import { tachPhanSo } from '@/core/de/phan-so';
 
@@ -202,14 +202,32 @@ function dauDe(t: ThongTinDe, tc: { tenMon?: string; phut?: number | null } = {}
 // Câu hỏi
 // ---------------------------------------------------------------------------
 
+/** Bốn phương án đều ngắn (số, vài chữ) thì xếp được trên một hàng khi đề cần nén */
+function motHangPhuongAn(c: CauDe): boolean {
+  const ds = c.luaChon.map((x) => x.trim());
+  return ds.length === 4 && ds.every((x) => x && x.length <= 14);
+}
+
 /** Bốn phương án A–D xếp hai cột: A, B một hàng; C, D hàng kế. Phương án dài thì mỗi phương án một dòng. */
-function phuongAn(c: CauDe): (Paragraph | Table)[] {
+function phuongAn(c: CauDe, dan = DAN_CAU, gon = false): (Paragraph | Table)[] {
   const ds = NHAN_LUA_CHON.map((n, i) => ({ n, v: (c.luaChon[i] ?? '').trim() })).filter((x) => x.v);
   if (!ds.length) return [];
+  if (gon && motHangPhuongAn(c)) {
+    // Đề cần nén cho vừa số trang: 4 phương án ngắn xếp trên một hàng
+    const r4 = Math.floor((RONG_NOI_DUNG - 300) / 4);
+    const o4 = (x: { n: string; v: string }) => o2([doan([tr(`${x.n}. `), tr(x.v)], { dong: dan })], r4);
+    return [new Table({
+      width: { size: r4 * 4, type: WidthType.DXA },
+      columnWidths: [r4, r4, r4, r4],
+      layout: TableLayoutType.FIXED,
+      indent: { size: 300, type: WidthType.DXA },
+      rows: [new TableRow({ cantSplit: true, children: ds.map(o4) })],
+    })];
+  }
   const rong = Math.floor((RONG_NOI_DUNG - 300) / 2);
   const dai = ds.some((x) => x.v.length > 34);
-  if (dai || ds.length < 4) return ds.map((x) => doan(`${x.n}. ${x.v}`, { thut: 300, dong: DAN_CAU, truoc: 20 }));
-  const o = (x: { n: string; v: string }) => o2([doan([tr(`${x.n}. `), tr(x.v)], { dong: DAN_CAU })], rong);
+  if (dai || ds.length < 4) return ds.map((x) => doan(`${x.n}. ${x.v}`, { thut: 300, dong: dan, truoc: 20 }));
+  const o = (x: { n: string; v: string }) => o2([doan([tr(`${x.n}. `), tr(x.v)], { dong: dan })], rong);
   const hang = (a: { n: string; v: string }, b: { n: string; v: string }) => new TableRow({ cantSplit: true, children: [o(a), o(b)] });
   return [new Table({
     width: { size: rong * 2, type: WidthType.DXA },
@@ -221,7 +239,7 @@ function phuongAn(c: CauDe): (Paragraph | Table)[] {
 }
 
 /** Hình đi kèm câu: xếp ngang, tối đa 4 hình một hàng, chú thích căn giữa dưới mỗi hình. */
-function hinhCau(hinh: NonNullable<CauDe['hinh']>, caoToiDa = ANH_CAO): Table[] {
+function hinhCau(hinh: NonNullable<CauDe['hinh']>, caoToiDa = ANH_CAO, dan = DAN_CAU): Table[] {
   const kq: Table[] = [];
   const mot = Math.min(4, hinh.length);
   const rong = Math.floor((RONG_NOI_DUNG - 200) / mot);
@@ -237,7 +255,7 @@ function hinhCau(hinh: NonNullable<CauDe['hinh']>, caoToiDa = ANH_CAO): Table[] 
         spacing: { before: 40, after: 20 },
         children: [new ImageRun({ type: m[1] === 'png' ? 'png' : 'jpg', data: Buffer.from(m[2], 'base64'), transformation: { width: Math.max(1, Math.round(h.rong * tile)), height: Math.max(1, Math.round(h.cao * tile)) } })],
       })];
-      if (h.chuThich.trim()) ps.push(doan([tr(h.chuThich.trim())], { align: AlignmentType.CENTER, dong: DAN_CAU }));
+      if (h.chuThich.trim()) ps.push(doan([tr(h.chuThich.trim())], { align: AlignmentType.CENTER, dong: dan }));
       return o2(ps, rong);
     };
     const hang = hinh.slice(i, i + mot);
@@ -265,11 +283,11 @@ function soDongIn(c: CauDe, maMon: string, them: number): number {
 const ANH_CAO = 220;
 
 /** Các ý a), b), c), d) dàn hai cột. Đặt tính: chừa khoảng trắng để đặt tính; ý khác: mỗi ô vài dòng chấm. */
-function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean, them = 0): Table {
+function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean, them = 0, dan = DAN_CAU): Table {
   const rong = Math.floor((RONG_NOI_DUNG - 100) / 2);
   const o = (k?: { nhan: string; nd: string }) => o2(
     k ? [
-      doan([tr(`${k.nhan}) `, { bold: true }), tr(k.nd)], { dong: DAN_CAU }),
+      doan([tr(`${k.nhan}) `, { bold: true }), tr(k.nd)], { dong: dan }),
       // Đặt tính cũng có dòng kẻ chấm để học sinh đặt tính, tính thẳng hàng
       ...Array.from({ length: soDongLuoi(datTinh, them) }, () => dongCham(rong - 300, 400)),
     ] : [doan('')],
@@ -281,7 +299,7 @@ function luoiY(y: { nhan: string; nd: string }[], datTinh: boolean, them = 0): T
 }
 
 /** Đề bài bên trái, hình (và chú thích) bên phải; hai cột không viền, hình không đè lên chữ. */
-function bangChuHinhPhai(trai: Paragraph[], h: NonNullable<CauDe['hinh']>[number], caoToiDa = ANH_CAO): Table | null {
+function bangChuHinhPhai(trai: Paragraph[], h: NonNullable<CauDe['hinh']>[number], caoToiDa = ANH_CAO, dan = DAN_CAU): Table | null {
   const m = /^data:image\/(jpeg|png);base64,(.+)$/.exec(h.anh);
   if (!m) return null;
   const tong = RONG_NOI_DUNG - 200;
@@ -293,23 +311,13 @@ function bangChuHinhPhai(trai: Paragraph[], h: NonNullable<CauDe['hinh']>[number
     spacing: { before: 40, after: 20 },
     children: [new ImageRun({ type: m[1] === 'png' ? 'png' : 'jpg', data: Buffer.from(m[2], 'base64'), transformation: { width: Math.max(1, Math.round(h.rong * tile)), height: Math.max(1, Math.round(h.cao * tile)) } })],
   })];
-  if (h.chuThich.trim()) ps.push(doan([tr(h.chuThich.trim())], { align: AlignmentType.CENTER, dong: DAN_CAU }));
+  if (h.chuThich.trim()) ps.push(doan([tr(h.chuThich.trim())], { align: AlignmentType.CENTER, dong: dan }));
   return new Table({
     width: { size: tong, type: WidthType.DXA },
     columnWidths: [traiW, phai],
     layout: TableLayoutType.FIXED,
     rows: [new TableRow({ cantSplit: true, children: [o2(trai, traiW), o2(ps, phai)] })],
   });
-}
-
-/** Bài toán có lời văn (Toán tự luận) thì in sẵn chữ "Bài giải" trước phần dòng kẻ làm bài. */
-function laBaiToanLoiVan(c: CauDe, maMon: string): boolean {
-  if (maMon !== 'TOAN' || c.hinhThuc !== 'TL' || c.dang === 'DS' || c.dang === 'VIET') return false;
-  if (laDienChoCham(c) || tachYTrongDeBai(c.deBai)) return false;
-  const s = c.deBai.toLowerCase();
-  if (/^\s*bài giải\b/m.test(s)) return false;
-  if (/đặt tính|tính bằng cách thuận tiện|tính giá trị|tính nhẩm|dùng thước|vẽ đường thẳng|vẽ góc/.test(s)) return false;
-  return /hỏi\b|tìm hai số|tính (diện tích|chu vi|tổng|hiệu|trung bình)/.test(s);
 }
 
 /** Nhãn in đầu câu: "Câu 8. ". Phần sau của câu chia ý (Câu 8 b, c, d nối tiếp Câu 8 a) không in lại nhãn. */
@@ -323,7 +331,7 @@ export function laPhanNoiTiep(cau: CauDe[], i: number): boolean {
   return i > 0 && cau[i - 1].cau === cau[i].cau && laPhanCauTach(cau[i]);
 }
 
-function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false, anhCao = ANH_CAO): (Paragraph | Table)[] {
+function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false, anhCao = ANH_CAO, dan = DAN_CAU, tnGon = false): (Paragraph | Table)[] {
   const kq: (Paragraph | Table)[] = [];
   const iPhai = (c.hinh ?? []).findIndex((h) => h.canh === 'PHAI' && h.anh && /^data:image\/(jpeg|png);base64,/.test(h.anh));
   // Câu điền chỗ chấm (đổi đơn vị đo…): giữ từng dòng như đề, kéo dài chỗ chấm, không thêm dòng kẻ bên dưới
@@ -339,27 +347,27 @@ function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false,
   for (const d of doanDau) {
     if (d.khung !== undefined) {
       if (iPhai >= 0 && d.khung - 1 === iPhai) {
-        if (!daNhan) { dich.push(doan([nhan], { dong: DAN_CAU })); daNhan = true; }
+        if (!daNhan) { dich.push(doan([nhan], { dong: dan })); daNhan = true; }
         continue;
       }
-      if (!daNhan) { dich.push(doan([nhan], { dong: DAN_CAU })); daNhan = true; }
+      if (!daNhan) { dich.push(doan([nhan], { dong: dan })); daNhan = true; }
       const h = (c.hinh ?? [])[d.khung - 1];
-      if (h?.anh) (iPhai >= 0 ? sauBang : kq).push(...hinhCau([h], anhCao));
-      else dich.push(doan([tr(`[Hình ${d.khung}: chưa có ảnh]`, { italics: true })], { dong: DAN_CAU }));
+      if (h?.anh) (iPhai >= 0 ? sauBang : kq).push(...hinhCau([h], anhCao, dan));
+      else dich.push(doan([tr(`[Hình ${d.khung}: chưa có ảnh]`, { italics: true })], { dong: dan }));
     } else {
       // Không đặt "giữ với đoạn sau" trong ô bảng: Word sẽ dính các hàng câu hỏi vào nhau, đẩy cả khối sang trang
       // và để lại khoảng trống lớn. Hàng câu hỏi đã không cắt ngang trang nên đề bài luôn đi liền phần làm bài.
-      dich.push(doan(daNhan ? [tr(d.chu ?? '', { bold: inDam })] : [nhan, tr(d.chu ?? '', { bold: inDam })], { dong: DAN_CAU }));
+      dich.push(doan(daNhan ? [tr(d.chu ?? '', { bold: inDam })] : [nhan, tr(d.chu ?? '', { bold: inDam })], { dong: dan }));
       daNhan = true;
     }
   }
-  if (!daNhan && !tiep) dich.push(doan([nhan], { dong: DAN_CAU }));
+  if (!daNhan && !tiep) dich.push(doan([nhan], { dong: dan }));
   if (iPhai >= 0) {
-    const b = bangChuHinhPhai(trai, c.hinh![iPhai], anhCao);
+    const b = bangChuHinhPhai(trai, c.hinh![iPhai], anhCao, dan);
     if (b) { kq.push(b, ...sauBang); } else { kq.push(...trai, ...sauBang); }
   }
   const conLai = chiSoHinhChuaGan(c).filter((i) => i !== iPhai).map((i) => c.hinh![i]).filter((h) => h.anh);
-  if (conLai.length) kq.push(...hinhCau(conLai, anhCao));
+  if (conLai.length) kq.push(...hinhCau(conLai, anhCao, dan));
   else if (!(c.hinh ?? []).length && c.ghiChuHinh.trim()) kq.push(doan([tr(`[${c.ghiChuHinh.trim()}]`, { italics: true })]));
 
   if (c.dang === 'DS') {
@@ -374,12 +382,12 @@ function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false,
     });
   } else if (c.hinhThuc === 'TN') {
     const coLuaChon = c.luaChon.some((x) => x.trim());
-    if (coLuaChon) kq.push(...phuongAn(c));
+    if (coLuaChon) kq.push(...phuongAn(c, dan, tnGon));
     else if (c.dang !== 'NLC') kq.push(dongCham());
   } else if (nhieuY) {
-    kq.push(luoiY(nhieuY.y, nhieuY.datTinh, them));
+    kq.push(luoiY(nhieuY.y, nhieuY.datTinh, them, dan));
   } else {
-    if (laBaiToanLoiVan(c, maMon)) kq.push(doan([tr('Bài giải')], { align: AlignmentType.CENTER, dong: DAN_CAU }));
+    if (laBaiToanLoiVan(c, maMon)) kq.push(doan([tr('Bài giải')], { align: AlignmentType.CENTER, dong: dan }));
     const dong = maMon === 'TOAN' ? 420 : 380;
     for (let i = 0; i < soDongIn(c, maMon, them); i++) kq.push(dongCham(RONG_NOI_DUNG - 200, dong));
   }
@@ -391,7 +399,7 @@ function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false,
 // ---------------------------------------------------------------------------
 
 /** Phần thêm cho một câu khi lấp trang: số dòng kẻ thêm, khoảng cách thêm phía trên câu (twip) */
-export interface ChoTrong { dongThem: number; cachTruoc: number; anhCao?: number }
+export interface ChoTrong { dongThem: number; cachTruoc: number; anhCao?: number; dan?: number; tnGon?: boolean }
 
 const CAO_TRANG = 16838 - LE_TREN - LE_DUOI; // A4 trừ lề trên, dưới theo mẫu chuẩn
 const CAO_DAU_DE = 3700; // khung đầu đề + bảng điểm + dòng PHẦN BÀI LÀM (giãn 1,0)
@@ -406,10 +414,28 @@ const CAO_CHO_PHEP_CAT = 3400;
  * đủ dài. Đề bài giữ liền dòng kẻ đầu tiên nên không bị bỏ lại một mình cuối trang.
  */
 function choPhepCat(c: CauDe, maMon: string, them: number): boolean {
-  if (GIOI_HAN_TRANG[maMon]) return false; // đề có giới hạn trang: giữ trọn từng câu, trang tính được chắc chắn
-  if (c.hinhThuc !== 'TL' || c.dang === 'DS' || laDienChoCham(c) || (c.hinh ?? []).some((h) => h.anh)) return false;
+  if (c.hinhThuc !== 'TL' || c.dang === 'DS' || laDienChoCham(c)) return false;
   if (c.dang !== 'VIET' && tachYTrongDeBai(c.deBai)) return false;
+  // Đề có giới hạn trang (Toán 3 trang): câu có từ 3 dòng kẻ trở lên được chuyển phần dòng kẻ sang trang sau,
+  // kể cả câu có hình (đề bài và hình luôn giữ liền 2 dòng kẻ đầu), để không để trống cuối trang.
+  if (GIOI_HAN_TRANG[maMon]) return soDongIn(c, maMon, them) >= 3;
+  if ((c.hinh ?? []).some((h) => h.anh)) return false;
   return uocLuongCaoCau(c, maMon, them) >= CAO_CHO_PHEP_CAT;
+}
+
+/** Chiều cao một dòng kẻ làm bài (twip) */
+const caoDongKe = (maMon: string) => gianCoDinh(maMon === 'TOAN' ? 420 : 380);
+
+/**
+ * Các khối không tách được của một câu khi dàn trang: câu được cắt thì gồm khối đầu (đề bài, hình, 2 dòng kẻ đầu)
+ * và mỗi dòng kẻ còn lại một khối; câu không cắt là một khối.
+ */
+function khoiCuaCau(c: CauDe, maMon: string, them: number, anhCao = ANH_CAO, dan = DAN_CAU, tnGon = false): number[] {
+  const tong = uocLuongCaoCau(c, maMon, them, anhCao, dan, tnGon);
+  if (!choPhepCat(c, maMon, them)) return [tong];
+  const duoi = Math.max(0, soDongIn(c, maMon, them) - 2);
+  const h = caoDongKe(maMon);
+  return [tong - duoi * h, ...Array<number>(duoi).fill(h)];
 }
 const KI_TU_MOT_DONG = (rong: number) => Math.max(10, Math.floor(rong / 122)); // TNR 13: trung bình ~122 twip/kí tự
 
@@ -417,9 +443,9 @@ function soDongChu(chu: string, rong: number) {
   return chu.split(/\n+/).reduce((n, d) => n + Math.max(1, Math.ceil(d.trim().length / KI_TU_MOT_DONG(rong))), 0);
 }
 
-function caoAnh(h: NonNullable<CauDe['hinh']>[number], rongToiDa: number, caoToiDa = ANH_CAO) {
+function caoAnh(h: NonNullable<CauDe['hinh']>[number], rongToiDa: number, caoToiDa = ANH_CAO, dan = DAN_CAU) {
   const tile = Math.min(1, Math.floor((rongToiDa - 160) / 15) / h.rong, caoToiDa / h.cao);
-  return Math.round(h.cao * tile * 15) + 60 + (h.chuThich.trim() ? gianCoDinh(DAN_CAU) : 0);
+  return Math.round(h.cao * tile * 15) + 60 + (h.chuThich.trim() ? gianCoDinh(dan) : 0);
 }
 
 /** Chiều cao dòng kẻ thêm của câu (twip), 0 nếu câu không có chỗ viết để thêm */
@@ -431,24 +457,24 @@ function caoMotDongThem(c: CauDe, maMon: string): number {
 }
 
 /** Ước lượng chiều cao một hàng câu hỏi (twip), theo đúng cách `noiDungCau` dàn nội dung. */
-export function uocLuongCaoCau(c: CauDe, maMon = '', them = 0, anhCao = ANH_CAO): number {
-  const LC = gianCoDinh(DAN_CAU);
+export function uocLuongCaoCau(c: CauDe, maMon = '', them = 0, anhCao = ANH_CAO, dan = DAN_CAU, tnGon = false): number {
+  const LC = gianCoDinh(dan);
   const rong = RONG_NOI_DUNG - 160;
   const hinh = (c.hinh ?? []).filter((h) => h.anh);
   const phai = hinh.find((h) => h.canh === 'PHAI');
   const nhieuY = !laDienChoCham(c) && c.hinhThuc === 'TL' && c.dang !== 'DS' && c.dang !== 'VIET' ? tachYTrongDeBai(c.deBai) : null;
   const chu = (nhieuY ? nhieuY.dau || 'Thực hiện các yêu cầu sau:' : laDienChoCham(c) ? moRongChoCham(c.deBai) : c.deBai).replace(/\[\s*Hình\s*\d+\s*\]/gi, '');
   let cao = soDongChu(`${nhanCau(c)}. ${chu}`, phai ? rong * 0.6 : rong) * LC;
-  if (phai) cao = Math.max(cao, caoAnh(phai, Math.floor(rong * 0.38), anhCao));
+  if (phai) cao = Math.max(cao, caoAnh(phai, Math.floor(rong * 0.38), anhCao, dan));
   const conLai = hinh.filter((h) => h !== phai);
   for (let i = 0; i < conLai.length; i += 4) {
     const hang = conLai.slice(i, i + 4);
-    cao += Math.max(...hang.map((h) => caoAnh(h, Math.floor((rong - 40) / hang.length), anhCao))) + 80;
+    cao += Math.max(...hang.map((h) => caoAnh(h, Math.floor((rong - 40) / hang.length), anhCao, dan))) + 80;
   }
   if (c.dang === 'DS') cao += c.luaChon.length * gianCoDinh(DAN_DONG);
   else if (c.hinhThuc === 'TN') {
     const ds = c.luaChon.filter((x) => x.trim());
-    if (ds.length) cao += ds.length < 4 || ds.some((x) => x.trim().length > 34) ? ds.length * (LC + 20) : 2 * (LC + 80);
+    if (ds.length) cao += tnGon && motHangPhuongAn(c) ? LC + 80 : ds.length < 4 || ds.some((x) => x.trim().length > 34) ? ds.length * (LC + 20) : 2 * (LC + 80);
     else if (c.dang !== 'NLC') cao += gianCoDinh(360);
   } else if (nhieuY) {
     const dongO = soDongLuoi(nhieuY.datTinh, them);
@@ -485,19 +511,36 @@ export function soDongTrangViet(deBai: string): number {
 export const GIOI_HAN_TRANG: Record<string, number> = { TOAN: 3 };
 /** Chừa thêm mỗi trang khi so với giới hạn trang: Word dàn chữ có thể cao hơn ước lượng */
 const AN_TOAN_TRANG = 500;
-/** Các mức nén lần lượt thử khi đề dài hơn giới hạn: [bớt dòng kẻ mỗi câu, chiều cao hình tối đa px] */
-const MUC_NEN: [number, number][] = [[0, ANH_CAO], [1, ANH_CAO], [1, 190], [2, 190], [2, 165], [3, 165], [4, 150], [6, 140], [6, 125], [8, 115], [8, 100], [10, 95]];
+/** Giãn dòng nhỏ nhất của đề bài khi nén (1,2 dòng; thầy chấp nhận 1,2–1,5) */
+const DAN_CAU_NEN = 288;
+/**
+ * Các mức nén lần lượt thử khi đề dài hơn giới hạn: [bớt dòng kẻ mỗi câu, chiều cao hình tối đa px, giãn dòng đề bài].
+ * Giảm giãn dòng trước (giữ hình và chỗ viết), rồi mới bớt dòng kẻ, thu nhỏ hình.
+ */
+const MUC_NEN: [number, number, number, boolean][] = [
+  [0, ANH_CAO, DAN_CAU, false], [0, ANH_CAO, 312, false], [0, ANH_CAO, DAN_CAU_NEN, false], [0, ANH_CAO, DAN_CAU_NEN, true],
+  [1, ANH_CAO, DAN_CAU_NEN, true], [1, 190, DAN_CAU_NEN, true], [2, 190, DAN_CAU_NEN, true], [2, 165, DAN_CAU_NEN, true], [3, 165, DAN_CAU_NEN, true],
+  [4, 150, DAN_CAU_NEN, true], [6, 140, DAN_CAU_NEN, true], [6, 125, DAN_CAU_NEN, true], [8, 115, DAN_CAU_NEN, true], [8, 100, DAN_CAU_NEN, true], [10, 95, DAN_CAU_NEN, true],
+];
 
-/** Xếp các câu vào trang như Word (mỗi câu không cắt ngang trang), trả về danh sách câu của từng trang. */
-function xepTrang(cao: number[], caoDauTrang: number, chua: number): number[][] {
+/**
+ * Xếp các câu vào trang như Word: mỗi khối không cắt ngang trang (câu được cắt có nhiều khối).
+ * Trả về các câu có phần đầu nằm ở từng trang và chiều cao đã dùng của từng trang.
+ */
+function xepTrang(khoi: number[][], caoDauTrang: number, chua: number): { trang: number[][]; daDung: number[] } {
   const trang: number[][] = [[]];
-  let daDung = caoDauTrang;
-  cao.forEach((h, i) => {
-    if (daDung + h > CAO_TRANG - chua && trang[trang.length - 1].length) { trang.push([]); daDung = 0; }
-    trang[trang.length - 1].push(i);
-    daDung += h;
+  const daDung = [caoDauTrang];
+  let coKhoi = false;
+  khoi.forEach((ds, i) => {
+    ds.forEach((h, k) => {
+      const t = trang.length - 1;
+      if (daDung[t] + h > CAO_TRANG - chua && coKhoi) { trang.push([]); daDung.push(0); }
+      if (k === 0) trang[trang.length - 1].push(i);
+      daDung[daDung.length - 1] += h;
+      coKhoi = true;
+    });
   });
-  return trang;
+  return { trang, daDung };
 }
 
 export function phanBoChoTrong(cau: CauDe[], maMon = '', caoDauTrang = CAO_DAU_DE): ChoTrong[] {
@@ -505,12 +548,15 @@ export function phanBoChoTrong(cau: CauDe[], maMon = '', caoDauTrang = CAO_DAU_D
   // Đề có giới hạn trang: tìm mức nén nhẹ nhất (bớt dòng kẻ, thu nhỏ hình) để vừa số trang
   let bot = 0;
   let anhCao = ANH_CAO;
+  let dan = DAN_CAU;
+  let tnGon = false;
   if (gioiHan) {
-    for (const [b, a] of MUC_NEN) {
-      bot = b; anhCao = a;
-      const cao = cau.map((c) => uocLuongCaoCau(c, maMon, -b, a));
-      cao[cao.length - 1] += CAO_HET_DE;
-      if (xepTrang(cao, caoDauTrang, AN_TOAN_TRANG).length <= gioiHan) break;
+    for (const [b, a, g, t] of MUC_NEN) {
+      bot = b; anhCao = a; dan = g; tnGon = t;
+      const khoi = cau.map((c) => khoiCuaCau(c, maMon, -b, a, g, t));
+      const cuoi = khoi[khoi.length - 1];
+      if (cuoi) cuoi[cuoi.length - 1] += CAO_HET_DE;
+      if (xepTrang(khoi, caoDauTrang, AN_TOAN_TRANG).trang.length <= gioiHan) break;
     }
   }
   // Bớt dòng thật sự có tác dụng của từng câu (câu đã ở mức tối thiểu thì không bớt nữa), để phần lấp trang cộng lại đúng dòng
@@ -520,16 +566,15 @@ export function phanBoChoTrong(cau: CauDe[], maMon = '', caoDauTrang = CAO_DAU_D
     if (nhieuY) return Math.min(bot, 1);
     return Math.min(bot, Math.max(0, soDongTraLoi(c, maMon) - soDongToiThieu(c, maMon)));
   };
-  const kq: ChoTrong[] = cau.map((c) => ({ dongThem: botThuc(c) ? -botThuc(c) : 0, cachTruoc: 0, anhCao }));
-  const cao = cau.map((c, i) => uocLuongCaoCau(c, maMon, kq[i].dongThem, anhCao));
+  const kq: ChoTrong[] = cau.map((c) => ({ dongThem: botThuc(c) ? -botThuc(c) : 0, cachTruoc: 0, anhCao, dan, tnGon }));
+  const khoi = cau.map((c, i) => khoiCuaCau(c, maMon, kq[i].dongThem, anhCao, dan, tnGon));
   // Xếp trang đúng như Word sẽ xếp (ước lượng khớp với bản in thử); phần chừa an toàn chỉ dùng khi chọn mức nén
-  const trang = xepTrang(cao, caoDauTrang, 0);
+  const { trang, daDung } = xepTrang(khoi, caoDauTrang, 0);
   // Lấp chỗ trống cuối trang: thêm dòng kẻ rải đều (tối đa 2 dòng mỗi câu so với số dòng đang in),
   // trang toàn trắc nghiệm thì giãn đều khoảng cách giữa các câu. Luôn chừa cuối trang vì chiều cao chỉ là ước lượng.
   trang.forEach((ds, k) => {
-    const dau = k === 0 ? caoDauTrang : 0;
     const cuoi = k === trang.length - 1 ? CAO_HET_DE : 0;
-    let trong = CAO_TRANG - dau - cuoi - ds.reduce((t, i) => t + cao[i], 0) - CHUA_CUOI_TRANG;
+    let trong = CAO_TRANG - cuoi - daDung[k] - CHUA_CUOI_TRANG;
     if (trong <= 0) return;
     const viet = ds.filter((i) => caoMotDongThem(cau[i], maMon) > 0);
     for (let vong = 0; vong < 2 && viet.length; vong++) {
@@ -554,7 +599,7 @@ function bangCau(cau: CauDe[], inDam = false, maMon = '', choTrong?: ChoTrong[])
     const them = choTrong?.[i]?.dongThem ?? 0;
     const cach = choTrong?.[i]?.cachTruoc ?? 0;
     const dem = cach > 0 ? [new Paragraph({ children: [], spacing: { line: cach, lineRule: LineRuleType.EXACT, before: 0, after: 0 } })] : [];
-    const nd = noiDungCau(c, inDam, maMon, them, laPhanNoiTiep(cau, i), choTrong?.[i]?.anhCao) as Paragraph[];
+    const nd = noiDungCau(c, inDam, maMon, them, laPhanNoiTiep(cau, i), choTrong?.[i]?.anhCao, choTrong?.[i]?.dan, choTrong?.[i]?.tnGon) as Paragraph[];
     const oDiem = o2([...dem, doan([tr(`…/${fmtDiem(c.diem)}đ`)], { align: AlignmentType.LEFT })], RONG_DIEM, { ...CAC_VIEN_KHONG, right: VIEN_DEN });
     if (!choPhepCat(c, maMon, them)) {
       // Câu ngắn: cả câu một hàng, không cắt ngang trang

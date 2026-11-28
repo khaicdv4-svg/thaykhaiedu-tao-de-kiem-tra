@@ -227,9 +227,24 @@ export function moRongChoCham(deBai: string): string {
   return deBai.replace(CHO_CHAM, '……………………');
 }
 
-export function soDongTraLoi(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: string): number {
+/** Toán: bài toán có lời văn cần chỗ cho lời giải, phép tính, đáp số */
+export const SO_DONG_BAI_TOAN_LOI_VAN = 8;
+
+/** Bài toán có lời văn (Toán tự luận): in sẵn chữ "Bài giải" và chừa đủ dòng cho lời giải, phép tính, đáp số. */
+export function laBaiToanLoiVan(c: Pick<CauDe, 'dang' | 'deBai'> & Partial<Pick<CauDe, 'hinhThuc'>>, maMon: string): boolean {
+  if (maMon !== 'TOAN' || c.hinhThuc !== 'TL' || c.dang === 'DS' || c.dang === 'VIET') return false;
+  if (laDienChoCham(c) || tachYTrongDeBai(c.deBai)) return false;
+  const s = c.deBai.toLowerCase();
+  if (/^\s*bài giải\b/m.test(s)) return false;
+  if (/đặt tính|tính bằng cách thuận tiện|tính giá trị|tính nhẩm|dùng thước|vẽ đường thẳng|vẽ góc/.test(s)) return false;
+  return /hỏi\b|tìm hai số|tính (diện tích|chu vi|tổng|hiệu|trung bình)/.test(s);
+}
+
+export function soDongTraLoi(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'> & Partial<Pick<CauDe, 'hinhThuc'>>, maMon: string): number {
   if (c.dang === 'VIET') return 18;
   if (laDienChoCham(c)) return 0;
+  // Bài toán có lời văn: 3 dòng lời giải, 3 dòng phép tính, 2 dòng đáp số
+  if (laBaiToanLoiVan(c, maMon)) return SO_DONG_BAI_TOAN_LOI_VAN;
   const toan = maMon === 'TOAN';
   // Toán: 0,5 điểm 3 dòng, 1 điểm 4 dòng, 1,5 điểm 6 dòng (tổ giới hạn đề Toán 3 trang)
   const goc = toan ? Math.ceil(c.diem * 3) + 1 : Math.ceil(c.diem * 4) + 1;
@@ -241,9 +256,11 @@ export function soDongTraLoi(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: s
 }
 
 /** Số dòng kẻ tối thiểu khi phải nén đề cho vừa số trang tổ quy định */
-export function soDongToiThieu(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'>, maMon: string): number {
+export function soDongToiThieu(c: Pick<CauDe, 'dang' | 'diem' | 'deBai'> & Partial<Pick<CauDe, 'hinhThuc'>>, maMon: string): number {
   const n = soDongTraLoi(c, maMon);
   if (n === 0) return 0;
+  // Bài toán có lời văn không bao giờ bị bớt dòng khi nén trang
+  if (laBaiToanLoiVan(c, maMon)) return n;
   if (/giải bài toán|bài giải|lời giải/i.test(c.deBai) || (maMon === 'TOAN' && c.diem >= 1.5)) return Math.min(n, 4);
   return Math.min(n, 2);
 }
