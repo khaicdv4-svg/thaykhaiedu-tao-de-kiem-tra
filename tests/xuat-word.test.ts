@@ -32,7 +32,7 @@ describe('Xuất Word', () => {
     expect(buf.subarray(0, 2).toString()).toBe('PK');
     if (process.env.XUAT_THU) writeFileSync(process.env.XUAT_THU, buf);
     const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
-    for (const s of ['TRƯỜNG TIỂU HỌC TRẦN VĂN ƠN', 'PHẦN BÀI LÀM CỦA HỌC SINH', 'HƯỚNG DẪN CHẤM MÔN LỊCH SỬ VÀ ĐỊA LÍ', 'HẾT ĐỀ']) expect(xml).toContain(s);
+    for (const s of ['TRƯỜNG TH TRẦN VĂN ƠN', 'PHẦN BÀI LÀM CỦA HỌC SINH', 'HƯỚNG DẪN CHẤM VÀ ĐÁP ÁN', 'Môn LỊCH SỬ VÀ ĐỊA LÍ – Lớp 4', 'HẾT']) expect(xml).toContain(s);
     expect(xml).toContain('Câu 1');
   });
 
@@ -40,11 +40,11 @@ describe('Xuất Word', () => {
     const buf = await Packer.toBuffer(dungHoSoDe(tt, dacTa, de));
     if (process.env.XUAT_HOSO) writeFileSync(process.env.XUAT_HOSO, buf);
     const xml = await docChuTuDocx(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
-    for (const s of ['MA TRẬN ĐỀ', 'BẢN ĐẶC TẢ ĐỀ', 'HIỆU TRƯỞNG', 'TỔ TRƯỞNG', 'PHẦN BÀI LÀM CỦA HỌC SINH', 'HƯỚNG DẪN CHẤM MÔN LỊCH SỬ VÀ ĐỊA LÍ']) expect(xml).toContain(s);
+    for (const s of ['MA TRẬN ĐỀ', 'BẢN ĐẶC TẢ ĐỀ', 'HIỆU TRƯỞNG', 'TỔ TRƯỞNG', 'PHẦN BÀI LÀM CỦA HỌC SINH', 'HƯỚNG DẪN CHẤM VÀ ĐÁP ÁN']) expect(xml).toContain(s);
     // thứ tự: ma trận → đặc tả → đề → hướng dẫn chấm
     expect(xml.indexOf('MA TRẬN ĐỀ')).toBeLessThan(xml.indexOf('BẢN ĐẶC TẢ ĐỀ'));
     expect(xml.indexOf('BẢN ĐẶC TẢ ĐỀ')).toBeLessThan(xml.indexOf('PHẦN BÀI LÀM CỦA HỌC SINH'));
-    expect(xml.indexOf('PHẦN BÀI LÀM CỦA HỌC SINH')).toBeLessThan(xml.indexOf('HƯỚNG DẪN CHẤM MÔN'));
+    expect(xml.indexOf('PHẦN BÀI LÀM CỦA HỌC SINH')).toBeLessThan(xml.indexOf('HƯỚNG DẪN CHẤM VÀ ĐÁP ÁN'));
   });
 
   it('tệp ma trận + đặc tả riêng, không có đề và hướng dẫn chấm', async () => {
@@ -185,7 +185,7 @@ describe('Dàn trang đề môn thường', () => {
     let dung = 3700;
     cau.forEach((c, i) => {
       const h = uocLuongCaoCau(c, 'TOAN', pb[i].dongThem, pb[i].anhCao) + pb[i].cachTruoc;
-      if (dung + h > 16838 - 567 * 2) { trang++; dung = 0; }
+      if (dung + h > 16838 - 720 - 700) { trang++; dung = 0; }
       dung += h;
     });
     expect(trang).toBeLessThanOrEqual(3);

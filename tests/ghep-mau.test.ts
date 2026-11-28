@@ -102,8 +102,8 @@ describe('Xuất đề theo mẫu của tổ', () => {
     expect(id).toBeTruthy();
     const dich = rels.match(new RegExp(`Id="${id}"[^>]*Target="([^"]+)"`))?.[1] ?? rels.match(new RegExp(`Target="([^"]+)"[^>]*Id="${id}"`))?.[1];
     expect(goi[`word/${dich}`]).toBeTruthy();
-    // bảng của mẫu (9000 rộng trên trang chữ 9000) được giãn theo trang A4 lề 1 cm (10772)
-    expect(docXml).toMatch(/<w:gridCol w:w="4788"\/>/);
+    // bảng của mẫu (9000 rộng trên trang chữ 9000) được giãn theo trang A4 lề chuẩn mẫu (9906)
+    expect(docXml).toMatch(/<w:gridCol w:w="4403"\/>/);
   });
 
   it('tiêu đề viết trong một đoạn có xuống dòng cũng thay đúng', async () => {
@@ -120,7 +120,7 @@ describe('Xuất đề theo mẫu của tổ', () => {
     // Hồ sơ có trang ngang (ma trận) trước trang dọc (đề): đầu bài phải theo bề ngang trang dọc
     const xmlHs = strFromU8(unzipSync(hs.tep)['word/document.xml']);
     const dauHs = xmlHs.slice(xmlHs.indexOf('GV coi') - 6000, xmlHs.indexOf('PHẦN BÀI LÀM'));
-    expect(dauHs).toContain('<w:tblW w:w="10772" w:type="dxa"/>');
+    expect(dauHs).toContain('<w:tblW w:w="9906" w:type="dxa"/>');
     expect(dauHs).not.toContain('<w:tblW w:w="15704"');
 
     const tv = MAU_MA_TRAN_CHUNG.find((m) => m.ma_mon === 'TIENG_VIET')!;
@@ -171,8 +171,8 @@ describe('Đầu bài theo mẫu thẳng mép trang', () => {
     expect(bangs.length).toBe(2);
     for (const b of bangs) {
       const tong = [...b.matchAll(/<w:gridCol w:w="(\d+)"/g)].reduce((s2, m) => s2 + Number(m[1]), 0);
-      expect(Math.abs(tong - 10772)).toBeLessThanOrEqual(3);
-      expect(b).toContain('<w:tblW w:w="10772" w:type="dxa"/>');
+      expect(Math.abs(tong - 9906)).toBeLessThanOrEqual(3);
+      expect(b).toContain('<w:tblW w:w="9906" w:type="dxa"/>');
       expect(b).toContain('<w:tblInd w:w="0" w:type="dxa"/>');
     }
   });

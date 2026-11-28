@@ -9,7 +9,7 @@ import { layKhoiLamViec } from '@/lib/khoi-lam-viec.server';
 
 export const runtime = 'nodejs';
 
-const TEN_KY: Record<string, string> = { GIUA_HK1: 'GIỮA HKI', CUOI_HK1: 'CUỐI HKI', GIUA_HK2: 'GIỮA HKII', CUOI_NAM: 'CUỐI NĂM' };
+const TEN_KY: Record<string, string> = { GIUA_HK1: 'GIỮA HỌC KÌ I', CUOI_HK1: 'CUỐI HỌC KÌ I', GIUA_HK2: 'GIỮA HỌC KÌ II', CUOI_NAM: 'CUỐI NĂM HỌC' };
 /**
  * Thay đầu bài do app dựng bằng đầu bài trong mẫu đề của tổ (nếu môn đã có mẫu).
  * Có trục trặc thì vẫn trả tệp theo khung mặc định, kèm lí do trong tiêu đề X-Mau-De để giao diện báo lại.
@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
     const coMau = sp.get('mau') !== '0';
     const phut = Math.min(120, Math.max(5, Number(sp.get('phut')) || 35));
     const tt: ThongTinDe = {
-      tenTruong: (sp.get('truong') ?? 'TRƯỜNG TIỂU HỌC').toUpperCase().slice(0, 80),
-      tieuDeKy: `KTĐK ${TEN_KY[ky] ?? ky} - NĂM HỌC ${namHoc}`,
+      tenTruong: (sp.get('truong') ?? 'TRƯỜNG TH TRẦN VĂN ƠN').toUpperCase().slice(0, 80),
+      tieuDeKy: `KIỂM TRA ${TEN_KY[ky] ?? ky} - NH ${namHoc}`,
       tenMon,
       thoiGianPhut: phut,
       lop: await layKhoiLamViec(),

@@ -53,6 +53,10 @@ export interface ThongTinDe {
 }
 
 const lopCua = (t: ThongTinDe) => t.lop ?? 4;
+const tenTruongIn = (ten: string) => {
+  const s = ten.trim().replace(/\bTRƯỜNG\s+TIỂU\s+HỌC\b/gi, 'TRƯỜNG TH');
+  return s || 'TRƯỜNG TH TRẦN VĂN ƠN';
+};
 
 const FONT = 'Times New Roman';
 const CO = 26; // 13 pt
@@ -63,7 +67,9 @@ const DAN_CAU = 348; // 1,45 dòng cho nội dung câu hỏi: thoáng hơn để
 /** Đổi giãn dòng kiểu bội số (240 = 1 dòng) sang khoảng cách cố định (twip) theo cỡ chữ: một dòng đơn Times New Roman ≈ 1,15 cỡ chữ. */
 export const gianCoDinh = (dong: number, co = CO) => Math.round((dong / 240) * co * 11.5);
 const coDinh = (dong: number, co = CO) => ({ line: gianCoDinh(dong, co), lineRule: LineRuleType.EXACT });
-const LE = 567; // 1 cm
+const LE = 1000; // ~1,76 cm (theo mẫu chuẩn)
+const LE_TREN = 720; // ~1,27 cm
+const LE_DUOI = 700; // ~1,23 cm
 const RONG_TRANG = 11906 - LE * 2;
 const RONG_DIEM = 1100;
 const RONG_NOI_DUNG = RONG_TRANG - RONG_DIEM;
@@ -111,8 +117,8 @@ function dongCham(rong = RONG_NOI_DUNG - 200, dong = 360) {
   });
 }
 
-const o2 = (cs: Paragraph[], rong: number, vien: CacVien = CAC_VIEN_KHONG, span = 1) =>
-  new TableCell({ children: cs, width: { size: rong, type: WidthType.DXA }, borders: vien, columnSpan: span, verticalAlign: VerticalAlign.TOP, margins: { top: 40, bottom: 40, left: 80, right: 80 } });
+const o2 = (cs: Paragraph[], rong: number, vien: CacVien = CAC_VIEN_KHONG, span = 1, rowSpan = 1, vAlign: typeof VerticalAlign.TOP | typeof VerticalAlign.CENTER | typeof VerticalAlign.BOTTOM = VerticalAlign.TOP) =>
+  new TableCell({ children: cs, width: { size: rong, type: WidthType.DXA }, borders: vien, columnSpan: span, ...(rowSpan > 1 ? { rowSpan } : {}), verticalAlign: vAlign, margins: { top: 40, bottom: 40, left: 80, right: 80 } });
 
 // ---------------------------------------------------------------------------
 // Đầu đề
@@ -121,38 +127,58 @@ const o2 = (cs: Paragraph[], rong: number, vien: CacVien = CAC_VIEN_KHONG, span 
 /** Khối đầu đề giãn dòng 1,0 (tổ trưởng duyệt 24/11/2026) */
 const D1 = 240;
 
+/** Nhãn có đường chấm nối trên cùng một dòng (tab phải leader chấm) để không bao giờ bị xuống dòng. */
+function dongNhanCham(nhan: string, rongO: number) {
+  return new Paragraph({
+    children: [trChu(`${nhan} \t`)],
+    tabStops: [{ type: TabStopType.RIGHT, position: rongO - 180, leader: LeaderType.DOT }],
+    spacing: { ...coDinh(D1), before: 120, after: 0 },
+    keepLines: true,
+  });
+}
+
 function dauDe(t: ThongTinDe, tc: { tenMon?: string; phut?: number | null } = {}): (Table | Paragraph)[] {
   const tenMon = tc.tenMon ?? t.tenMon;
   const phut = tc.phut === undefined ? t.thoiGianPhut : tc.phut;
-  const trai = RONG_TRANG / 2;
-  const phai = RONG_TRANG - trai;
+  const c1 = Math.round(RONG_TRANG * 0.455);
+  const phaiTong = RONG_TRANG - c1;
+  const c2 = Math.floor(phaiTong / 3);
+  const c3 = Math.floor(phaiTong / 3);
+  const c4 = phaiTong - c2 - c3;
   const khung = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
   const bang1 = new Table({
     width: { size: RONG_TRANG, type: WidthType.DXA },
-    columnWidths: [trai, phai],
+    columnWidths: [c1, c2, c3, c4],
     layout: TableLayoutType.FIXED,
     rows: [
       new TableRow({
         cantSplit: true,
         children: [
           o2([
-            doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER, dong: D1 }),
-            doan('HỌ TÊN HS: ……………………………', { truoc: 120, dong: D1 }),
-            doan(`LỚP: ${lopCua(t)} ……………………………………`, { truoc: 120, dong: D1 }),
-            doan('NGÀY KIỂM TRA: …………………', { truoc: 120, dong: D1 }),
-          ], trai, khung),
+            doan([tr(tenTruongIn(t.tenTruong), { bold: true })], { align: AlignmentType.CENTER, dong: D1 }),
+            dongNhanCham('HỌ TÊN HS:', c1),
+            dongNhanCham('LỚP:', c1),
+            dongNhanCham('NGÀY KIỂM TRA:', c1),
+          ], c1, khung, 1, 2),
           o2([
             doan([tr(t.tieuDeKy, { bold: true })], { align: AlignmentType.CENTER, dong: D1 }),
             doan([tr(`MÔN ${tenMon} - Lớp ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER, dong: D1 }),
             ...(phut ? [doan(`Thời gian: ${phut} phút`, { align: AlignmentType.CENTER, dong: D1 })] : []),
-            doan([tr('GV coi KT1            GV coi KT2            Số thứ tự')], { align: AlignmentType.CENTER, truoc: 120, dong: D1 }),
-          ], phai, khung),
+          ], phaiTong, khung, 3),
+        ],
+      }),
+      new TableRow({
+        cantSplit: true,
+        children: [
+          o2([doan([tr('GV coi KT1', { bold: true })], { align: AlignmentType.CENTER, dong: D1 })], c2, khung),
+          o2([doan([tr('GV coi KT2', { bold: true })], { align: AlignmentType.CENTER, dong: D1 })], c3, khung),
+          o2([doan([tr('Số thứ tự', { bold: true })], { align: AlignmentType.CENTER, dong: D1 })], c4, khung),
         ],
       }),
     ],
   });
 
-  const w = [1400, 4300, 2536, 2536];
+  const w = [1500, 3400, 2500, 2506];
   const tong = w.reduce((a, b) => a + b, 0);
   w[1] += RONG_TRANG - tong;
   const bang2 = new Table({
@@ -276,6 +302,16 @@ function bangChuHinhPhai(trai: Paragraph[], h: NonNullable<CauDe['hinh']>[number
   });
 }
 
+/** Bài toán có lời văn (Toán tự luận) thì in sẵn chữ "Bài giải" trước phần dòng kẻ làm bài. */
+function laBaiToanLoiVan(c: CauDe, maMon: string): boolean {
+  if (maMon !== 'TOAN' || c.hinhThuc !== 'TL' || c.dang === 'DS' || c.dang === 'VIET') return false;
+  if (laDienChoCham(c) || tachYTrongDeBai(c.deBai)) return false;
+  const s = c.deBai.toLowerCase();
+  if (/^\s*bài giải\b/m.test(s)) return false;
+  if (/đặt tính|tính bằng cách thuận tiện|tính giá trị|tính nhẩm|dùng thước|vẽ đường thẳng|vẽ góc/.test(s)) return false;
+  return /hỏi\b|tìm hai số|tính (diện tích|chu vi|tổng|hiệu|trung bình)/.test(s);
+}
+
 /** Nhãn in đầu câu: "Câu 8. ". Phần sau của câu chia ý (Câu 8 b, c, d nối tiếp Câu 8 a) không in lại nhãn. */
 function nhanIn(c: CauDe, tiep: boolean): string {
   if (tiep) return '';
@@ -343,6 +379,7 @@ function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false,
   } else if (nhieuY) {
     kq.push(luoiY(nhieuY.y, nhieuY.datTinh, them));
   } else {
+    if (laBaiToanLoiVan(c, maMon)) kq.push(doan([tr('Bài giải')], { align: AlignmentType.CENTER, dong: DAN_CAU }));
     const dong = maMon === 'TOAN' ? 420 : 380;
     for (let i = 0; i < soDongIn(c, maMon, them); i++) kq.push(dongCham(RONG_NOI_DUNG - 200, dong));
   }
@@ -356,7 +393,7 @@ function noiDungCau(c: CauDe, inDam = false, maMon = '', them = 0, tiep = false,
 /** Phần thêm cho một câu khi lấp trang: số dòng kẻ thêm, khoảng cách thêm phía trên câu (twip) */
 export interface ChoTrong { dongThem: number; cachTruoc: number; anhCao?: number }
 
-const CAO_TRANG = 16838 - 567 * 2; // A4 trừ lề trên, dưới 1 cm
+const CAO_TRANG = 16838 - LE_TREN - LE_DUOI; // A4 trừ lề trên, dưới theo mẫu chuẩn
 const CAO_DAU_DE = 3700; // khung đầu đề + bảng điểm + dòng PHẦN BÀI LÀM (giãn 1,0)
 const CAO_HET_DE = 120 + gianCoDinh(DAN_DONG);
 /** Chừa cuối mỗi trang (khoảng 1 cm) vì chiều cao chỉ là ước lượng; không để chữ sát mép */
@@ -417,6 +454,7 @@ export function uocLuongCaoCau(c: CauDe, maMon = '', them = 0, anhCao = ANH_CAO)
     const dongO = soDongLuoi(nhieuY.datTinh, them);
     cao += Math.ceil(nhieuY.y.length / 2) * (LC + dongO * gianCoDinh(400) + 80);
   } else {
+    if (laBaiToanLoiVan(c, maMon)) cao += LC;
     cao += soDongIn(c, maMon, them) * gianCoDinh(maMon === 'TOAN' ? 420 : 380);
   }
   return Math.max(cao, gianCoDinh(DAN_DONG)) + 80; // + lề ô trên, dưới
@@ -448,7 +486,7 @@ export const GIOI_HAN_TRANG: Record<string, number> = { TOAN: 3 };
 /** Chừa thêm mỗi trang khi so với giới hạn trang: Word dàn chữ có thể cao hơn ước lượng */
 const AN_TOAN_TRANG = 500;
 /** Các mức nén lần lượt thử khi đề dài hơn giới hạn: [bớt dòng kẻ mỗi câu, chiều cao hình tối đa px] */
-const MUC_NEN: [number, number][] = [[0, ANH_CAO], [1, ANH_CAO], [1, 190], [2, 190], [2, 165], [3, 165], [4, 150], [6, 140]];
+const MUC_NEN: [number, number][] = [[0, ANH_CAO], [1, ANH_CAO], [1, 190], [2, 190], [2, 165], [3, 165], [4, 150], [6, 140], [6, 125], [8, 115], [8, 100], [10, 95]];
 
 /** Xếp các câu vào trang như Word (mỗi câu không cắt ngang trang), trả về danh sách câu của từng trang. */
 function xepTrang(cao: number[], caoDauTrang: number, chua: number): number[][] {
@@ -543,18 +581,19 @@ function bangCau(cau: CauDe[], inDam = false, maMon = '', choTrong?: ChoTrong[])
 // Hướng dẫn chấm
 // ---------------------------------------------------------------------------
 
+const VIEN_DU: CacVien = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
+
 function bangDapAn(cau: CauDe[]): Table {
   const w = [1300, RONG_TRANG - 1300 - 1300, 1300];
-  const vien = { top: VIEN_DEN, bottom: VIEN_DEN, left: VIEN_DEN, right: VIEN_DEN };
-  const hang = (a: string, b: Paragraph[], d: string, dam = false) => new TableRow({
+  const hang = (a: string, b: Paragraph[], d: string, dam = false, canGiua = false) => new TableRow({
     cantSplit: true,
     children: [
-      o2([doan([tr(a, { bold: dam })], { align: AlignmentType.CENTER })], w[0], vien),
-      o2(b, w[1], vien),
-      o2([doan([tr(d, { bold: dam })], { align: AlignmentType.CENTER })], w[2], vien),
+      o2([doan([tr(a, { bold: dam })], { align: canGiua ? AlignmentType.CENTER : AlignmentType.LEFT })], w[0], VIEN_DU, 1, 1, VerticalAlign.CENTER),
+      o2(b, w[1], VIEN_DU, 1, 1, VerticalAlign.CENTER),
+      o2([doan([tr(d, { bold: dam })], { align: canGiua ? AlignmentType.CENTER : AlignmentType.LEFT })], w[2], VIEN_DU, 1, 1, VerticalAlign.CENTER),
     ],
   });
-  const rows = [hang('Câu', [doan([tr('Đáp án, hướng dẫn chấm', { bold: true })], { align: AlignmentType.CENTER })], 'Điểm', true)];
+  const rows = [hang('Câu', [doan([tr('Đáp án, hướng dẫn chấm', { bold: true })], { align: AlignmentType.CENTER })], 'Điểm', true, true)];
   for (const c of cau) {
     const ps: Paragraph[] = [];
     const dapAn = dapAnHienThi(c).trim();
@@ -567,17 +606,107 @@ function bangDapAn(cau: CauDe[]): Table {
     rows.push(hang(nhanCau(c).replace(/^Câu /, ''), ps, fmtDiem(c.diem)));
   }
   const tong = Math.round(cau.reduce((s, c) => s + c.diem, 0) * 100) / 100;
-  rows.push(hang('', [doan([tr('Tổng', { bold: true })], { align: AlignmentType.RIGHT })], fmtDiem(tong), true));
+  rows.push(hang('', [doan([tr('Tổng', { bold: true })], { align: AlignmentType.RIGHT })], fmtDiem(tong), true, false));
   return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows });
 }
 
+function bangDapAnTN(cauTN: CauDe[]): Table {
+  const c0 = 1400;
+  const conLai = RONG_TRANG - c0;
+  const n = cauTN.length;
+  const cCau = Math.floor(conLai / n);
+  const w = [c0, ...Array.from({ length: n }, (_, i) => (i === n - 1 ? conLai - cCau * (n - 1) : cCau))];
+  const oDapAn = (chu: string, rong: number, bold = false, align: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.LEFT) =>
+    o2([doan([tr(chu, { bold })], { align })], rong, VIEN_DU, 1, 1, VerticalAlign.CENTER);
+  const hangCau = new TableRow({
+    cantSplit: true,
+    children: [
+      oDapAn('Câu', w[0], true, AlignmentType.CENTER),
+      ...cauTN.map((c, i) => oDapAn(nhanCau(c).replace(/^Câu /, ''), w[i + 1], true, AlignmentType.CENTER)),
+    ],
+  });
+  const hangDapAn = new TableRow({
+    cantSplit: true,
+    children: [
+      oDapAn('Đáp án', w[0], true, AlignmentType.CENTER),
+      ...cauTN.map((c, i) => oDapAn(c.dang !== 'DS' && /^[A-D]$/i.test(c.dapAn.trim()) ? c.dapAn.trim().toUpperCase() : dapAnHienThi(c).trim(), w[i + 1], false, AlignmentType.LEFT)),
+    ],
+  });
+  return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows: [hangCau, hangDapAn] });
+}
+
+function bangDapAnTL(cauTL: CauDe[]): Table {
+  const w = [900, RONG_TRANG - 900 - 2400, 2400];
+  const hang = (a: string, b: Paragraph[], d: Paragraph[], dam = false, canGiua = false) => new TableRow({
+    cantSplit: true,
+    children: [
+      o2([doan([tr(a, { bold: dam })], { align: canGiua ? AlignmentType.CENTER : AlignmentType.LEFT })], w[0], VIEN_DU, 1, 1, VerticalAlign.CENTER),
+      o2(b, w[1], VIEN_DU, 1, 1, VerticalAlign.CENTER),
+      o2(d, w[2], VIEN_DU, 1, 1, VerticalAlign.CENTER),
+    ],
+  });
+  const rows = [hang('Câu', [doan([tr('Đáp án', { bold: true })], { align: AlignmentType.CENTER })], [doan([tr('Biểu điểm', { bold: true })], { align: AlignmentType.CENTER })], true, true)];
+  for (const c of cauTL) {
+    const ps: Paragraph[] = [];
+    const dapAn = dapAnHienThi(c).trim();
+    const dongDapAn = dapAn ? dapAn.split(/\n+/).filter((x) => x.trim()) : [];
+    for (const d of dongDapAn) ps.push(doan([tr(d)], { dong: DAN_CAU }));
+    if (!ps.length) ps.push(doan(''));
+
+    const dongCham = c.huongDanCham.split(/\n+/).filter((x) => x.trim());
+    const bd: Paragraph[] = [doan([tr(`${fmtDiem(c.diem)} điểm`, { bold: true })], { dong: DAN_CAU })];
+    for (const d of dongCham) bd.push(doan([tr(d)], { dong: DAN_CAU }));
+
+    rows.push(hang(nhanCau(c).replace(/^Câu /, ''), ps, bd));
+  }
+  return new Table({ width: { size: RONG_TRANG, type: WidthType.DXA }, columnWidths: w, layout: TableLayoutType.FIXED, rows });
+}
+
+function chuKyCuoiDe(): Table {
+  const trai = Math.floor(RONG_TRANG / 2);
+  const phai = RONG_TRANG - trai;
+  return new Table({
+    width: { size: RONG_TRANG, type: WidthType.DXA },
+    columnWidths: [trai, phai],
+    layout: TableLayoutType.FIXED,
+    rows: [
+      new TableRow({
+        cantSplit: true,
+        children: [
+          o2([doan([tr('DUYỆT CỦA BAN GIÁM HIỆU', { bold: true })], { align: AlignmentType.CENTER })], trai),
+          o2([
+            doan([tr('……, ngày … tháng … năm 2026', { italics: true })], { align: AlignmentType.CENTER }),
+            doan([tr('GIÁO VIÊN RA ĐỀ', { bold: true })], { align: AlignmentType.CENTER }),
+          ], phai),
+        ],
+      }),
+    ],
+  });
+}
+
 function huongDanCham(t: ThongTinDe, de: DeKiemTra): (Table | Paragraph)[] {
-  return [
-    doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
-    doan([tr(`HƯỚNG DẪN CHẤM MÔN ${t.tenMon} - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER }),
-    doan([tr(t.tieuDeKy, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
-    bangDapAn(de.cau),
+  const cauTN = de.cau.filter((c) => c.hinhThuc === 'TN');
+  const cauTL = de.cau.filter((c) => c.hinhThuc === 'TL');
+  const diemTN = Math.round(cauTN.reduce((s, c) => s + c.diem, 0) * 100) / 100;
+  const diemTL = Math.round(cauTL.reduce((s, c) => s + c.diem, 0) * 100) / 100;
+  const kq: (Table | Paragraph)[] = [
+    doan([tr('HƯỚNG DẪN CHẤM VÀ ĐÁP ÁN', { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(t.tieuDeKy, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(`Môn ${t.tenMon} – Lớp ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
   ];
+  if (cauTN.length) {
+    kq.push(doan([tr(`PHẦN I. TRẮC NGHIỆM (${fmtDiem(diemTN)} điểm)`, { bold: true })], { truoc: 60 }));
+    kq.push(doan('Mỗi câu khoanh đúng được 0,5 điểm. Khoanh từ hai chữ trở lên trong một câu: không cho điểm câu đó.', { sau: 60 }));
+    kq.push(bangDapAnTN(cauTN));
+  }
+  if (cauTL.length) {
+    kq.push(doan([tr(`PHẦN II. TỰ LUẬN (${fmtDiem(diemTL)} điểm)`, { bold: true })], { truoc: 100 }));
+    kq.push(doan('Học sinh diễn đạt khác mà đúng ý vẫn cho điểm. Điểm toàn bài là tổng điểm các câu, làm tròn thành số nguyên theo quy định (không cho điểm thập phân).', { sau: 60 }));
+    kq.push(bangDapAnTL(cauTL));
+  }
+  kq.push(doan('', { sau: 160 }));
+  kq.push(chuKyCuoiDe());
+  return kq;
 }
 
 // ---------------------------------------------------------------------------
@@ -594,15 +723,44 @@ const TAI_LIEU = { creator: 'ThayKhaiEdu', styles: { default: { document: { run:
 
 /** Các phần (mỗi phần một trang mới) của đề và hướng dẫn chấm cho môn thường. */
 export function cacPhanDe(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptions[] {
-  const de = { ...deGoc, cau: xepCauTheoSo(deGoc.cau) };
+  const xep = xepCauTheoSo(deGoc.cau);
+  const cauTN = xep.filter((c) => c.hinhThuc === 'TN');
+  const cauTL = xep.filter((c) => c.hinhThuc === 'TL');
+  const cauSapXep = [...cauTN, ...cauTL];
+  const de = { ...deGoc, cau: cauSapXep };
+  const diemTN = Math.round(cauTN.reduce((s, c) => s + c.diem, 0) * 100) / 100;
+  const diemTL = Math.round(cauTL.reduce((s, c) => s + c.diem, 0) * 100) / 100;
+  const cacDoanPhan: string[] = [];
+  if (cauTN.length) {
+    cacDoanPhan.push(`PHẦN I. TRẮC NGHIỆM (${fmtDiem(diemTN)} điểm)`);
+    cacDoanPhan.push('Khoanh vào chữ đặt trước câu trả lời đúng.');
+  }
+  if (cauTL.length) {
+    cacDoanPhan.push(`PHẦN II. TỰ LUẬN (${fmtDiem(diemTL)} điểm)`);
+  }
+  const choTrong = phanBoChoTrong(cauSapXep, de.ma_mon, CAO_DAU_DE + uocLuongCaoDoan(cacDoanPhan));
+  const choTrongTN = choTrong.slice(0, cauTN.length);
+  const choTrongTL = choTrong.slice(cauTN.length);
+  const noiDungDe: (Table | Paragraph)[] = [...dauDe(t)];
+  if (cauTN.length) {
+    noiDungDe.push(doan([tr(`PHẦN I. TRẮC NGHIỆM (${fmtDiem(diemTN)} điểm)`, { bold: true })], { truoc: 80, giuDong: true }));
+    noiDungDe.push(doan('Khoanh vào chữ đặt trước câu trả lời đúng.', { sau: 60, giuDong: true }));
+    noiDungDe.push(bangCau(cauTN, true, de.ma_mon, choTrongTN));
+  }
+  if (cauTL.length) {
+    noiDungDe.push(doan([tr(`PHẦN II. TỰ LUẬN (${fmtDiem(diemTL)} điểm)`, { bold: true })], { truoc: 100, sau: 60, giuDong: true }));
+    noiDungDe.push(bangCau(cauTL, true, de.ma_mon, choTrongTL));
+  }
+  noiDungDe.push(doan([tr('HẾT', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 }));
+
   const trang = {
     page: {
       size: { width: 11906, height: 16838 },
-      margin: { left: LE, right: LE, top: 567, bottom: 567, header: 0, footer: 0 },
+      margin: { left: LE, right: LE, top: LE_TREN, bottom: LE_DUOI, header: 0, footer: 0 },
     },
   };
   return [
-    { properties: trang, children: [...dauDe(t), bangCau(de.cau, true, de.ma_mon, phanBoChoTrong(de.cau, de.ma_mon)), doan([tr('HẾT ĐỀ', { bold: true })], { align: AlignmentType.CENTER, truoc: 120 })] },
+    { properties: trang, children: noiDungDe },
     { properties: trang, children: huongDanCham(t, de) },
   ];
 }
@@ -712,8 +870,8 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
   const cauDocHieu = cau.filter((c) => c.dang !== 'VIET');
   const cauViet = cau.find((c) => c.dang === 'VIET');
   const kyDay = TEN_KY_DAY[deGoc.ky_kiem_tra] ?? t.tieuDeKy;
-  const namHoc = /NĂM HỌC\s+(.+)$/.exec(t.tieuDeKy)?.[1] ?? '';
-  const trang = { page: { size: { width: 11906, height: 16838 }, margin: { left: LE, right: LE, top: 567, bottom: 567, header: 0, footer: 0 } } };
+  const namHoc = /(?:NĂM HỌC|NH)\s+(.+)$/.exec(t.tieuDeKy)?.[1] ?? '';
+  const trang = { page: { size: { width: 11906, height: 16838 }, margin: { left: LE, right: LE, top: LE_TREN, bottom: LE_DUOI, header: 0, footer: 0 } } };
   const soTN = cauDocHieu.filter((c) => c.hinhThuc === 'TN').map((c) => tenDoanDoc(c));
   const dsTN = soTN.length > 1 ? `${soTN.slice(0, -1).join(', ')} và ${soTN[soTN.length - 1]}` : soTN.join('');
   const diemDocHieu = Math.round(cauDocHieu.reduce((s, c) => s + c.diem, 0) * 100) / 100;
@@ -737,7 +895,7 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
 
   // 2. Tờ bài đọc hiểu (cỡ chữ 14)
   const toBaiDoc = [
-    doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(tenTruongIn(t.tenTruong), { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`KIỂM TRA ${kyDay} - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`NĂM HỌC: ${namHoc}`, { bold: true })], { align: AlignmentType.CENTER, sau: 120 }),
     new Paragraph({ children: [new TextRun({ text: 'Bài đọc hiểu:', font: FONT, size: CO_BAI_DOC, bold: true, underline: {} })], spacing: { line: DAN_DONG, after: 60 } }),
@@ -788,7 +946,7 @@ export function cacPhanTiengViet(t: ThongTinDe, deGoc: DeKiemTra): ISectionOptio
   // 6. Hướng dẫn chấm chung
   const bangHDCDocHieu = bangDapAn(cauDocHieu);
   const hdc = [
-    doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(tenTruongIn(t.tenTruong), { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`HƯỚNG DẪN CHẤM MÔN TIẾNG VIỆT - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`KTĐK ${kyDay} - NĂM HỌC ${namHoc}`, { bold: true })], { align: AlignmentType.CENTER, sau: 100 }),
     doan([tr('I. ĐỌC THÀNH TIẾNG: (2 điểm)', { bold: true })], { truoc: 60 }),
@@ -834,7 +992,7 @@ const oN = (text: string[], rong: number, o: { bold?: boolean; align?: (typeof A
 
 function tieuDeBangRong(t: ThongTinDe, dacTa: DacTa, tieuDe: string): Paragraph[] {
   return [
-    doan([tr(t.tenTruong, { bold: true })], { align: AlignmentType.CENTER }),
+    doan([tr(tenTruongIn(t.tenTruong), { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`${tieuDe} ${t.tieuDeKy.replace(/^KTĐK /, 'KIỂM TRA ĐỊNH KÌ ')}`, { bold: true })], { align: AlignmentType.CENTER }),
     doan([tr(`MÔN: ${t.tenMon.toUpperCase()} - LỚP ${lopCua(t)}`, { bold: true })], { align: AlignmentType.CENTER, sau: 100 }),
   ];
